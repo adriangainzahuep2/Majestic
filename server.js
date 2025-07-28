@@ -15,6 +15,7 @@ const authMiddleware = require('./middleware/auth');
 
 // Import services
 const queueService = require('./services/queue');
+const { initializeDatabase } = require('./database/schema');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -99,12 +100,28 @@ app.use((error, req, res, next) => {
   });
 });
 
-// Initialize queue service
-queueService.init();
+// Initialize services and start server
+async function startServer() {
+  try {
+    // Initialize database schema
+    console.log('Initializing database...');
+    await initializeDatabase();
+    
+    // Initialize queue service (with graceful degradation)
+    console.log('Initializing queue service...');
+    queueService.init();
+    
+    // Start the server
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log(`Health check: http://localhost:${PORT}/api/health`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/api/health`);
-});
+startServer();
 
 module.exports = app;

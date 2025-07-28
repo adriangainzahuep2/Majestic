@@ -13,20 +13,42 @@ class QueueService {
   init() {
     if (this.isInitialized) return;
 
-    // Initialize Redis connection for Bull queue
-    const redisConfig = process.env.REDIS_URL ? 
-      { redis: process.env.REDIS_URL } : 
-      { redis: { port: 6379, host: '127.0.0.1' } };
+    // Skip Redis initialization if not available
+    if (!process.env.REDIS_URL) {
+      console.warn('Redis not available, running in direct processing mode');
+      this.isInitialized = false;
+      this.uploadQueue = null;
+      this.dailyPlanQueue = null;
+      return;
+    }
 
-    this.uploadQueue = new Bull('upload processing', redisConfig);
-    this.dailyPlanQueue = new Bull('daily plan generation', redisConfig);
+    try {
+      // Initialize Redis connection for Bull queue
+      const redisConfig = {
+        redis: {
+          ...(process.env.REDIS_URL ? { url: process.env.REDIS_URL } : { port: 6379, host: '127.0.0.1' }),
+          maxRetriesPerRequest: 2,
+          retryDelayOnFailover: 100,
+          connectTimeout: 5000,
+          lazyConnect: true
+        }
+      };
 
-    this.setupUploadProcessor();
-    this.setupDailyPlanProcessor();
-    this.setupScheduledJobs();
+      this.uploadQueue = new Bull('upload processing', redisConfig);
+      this.dailyPlanQueue = new Bull('daily plan generation', redisConfig);
 
-    this.isInitialized = true;
-    console.log('Queue service initialized');
+      this.setupUploadProcessor();
+      this.setupDailyPlanProcessor();
+      this.setupScheduledJobs();
+
+      this.isInitialized = true;
+      console.log('Queue service initialized with Redis');
+    } catch (error) {
+      console.warn('Queue service initialization failed, running in direct processing mode:', error.message);
+      this.isInitialized = false;
+      this.uploadQueue = null;
+      this.dailyPlanQueue = null;
+    }
   }
 
   setupUploadProcessor() {
@@ -286,6 +308,11 @@ class QueueService {
   }
 
   async addJob(jobType, data, options = {}) {
+    if (!this.isInitialized || !this.uploadQueue || !this.dailyPlanQueue) {
+      console.warn(`Queue not available, processing ${jobType} directly`);
+      return await this.processDirectly(jobType, data);
+    }
+
     const queue = jobType.includes('daily-plan') ? this.dailyPlanQueue : this.uploadQueue;
     
     // Default options
@@ -299,16 +326,167 @@ class QueueService {
     return await queue.add(jobType, data, { ...defaultOptions, ...options });
   }
 
+  async processDirectly(jobType, data) {
+    try {
+      if (jobType === 'process-upload') {
+        return await this.processUploadDirectly(data);
+      } else if (jobType === 'generate-daily-plan') {
+        return await this.processDailyPlanDirectly(data);
+      }
+    } catch (error) {
+      console.error(`Direct processing error for ${jobType}:`, error);
+      throw error;
+    }
+  }
+
+  async processUploadDirectly(data) {
+    const { userId, fileName, fileData, uploadType, uploadId } = data;
+    
+    try {
+      // Update upload status
+      if (uploadId) {
+        await pool.query(
+          'UPDATE uploads SET processing_status = $1 WHERE id = $2',
+          ['processing', uploadId]
+        );
+      }
+
+      let extractedData;
+      const fileExtension = fileName.split('.').pop().toLowerCase();
+
+      // Process based on file type
+      if (['jpg', 'jpeg', 'png', 'pdf'].includes(fileExtension)) {
+        // Convert to base64 if needed
+        const base64Data = Buffer.isBuffer(fileData) ? 
+          fileData.toString('base64') : fileData;
+
+        // Determine processing type based on filename or content
+        if (fileName.toLowerCase().includes('lab') || 
+            fileName.toLowerCase().includes('blood') ||
+            fileName.toLowerCase().includes('test')) {
+          extractedData = await openaiService.processLabReport(base64Data, fileName);
+        } else if (fileName.toLowerCase().includes('meal') ||
+                   fileName.toLowerCase().includes('food')) {
+          extractedData = await openaiService.analyzeMealPhoto(base64Data);
+        } else if (fileName.toLowerCase().includes('aqi') ||
+                   fileName.toLowerCase().includes('air')) {
+          extractedData = await openaiService.analyzeAQIScreenshot(base64Data);
+        } else {
+          // Default to lab report processing
+          extractedData = await openaiService.processLabReport(base64Data, fileName);
+        }
+      } else {
+        throw new Error(`Unsupported file type: ${fileExtension}`);
+      }
+
+      // Save extracted metrics to database
+      if (extractedData.metrics && uploadId) {
+        await this.saveMetricsToDatabase(userId, uploadId, extractedData.metrics);
+      }
+
+      // Update upload status
+      if (uploadId) {
+        await pool.query(
+          'UPDATE uploads SET processing_status = $1, processed_at = CURRENT_TIMESTAMP WHERE id = $2',
+          ['completed', uploadId]
+        );
+      }
+
+      // Trigger system insights regeneration
+      await this.regenerateSystemInsights(userId);
+
+      console.log(`Successfully processed upload ${uploadId || 'direct'} for user ${userId}`);
+      return { success: true, data: extractedData };
+
+    } catch (error) {
+      console.error(`Error processing upload ${uploadId || 'direct'}:`, error);
+      
+      if (uploadId) {
+        await pool.query(
+          'UPDATE uploads SET processing_status = $1, processing_error = $2 WHERE id = $3',
+          ['failed', error.message, uploadId]
+        );
+      }
+
+      throw error;
+    }
+  }
+
+  async processDailyPlanDirectly(data) {
+    const { userId } = data;
+
+    try {
+      // Get user's recent metrics
+      const metricsResult = await pool.query(`
+        SELECT m.*, hs.name as system_name 
+        FROM metrics m
+        JOIN health_systems hs ON m.system_id = hs.id
+        WHERE m.user_id = $1 
+        AND m.test_date >= CURRENT_DATE - INTERVAL '30 days'
+        ORDER BY m.test_date DESC
+      `, [userId]);
+
+      // Get recent questionnaire responses
+      const responsesResult = await pool.query(`
+        SELECT * FROM questionnaire_responses 
+        WHERE user_id = $1 
+        AND response_date >= CURRENT_DATE - INTERVAL '7 days'
+        ORDER BY response_date DESC
+      `, [userId]);
+
+      const userMetrics = this.organizeMetricsBySystem(metricsResult.rows);
+      const recentData = {
+        questionnaire_responses: responsesResult.rows,
+        last_upload_date: metricsResult.rows[0]?.test_date
+      };
+
+      // Generate daily plan
+      const dailyPlan = await openaiService.generateDailyPlan(userMetrics, recentData);
+
+      // Save to database (store as JSON in ai_outputs_log)
+      await openaiService.logAIOutput(
+        userId, 
+        'daily_plan', 
+        'Generate daily health plan', 
+        dailyPlan, 
+        0
+      );
+
+      console.log(`Generated daily plan for user ${userId}`);
+      return { success: true, data: dailyPlan };
+
+    } catch (error) {
+      console.error(`Error generating daily plan for user ${userId}:`, error);
+      throw error;
+    }
+  }
+
   async getQueueStats() {
-    if (!this.isInitialized) return null;
+    if (!this.isInitialized || !this.uploadQueue || !this.dailyPlanQueue) {
+      return {
+        uploads: { waiting: 0, active: 0, completed: 0, failed: 0 },
+        dailyPlans: { waiting: 0, active: 0, completed: 0, failed: 0 },
+        mode: 'direct_processing'
+      };
+    }
 
-    const uploadStats = await this.uploadQueue.getJobCounts();
-    const dailyPlanStats = await this.dailyPlanQueue.getJobCounts();
+    try {
+      const uploadStats = await this.uploadQueue.getJobCounts();
+      const dailyPlanStats = await this.dailyPlanQueue.getJobCounts();
 
-    return {
-      uploads: uploadStats,
-      dailyPlans: dailyPlanStats
-    };
+      return {
+        uploads: uploadStats,
+        dailyPlans: dailyPlanStats,
+        mode: 'queue_processing'
+      };
+    } catch (error) {
+      console.error('Error getting queue stats:', error);
+      return {
+        uploads: { waiting: 0, active: 0, completed: 0, failed: 0 },
+        dailyPlans: { waiting: 0, active: 0, completed: 0, failed: 0 },
+        mode: 'error'
+      };
+    }
   }
 }
 
