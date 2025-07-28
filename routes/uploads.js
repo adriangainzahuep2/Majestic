@@ -15,11 +15,8 @@ const upload = multer({
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = [
-      'image/jpeg', 'image/png', 'image/jpg',
-      'application/pdf',
-      'text/csv',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      'image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp',
+      'application/pdf'
     ];
     
     if (allowedTypes.includes(file.mimetype)) {
