@@ -94,8 +94,8 @@ router.post('/', rateLimitMiddleware, upload.array('files', 5), async (req, res)
 
         const uploadId = uploadResult.rows[0].id;
 
-        // Queue processing job
-        await queueService.addJob('process-upload', {
+        // Queue processing job (will process directly if Redis not available)
+        const processingResult = await queueService.addJob('process-upload', {
           userId,
           uploadId,
           fileName: file.originalname,
@@ -103,10 +103,13 @@ router.post('/', rateLimitMiddleware, upload.array('files', 5), async (req, res)
           uploadType: 'manual'
         });
 
+        const status = processingResult && processingResult.success ? 'processed' : 'queued';
+        
         results.push({
           id: uploadId,
           filename: file.originalname,
-          status: 'queued'
+          status: status,
+          processing_result: processingResult
         });
 
         // Clean up temporary file

@@ -7,8 +7,14 @@ const openai = new OpenAI({
 
 class OpenAIService {
   // OCR processing for lab reports
-  async processLabReport(base64Image, fileName) {
+  async processLabReport(base64Data, fileName) {
     try {
+      // Check if it's a PDF file
+      if (fileName.toLowerCase().endsWith('.pdf')) {
+        return await this.processPDFLabReport(base64Data, fileName);
+      }
+
+      // For image files, use vision API
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
@@ -43,7 +49,7 @@ class OpenAIService {
               {
                 type: "image_url",
                 image_url: {
-                  url: `data:image/jpeg;base64,${base64Image}`
+                  url: `data:image/jpeg;base64,${base64Data}`
                 }
               }
             ]
@@ -58,6 +64,13 @@ class OpenAIService {
       console.error('OCR processing error:', error);
       throw new Error(`Failed to process lab report: ${error.message}`);
     }
+  }
+
+  // Handle PDF lab reports by asking user to convert to image
+  async processPDFLabReport(base64Data, fileName) {
+    // For now, return a helpful message about PDF limitation
+    // In the future, we could integrate PDF-to-image conversion
+    throw new Error("PDF files are not currently supported. Please convert your PDF to an image (PNG, JPG) and upload again. You can take a screenshot of the lab results or use your phone camera to capture the report.");
   }
 
   // Nutrition analysis from meal photos
