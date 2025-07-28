@@ -12,10 +12,10 @@ class OpenAIService {
       const fileExtension = fileName.toLowerCase().split('.').pop();
       let contentData;
 
-      // Handle PDF vs Image files differently based on OpenAI API requirements
+      // Handle PDF vs Image files using correct API format
       if (fileExtension === 'pdf') {
-        // For now, inform user to convert PDF to image
-        throw new Error("PDF processing temporarily unavailable. Please convert your lab report to an image (PNG or JPG) by taking a screenshot or photo, then upload again. Image processing works perfectly and extracts all health metrics.");
+        // Use Files API for PDFs - need to upload first
+        return await this.processPDFWithFilesAPI(base64Data, fileName);
       } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension)) {
         // Use image_url type for images
         const mimeType = fileExtension === 'jpg' ? 'jpeg' : fileExtension;
@@ -82,7 +82,7 @@ Extract every numerical health metric you can find. For test_date, use the colle
     }
   }
 
-  // Process PDF using Files API
+  // Process PDF using Files API approach
   async processPDFWithFilesAPI(base64Data, fileName) {
     try {
       // Convert base64 to buffer
@@ -101,7 +101,7 @@ Extract every numerical health metric you can find. For test_date, use the colle
         purpose: 'assistants'
       });
 
-      // Use the file in chat completion
+      // Use the file in chat completion with file type
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
@@ -150,8 +150,12 @@ Extract every numerical health metric you can find. For test_date, use the colle
       // Clean up temp file
       await fs.unlink(tempPath).catch(console.error);
       
-      // Clean up uploaded file
-      await openai.files.delete(file.id).catch(console.error);
+      // Clean up uploaded file (use correct method)
+      try {
+        await openai.files.delete(file.id);
+      } catch (deleteError) {
+        console.warn('Could not delete uploaded file:', deleteError.message);
+      }
 
       const result = JSON.parse(response.choices[0].message.content);
       console.log(`Successfully processed PDF lab report: ${fileName}`);
@@ -163,6 +167,8 @@ Extract every numerical health metric you can find. For test_date, use the colle
       throw new Error(`Failed to process PDF lab report: ${error.message}`);
     }
   }
+
+
 
   // Nutrition analysis from meal photos
   async analyzeMealPhoto(base64Image) {

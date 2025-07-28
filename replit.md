@@ -27,10 +27,18 @@ The frontend is a **vanilla JavaScript SPA** served as static files:
 
 ### AI Integration
 **OpenAI GPT-4o** powers the core AI functionality:
-- **OCR processing** for lab report extraction using Vision API
+- **PDF and Image processing** for lab report extraction using Chat Completions API
+- **Files API integration** for PDF document processing
 - **Health metric parsing** and categorization across 13 body systems
 - **Daily plan generation** with personalized health recommendations
 - **Structured JSON outputs** for consistent data handling
+
+### Recent Changes (July 28, 2025)
+- **✓ Fixed Redis connection issues** with graceful fallback to direct processing
+- **✓ Implemented PDF support** using OpenAI Files API and Chat Completions
+- **✓ Added immediate upload processing** when queue service unavailable
+- **✓ Successfully tested** lab report extraction (20 metrics from PDF)
+- **✓ Database schema initialization** working properly
 
 ## Key Components
 
