@@ -1,0 +1,220 @@
+
+Prompt for Replit Agent:
+
+You are building an AI-driven health app MVP according to the following specification.
+
+---
+
+AI‑Driven Health App – Final MVP Spec (For Replit Agent)
+
+---
+
+Implementation Principles
+1. Focus on correct functionality over polish
+2. Leave hooks for future features (Android, web, lab integrations)
+3. Modular, resilient, and easy to extend
+4. Structured JSON everywhere – AI outputs, API responses, logs
+5. Flexible – Easy to add systems/metrics without redesign
+
+---
+
+In Scope (MVP)
+• iOS app (React Native/Expo)
+• Backend: Node.js (Express), Supabase/Postgres
+• OCR: OpenAI Vision
+• AI: GPT‑4o for parsing, daily plans, and per-system insights
+• 4 main screens: Dashboard, Drill-down, Daily Plan, Uploads
+• Authentication: Google Sign-In (OAuth) via Expo / Supabase
+• HealthKit sync
+• Manual uploads and email ingestion
+• Trend graphs for LDL, ApoB, CRP, IL‑6
+• Export (CSV/JSON)
+• Push notifications
+
+---
+
+Out of Scope (MVP)
+• Android / web versions
+• HIPAA compliance
+• Multi-factor authentication
+• Direct lab APIs
+• Complex animations
+
+---
+
+Core Features
+1. 13-System Dashboard
+2. Tile color logic: Green, Yellow, Red, Gray
+3. Drill-down:
+   • Key metrics
+   • Non-key metrics
+   • Trends (LDL, ApoB, CRP, IL‑6)
+   • Upload history
+   • AI per-system insights panel (analyzes metrics for that system and gives insights/recommendations)
+4. Daily plan: 3–5 GPT recommendations based on all data
+5. Email ingestion: Forward PDFs to upload@yourapp.com
+6. Apple HealthKit sync
+7. Manual uploads (PDF, CSV, image)
+8. Notifications: “Your results are ready” / “Your daily plan is ready”
+9. Export: CSV/JSON of all metrics
+
+---
+
+Key Metrics Per System (Tile Drivers)
+• Cardiovascular: LDL-C, ApoB, Lp(a), BP/HRV
+• Nervous/Brain: Cognitive test, MRI/CT, Sleep quality
+• Respiratory: Spirometry, Oxygen saturation
+• Muscular: Lean mass, Grip strength
+• Skeletal: Bone density, Recent fracture
+• Digestive: Liver enzymes, Microbiome diversity
+• Endocrine: HbA1c, Glucose, TSH
+• Urinary: Creatinine, eGFR
+• Reproductive: Testosterone, Estrogen/Progesterone
+• Integumentary: Dermatology exam, Skin biopsy
+• Immune/Inflammation: hs‑CRP, IL‑6, TNF‑alpha
+• Sensory: Eye exam, Hearing test
+• Biological Age: Epigenetic age, Telomere length
+
+Recency thresholds: Labs 12m, Imaging 2–5y, Cognitive 12m, Epigenetic 18m.
+
+---
+
+Non-Key Metrics
+Displayed in drill-down only, not used for tile color.
+
+---
+
+Data Handling
+• Deduplicate metrics with same name/date
+• Multi-metric files populate multiple systems
+• Flag outliers
+• Cache per-system insights 24h
+
+---
+
+AI Pipelines
+1. Lab parsing: OCR → JSON metrics
+2. Nutrition: Meal photo → macros
+3. AQI: Screenshot → average AQI
+4. Daily plan: 3–5 action items
+5. Per-system insights: System metrics → insights/recommendations
+
+All results logged in ai_outputs_log with model version.
+
+---
+
+Trend Analytics
+• LDL
+• ApoB
+• CRP
+• IL‑6
+
+---
+
+UI Scope (MVP)
+1. Dashboard screen (13 tiles)
+2. Drill-down screen
+3. Daily plan screen
+4. Uploads screen
+
+---
+
+Backend Components
+• Tables:
+  - users
+  - uploads
+  - metrics
+  - questionnaire_responses
+  - ai_outputs_log
+• ai_outputs_log: Stores prompts, outputs, output type, model version
+• Queue: Async GPT calls with retry and throttling
+
+---
+
+Notifications
+• Expo push notifications for processed results and daily plans.
+
+---
+
+Export/Backup
+• CSV/JSON export of all metrics
+• User-triggered data deletion
+
+---
+
+Rate Limits & Caching
+• 5 uploads/hour/user
+• Insights cached 24h
+• Daily plan refreshed at 3:00 a.m.
+
+---
+
+Additional Clarifications
+• Data model: Every metric links to both a system_id and upload_id. Include timestamps.
+• File storage: Use Supabase Storage or S3 with signed URLs.
+• AI calls: All outputs must be structured JSON. Log all prompts and outputs.
+• Caching: Cache per-system insights for 24 hours and recompute only when metrics change.
+• Email ingestion: Service posts attachments and sender email to webhook; backend matches account and queues processing.
+• Testing: End-to-end tests for upload → OCR → metrics → dashboard update → notification.
+
+---
+
+Step-by-Step Build Roadmap
+
+Phase 1 – Backend Foundations
+1. Set up Supabase (auth, Postgres, storage).
+2. Define tables (users, uploads, metrics, questionnaire_responses, ai_outputs_log).
+3. Implement Google OAuth using Supabase.
+4. Set up Express server with endpoints (CRUD for uploads, metrics, guidance).
+
+Phase 2 – File Handling
+1. Implement file upload endpoint (Supabase Storage signed URLs).
+2. Email ingestion webhook:
+   • Accepts sender + attachments
+   • Stores files
+   • Queues processing
+
+Phase 3 – AI Pipeline
+1. Integrate OpenAI Vision API for OCR.
+2. Implement GPT-4o calls for:
+   • Lab parsing
+   • Nutrition
+   • AQI
+   • Daily plan
+   • Per-system insights
+3. Implement queue system with retry and throttling.
+
+Phase 4 – Data Processing
+1. Map extracted metrics to systems.
+2. Apply recency logic and tile color calculation.
+3. Save metrics and results in DB.
+
+Phase 5 – Frontend (React Native/Expo)
+1. Screens:
+   • Dashboard (13 tiles)
+   • Drill-down (metrics, insights, graphs)
+   • Daily plan
+   • Upload list/status
+2. Integrate HealthKit sync (Expo).
+
+Phase 6 – Enhancements
+1. Trend graphs (LDL, ApoB, CRP, IL‑6).
+2. Push notifications via Expo.
+3. Export/backup (CSV/JSON).
+
+Phase 7 – Testing
+1. Unit tests (queue, API, AI pipeline).
+2. End-to-end: Upload → OCR → metrics → dashboard update → notification.
+
+---
+
+Deliverable
+
+A fully functional MVP where:
+• Users can log in with Google
+• Upload health data manually or via email
+• View a 13-system health dashboard
+• Drill down into metrics, see per-system AI insights, and track trends
+• Receive daily AI-driven wellness plans
+
+
