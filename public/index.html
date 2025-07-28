@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Health Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/dist/feather.min.css" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-heartbeat me-2"></i>
+                AI Health Dashboard
+            </a>
+            <div class="navbar-nav ms-auto">
+                <div id="authSection" class="d-flex align-items-center">
+                    <button id="loginBtn" class="btn btn-outline-light">
+                        <i class="fas fa-sign-in-alt me-2"></i>Login
+                    </button>
+                    <div id="userSection" class="d-none">
+                        <span id="userName" class="text-light me-3"></span>
+                        <button id="logoutBtn" class="btn btn-outline-light">
+                            <i class="fas fa-sign-out-alt me-2"></i>Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Login Section -->
+        <div id="loginSection" class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h2 class="card-title mb-4">
+                            <i class="fas fa-user-md text-primary"></i>
+                            Welcome to AI Health Dashboard
+                        </h2>
+                        <p class="text-muted mb-4">
+                            Track your health across 13 body systems with AI-powered insights
+                        </p>
+                        <div class="d-grid gap-2">
+                            <button id="demoLoginBtn" class="btn btn-primary btn-lg">
+                                <i class="fas fa-rocket me-2"></i>Try Demo Account
+                            </button>
+                            <button id="googleLoginBtn" class="btn btn-outline-secondary btn-lg">
+                                <i class="fab fa-google me-2"></i>Sign in with Google
+                            </button>
+                        </div>
+                        <div class="mt-4">
+                            <small class="text-muted">
+                                <i class="fas fa-shield-alt me-1"></i>
+                                Your health data is secure and private
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main App -->
+        <div id="appSection" class="d-none">
+            <!-- Tab Navigation -->
+            <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab">
+                        <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="daily-plan-tab" data-bs-toggle="tab" data-bs-target="#daily-plan" type="button" role="tab">
+                        <i class="fas fa-calendar-day me-2"></i>Daily Plan
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="uploads-tab" data-bs-toggle="tab" data-bs-target="#uploads" type="button" role="tab">
+                        <i class="fas fa-upload me-2"></i>Uploads
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="trends-tab" data-bs-toggle="tab" data-bs-target="#trends" type="button" role="tab">
+                        <i class="fas fa-chart-line me-2"></i>Trends
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Tab Content -->
+            <div class="tab-content" id="mainTabContent">
+                <!-- Dashboard Tab -->
+                <div class="tab-pane fade show active" id="dashboard" role="tabpanel">
+                    <div class="row mb-4">
+                        <div class="col">
+                            <h2>13-System Health Dashboard</h2>
+                            <p class="text-muted">Monitor your health across all major body systems</p>
+                        </div>
+                        <div class="col-auto">
+                            <button id="refreshDashboard" class="btn btn-outline-primary">
+                                <i class="fas fa-sync-alt me-2"></i>Refresh
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Dashboard Summary -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-database fa-2x text-primary mb-2"></i>
+                                    <h4 id="totalMetrics">-</h4>
+                                    <small class="text-muted">Total Metrics</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                                    <h4 id="systemsWithData">-</h4>
+                                    <small class="text-muted">Systems with Data</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-upload fa-2x text-info mb-2"></i>
+                                    <h4 id="recentUploads">-</h4>
+                                    <small class="text-muted">Recent Uploads</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-brain fa-2x text-warning mb-2"></i>
+                                    <h4 id="aiInsights">-</h4>
+                                    <small class="text-muted">AI Insights</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- System Tiles -->
+                    <div class="row" id="systemTiles">
+                        <!-- Tiles will be generated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Daily Plan Tab -->
+                <div class="tab-pane fade" id="daily-plan" role="tabpanel">
+                    <div class="row mb-4">
+                        <div class="col">
+                            <h2>Daily Health Plan</h2>
+                            <p class="text-muted">AI-generated personalized recommendations</p>
+                        </div>
+                        <div class="col-auto">
+                            <button id="regeneratePlan" class="btn btn-outline-primary">
+                                <i class="fas fa-sync-alt me-2"></i>Regenerate
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="dailyPlanContent">
+                        <!-- Daily plan will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Uploads Tab -->
+                <div class="tab-pane fade" id="uploads" role="tabpanel">
+                    <div class="row mb-4">
+                        <div class="col">
+                            <h2>Upload Health Data</h2>
+                            <p class="text-muted">Upload lab reports, images, or enter data manually</p>
+                        </div>
+                    </div>
+
+                    <!-- Upload Section -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <i class="fas fa-file-upload me-2"></i>File Upload
+                                    </h5>
+                                    <p class="text-muted">Upload PDFs, images, or CSV files</p>
+                                    <div class="mb-3">
+                                        <input type="file" class="form-control" id="fileUpload" multiple accept=".pdf,.png,.jpg,.jpeg,.csv">
+                                    </div>
+                                    <button id="uploadBtn" class="btn btn-primary" disabled>
+                                        <i class="fas fa-upload me-2"></i>Upload Files
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <i class="fas fa-envelope me-2"></i>Email Upload
+                                    </h5>
+                                    <p class="text-muted">Forward lab reports to:</p>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" value="upload@yourapp.com" readonly>
+                                        <button class="btn btn-outline-secondary" onclick="copyToClipboard('upload@yourapp.com')">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                    <small class="text-muted mt-2 d-block">
+                                        Make sure to send from your registered email address
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Upload History -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-history me-2"></i>Upload History
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="uploadsList">
+                                <!-- Upload history will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trends Tab -->
+                <div class="tab-pane fade" id="trends" role="tabpanel">
+                    <div class="row mb-4">
+                        <div class="col">
+                            <h2>Health Trends</h2>
+                            <p class="text-muted">Track key biomarkers over time</p>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">LDL Cholesterol</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="ldlChart" style="height: 300px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">ApoB</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="apoBChart" style="height: 300px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">CRP (Inflammation)</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="crpChart" style="height: 300px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">IL-6</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="il6Chart" style="height: 300px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Details Modal -->
+    <div class="modal fade" id="systemModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="systemModalTitle">System Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="systemModalBody">
+                    <!-- System details will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="d-none position-fixed top-50 start-50 translate-middle">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="alertToast" class="toast" role="alert">
+            <div class="toast-header">
+                <i id="toastIcon" class="fas fa-info-circle text-primary me-2"></i>
+                <strong class="me-auto" id="toastTitle">Notification</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toastMessage">
+                <!-- Toast message will be set here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/dist/feather.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
