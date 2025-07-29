@@ -162,34 +162,36 @@ p {
 
 .navbar-brand .rising-sun-icon {
     width: 24px;
-    height: 16px;
+    height: 18px;
     margin-right: var(--space-sm);
     position: relative;
     display: inline-block;
     vertical-align: middle;
+    overflow: hidden;
 }
 
 .navbar-brand .rising-sun-icon::before {
     content: '';
     position: absolute;
-    bottom: 0;
+    bottom: 4px;
     left: 0;
     right: 0;
-    height: 1px;
-    background: #8E8E93;
+    height: 2px;
+    background: linear-gradient(90deg, #E5A663, #D4956A);
+    border-radius: 1px;
 }
 
 .navbar-brand .rising-sun-icon::after {
     content: '';
     position: absolute;
-    bottom: -1px;
+    bottom: 2px;
     left: 50%;
     transform: translateX(-50%);
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #FF9500 0%, #FFCC02 50%, #FFE4B5 100%);
-    box-shadow: 0 0 8px rgba(255, 149, 0, 0.3);
+    background: linear-gradient(180deg, #E5A663 0%, #F4C2A1 50%, #F5D5B7 100%);
+    box-shadow: 0 0 12px rgba(229, 166, 99, 0.4);
 }
 
 /* Light mode navbar text contrast fixes */
@@ -739,34 +741,35 @@ p {
 }
 
 .rising-sun-icon-large {
-    width: 48px;
-    height: 32px;
+    width: 64px;
+    height: 44px;
     position: relative;
     display: inline-block;
+    overflow: hidden;
 }
 
 .rising-sun-icon-large::before {
     content: '';
     position: absolute;
-    bottom: 8px;
+    bottom: 12px;
     left: 0;
     right: 0;
-    height: 2px;
-    background: #8E8E93;
-    border-radius: 1px;
+    height: 4px;
+    background: linear-gradient(90deg, #E5A663, #D4956A);
+    border-radius: 2px;
 }
 
 .rising-sun-icon-large::after {
     content: '';
     position: absolute;
-    bottom: 6px;
+    bottom: 8px;
     left: 50%;
     transform: translateX(-50%);
-    width: 32px;
-    height: 32px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #FF9500 0%, #FFCC02 50%, #FFE4B5 100%);
-    box-shadow: 0 0 16px rgba(255, 149, 0, 0.4);
+    background: linear-gradient(180deg, #E5A663 0%, #F4C2A1 50%, #F5D5B7 100%);
+    box-shadow: 0 0 24px rgba(229, 166, 99, 0.5);
 }
 
 /* Modals - Clean and elevated */
@@ -1014,12 +1017,12 @@ p {
     
     /* Rising sun icon for dark mode */
     .navbar-brand .rising-sun-icon::before {
-        background: #ABABAB;
+        background: linear-gradient(90deg, #E5A663, #D4956A);
     }
     
     .navbar-brand .rising-sun-icon::after {
-        background: linear-gradient(135deg, #FF9500 0%, #FFCC02 50%, #FFE4B5 100%);
-        box-shadow: 0 0 8px rgba(255, 149, 0, 0.4);
+        background: linear-gradient(180deg, #E5A663 0%, #F4C2A1 50%, #F5D5B7 100%);
+        box-shadow: 0 0 12px rgba(229, 166, 99, 0.6);
     }
     
     .login-icon {
@@ -1028,12 +1031,12 @@ p {
     }
     
     .rising-sun-icon-large::before {
-        background: #ABABAB !important;
+        background: linear-gradient(90deg, #E5A663, #D4956A) !important;
     }
     
     .rising-sun-icon-large::after {
-        background: linear-gradient(135deg, #FF9500 0%, #FFCC02 50%, #FFE4B5 100%) !important;
-        box-shadow: 0 0 16px rgba(255, 149, 0, 0.4) !important;
+        background: linear-gradient(180deg, #E5A663 0%, #F4C2A1 50%, #F5D5B7 100%) !important;
+        box-shadow: 0 0 24px rgba(229, 166, 99, 0.6) !important;
     }
     
     /* Card titles */
