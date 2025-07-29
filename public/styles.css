@@ -382,19 +382,25 @@ p {
     height: 48px;
     border-radius: var(--radius-md);
     background: linear-gradient(135deg, #FF6B35, #F7931E);
-    color: var(--text-on-color);
+    color: #FFFFFF;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: var(--font-weight-bold);
-    font-size: var(--font-size-sm);
-    letter-spacing: 1px;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     margin: 0 auto var(--space-md);
+    position: relative;
+    line-height: 1;
 }
 
 .ai-insights-icon::before {
     content: 'AI';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
 .summary-value {
@@ -906,27 +912,48 @@ p {
         --border-light: #2C2C2E;
     }
     
-    /* Force high contrast text in dark mode */
+    /* Main title contrast fix */
+    h2, h3, h4, h5, h6 {
+        color: #FFFFFF !important;
+    }
+    
+    /* Navbar brand contrast */
     .navbar-brand {
         color: #FFFFFF !important;
     }
     
+    /* Card titles */
     .card-title,
-    .system-title,
-    h1, h2, h3, h4, h5, h6 {
+    .system-title {
         color: #FFFFFF !important;
     }
     
+    /* Table headers and cells - CRITICAL FIX */
     .table th {
         color: #FFFFFF !important;
-        background: #2C2C2E !important;
+        background-color: #2C2C2E !important;
     }
     
     .table td {
         color: #FFFFFF !important;
+        background-color: transparent !important;
     }
     
+    .table-responsive .table {
+        color: #FFFFFF !important;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: #2C2C2E !important;
+    }
+    
+    /* Modal content */
     .modal-title {
+        color: #FFFFFF !important;
+    }
+    
+    .modal-content {
+        background-color: #1C1C1E !important;
         color: #FFFFFF !important;
     }
     
@@ -941,33 +968,48 @@ p {
     }
     
     .insights-panel h5,
+    .insights-panel h6,
     .insights-panel p,
-    .insights-panel .card-text {
+    .insights-panel .card-text,
+    .insights-panel div {
         color: #FFFFFF !important;
     }
     
     /* Button contrast fixes */
     .btn-outline-primary {
-        color: #FFFFFF !important;
+        color: #007AFF !important;
         border-color: #007AFF !important;
+        background-color: transparent !important;
     }
     
-    .btn-outline-primary:hover {
+    .btn-outline-primary:hover,
+    .btn-outline-primary:focus {
         color: #FFFFFF !important;
-        background: #007AFF !important;
+        background-color: #007AFF !important;
         border-color: #007AFF !important;
     }
     
     .btn-secondary {
         color: #FFFFFF !important;
-        background: #2C2C2E !important;
+        background-color: #2C2C2E !important;
         border-color: #38383A !important;
     }
     
-    .btn-secondary:hover {
+    .btn-secondary:hover,
+    .btn-secondary:focus {
         color: #FFFFFF !important;
-        background: #38383A !important;
+        background-color: #38383A !important;
         border-color: #48484A !important;
+    }
+    
+    /* Generic text contrast fixes */
+    .text-muted {
+        color: #ABABAB !important;
+    }
+    
+    /* Card body text */
+    .card-body {
+        color: #FFFFFF !important;
     }
 }
 
