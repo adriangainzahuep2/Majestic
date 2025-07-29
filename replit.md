@@ -1,8 +1,8 @@
-# AI-Driven Health App MVP
+# Majestic - AI-Driven Health App MVP
 
 ## Overview
 
-This is an AI-driven health application MVP that helps users track their health across 13 body systems using AI-powered insights. The system processes lab reports through OCR, provides personalized daily health plans, and presents health data through an intuitive dashboard interface.
+Majestic is an AI-driven health application MVP that helps users track their health across 13 body systems using AI-powered insights. The system processes lab reports through OCR, provides personalized daily health plans, and presents health data through an intuitive dashboard interface with a modern Apple Health + Calm aesthetic.
 
 ## User Preferences
 
@@ -33,7 +33,14 @@ The frontend is a **vanilla JavaScript SPA** served as static files:
 - **Daily plan generation** with personalized health recommendations
 - **Structured JSON outputs** for consistent data handling
 
-### Recent Changes (July 28, 2025)
+### Recent Changes (July 29, 2025)
+- **✓ Fixed all contrast issues** - White text clearly visible in dark mode, proper navbar contrast
+- **✓ Updated branding to "Majestic"** - Replaced "Health" with "Majestic" throughout the app
+- **✓ New crown icon** - Replaced heart icon with crown to represent "Majestic"
+- **✓ Navbar contrast fixes** - Dark text on light background, white text on dark background
+- **✓ AI icon alignment fixed** - Centered "AI" text in orange circle using absolute positioning
+
+### Previous Changes (July 28, 2025)
 - **✓ Fixed Redis connection issues** with graceful fallback to direct processing
 - **✓ Implemented PDF support** using OpenAI Files API and Chat Completions
 - **✓ Added immediate upload processing** when queue service unavailable

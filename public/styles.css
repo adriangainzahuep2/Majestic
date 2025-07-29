@@ -157,12 +157,30 @@ p {
 .navbar-brand {
     font-weight: var(--font-weight-semibold);
     font-size: var(--font-size-lg);
-    color: var(--text-primary) !important;
+    color: #1D1D1F !important;
 }
 
 .navbar-brand i {
-    color: var(--primary-color);
+    color: #007AFF;
     margin-right: var(--space-sm);
+}
+
+/* Light mode navbar text contrast fixes */
+.navbar .text-small,
+.navbar #userName,
+.navbar .btn {
+    color: #1D1D1F !important;
+}
+
+.navbar .btn-outline-primary {
+    color: #007AFF !important;
+    border-color: #007AFF !important;
+}
+
+.navbar .btn-secondary {
+    color: #FFFFFF !important;
+    background-color: #1D1D1F !important;
+    border-color: #1D1D1F !important;
 }
 
 /* Cards - Elevated and clean */
@@ -917,9 +935,24 @@ p {
         color: #FFFFFF !important;
     }
     
-    /* Navbar brand contrast */
+    /* Navbar brand contrast - override light mode for dark */
+    .navbar {
+        background: rgba(28, 28, 30, 0.95) !important;
+    }
+    
     .navbar-brand {
         color: #FFFFFF !important;
+    }
+    
+    .navbar .text-small,
+    .navbar #userName,
+    .navbar .btn {
+        color: #FFFFFF !important;
+    }
+    
+    .navbar .btn-outline-primary {
+        color: #007AFF !important;
+        border-color: #007AFF !important;
     }
     
     /* Card titles */
