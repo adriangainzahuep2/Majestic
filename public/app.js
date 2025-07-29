@@ -165,39 +165,27 @@ class HealthDashboard {
         const col = document.createElement('div');
         col.className = 'col-lg-3 col-md-4 col-sm-6 mb-4';
 
-        const colorClass = {
+        const statusClass = {
             'green': 'success',
-            'yellow': 'warning',
+            'yellow': 'warning', 
             'red': 'danger',
-            'gray': 'secondary'
-        }[system.color] || 'secondary';
+            'gray': 'neutral'
+        }[system.color] || 'neutral';
 
         col.innerHTML = `
-            <div class="card h-100 system-tile border-${colorClass}" data-system-id="${system.id}">
-                <div class="card-body d-flex flex-column">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <h6 class="card-title mb-0">${system.name}</h6>
-                        <div class="system-status bg-${colorClass}"></div>
-                    </div>
-                    <p class="card-text text-muted small mb-3 flex-grow-1">
-                        ${system.description}
-                    </p>
-                    <div class="mt-auto">
-                        <div class="d-flex justify-content-between text-sm mb-2">
-                            <span class="text-muted">Key Metrics:</span>
-                            <span class="fw-bold">${system.keyMetricsCount}</span>
-                        </div>
-                        <div class="d-flex justify-content-between text-sm mb-2">
-                            <span class="text-muted">Total Metrics:</span>
-                            <span>${system.totalMetricsCount}</span>
-                        </div>
-                        ${system.lastUpdated ? `
-                            <div class="text-xs text-muted">
-                                Last: ${new Date(system.lastUpdated).toLocaleDateString()}
-                            </div>
-                        ` : '<div class="text-xs text-muted">No data</div>'}
-                    </div>
+            <div class="system-tile status-${statusClass}" data-system-id="${system.id}">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div class="system-title">${system.name}</div>
+                    <div class="system-status status-${statusClass}"></div>
                 </div>
+                <div class="system-metrics">
+                    ${system.keyMetricsCount} key metrics • ${system.totalMetricsCount} total
+                </div>
+                ${system.lastUpdated ? `
+                    <div class="system-updated">
+                        Updated ${new Date(system.lastUpdated).toLocaleDateString()}
+                    </div>
+                ` : '<div class="system-updated">No recent data</div>'}
             </div>
         `;
 

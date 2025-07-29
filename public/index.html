@@ -11,21 +11,21 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
             <a class="navbar-brand" href="#">
-                <i class="fas fa-heartbeat me-2"></i>
-                AI Health Dashboard
+                <i class="fas fa-heartbeat"></i>
+                Health
             </a>
             <div class="navbar-nav ms-auto">
                 <div id="authSection" class="d-flex align-items-center">
-                    <button id="loginBtn" class="btn btn-outline-light">
-                        <i class="fas fa-sign-in-alt me-2"></i>Login
+                    <button id="loginBtn" class="btn btn-secondary">
+                        <i class="fas fa-sign-in-alt me-2"></i>Sign In
                     </button>
                     <div id="userSection" class="d-none">
-                        <span id="userName" class="text-light me-3"></span>
-                        <button id="logoutBtn" class="btn btn-outline-light">
-                            <i class="fas fa-sign-out-alt me-2"></i>Logout
+                        <span id="userName" class="text-small me-3"></span>
+                        <button id="logoutBtn" class="btn btn-outline-primary">
+                            <i class="fas fa-sign-out-alt me-2"></i>Sign Out
                         </button>
                     </div>
                 </div>
@@ -35,32 +35,28 @@
 
     <div class="container-fluid mt-4">
         <!-- Login Section -->
-        <div id="loginSection" class="row justify-content-center">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <h2 class="card-title mb-4">
-                            <i class="fas fa-user-md text-primary"></i>
-                            Welcome to AI Health Dashboard
-                        </h2>
-                        <p class="text-muted mb-4">
-                            Track your health across 13 body systems with AI-powered insights
-                        </p>
-                        <div class="d-grid gap-2">
-                            <button id="demoLoginBtn" class="btn btn-primary btn-lg">
-                                <i class="fas fa-rocket me-2"></i>Try Demo Account
-                            </button>
-                            <button id="googleLoginBtn" class="btn btn-outline-secondary btn-lg">
-                                <i class="fab fa-google me-2"></i>Sign in with Google
-                            </button>
-                        </div>
-                        <div class="mt-4">
-                            <small class="text-muted">
-                                <i class="fas fa-shield-alt me-1"></i>
-                                Your health data is secure and private
-                            </small>
-                        </div>
-                    </div>
+        <div id="loginSection" class="login-section">
+            <div class="login-card">
+                <div class="login-icon">
+                    <i class="fas fa-heartbeat"></i>
+                </div>
+                <h1 class="login-title">Welcome to Health</h1>
+                <p class="login-subtitle">
+                    Track your wellness across 13 body systems with AI-powered insights
+                </p>
+                <div class="d-grid gap-3">
+                    <button id="demoLoginBtn" class="btn btn-primary btn-lg">
+                        <i class="fas fa-rocket me-2"></i>Try Demo
+                    </button>
+                    <button id="googleLoginBtn" class="btn btn-outline-primary btn-lg">
+                        <i class="fab fa-google me-2"></i>Continue with Google
+                    </button>
+                </div>
+                <div class="mt-4">
+                    <p class="text-tiny">
+                        <i class="fas fa-shield-alt me-1"></i>
+                        Your health data is secure and private
+                    </p>
                 </div>
             </div>
         </div>
@@ -68,28 +64,30 @@
         <!-- Main App -->
         <div id="appSection" class="d-none">
             <!-- Tab Navigation -->
-            <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab">
-                        <i class="fas fa-tachometer-alt me-2"></i>Dashboard
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="daily-plan-tab" data-bs-toggle="tab" data-bs-target="#daily-plan" type="button" role="tab">
-                        <i class="fas fa-calendar-day me-2"></i>Daily Plan
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="uploads-tab" data-bs-toggle="tab" data-bs-target="#uploads" type="button" role="tab">
-                        <i class="fas fa-upload me-2"></i>Uploads
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="trends-tab" data-bs-toggle="tab" data-bs-target="#trends" type="button" role="tab">
-                        <i class="fas fa-chart-line me-2"></i>Trends
-                    </button>
-                </li>
-            </ul>
+            <div class="d-flex justify-content-center mb-4">
+                <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab">
+                            <i class="fas fa-grid-3x3"></i>Overview
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="daily-plan-tab" data-bs-toggle="tab" data-bs-target="#daily-plan" type="button" role="tab">
+                            <i class="fas fa-heart"></i>Daily Plan
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="uploads-tab" data-bs-toggle="tab" data-bs-target="#uploads" type="button" role="tab">
+                            <i class="fas fa-plus-circle"></i>Add Data
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="trends-tab" data-bs-toggle="tab" data-bs-target="#trends" type="button" role="tab">
+                            <i class="fas fa-chart-line"></i>Trends
+                        </button>
+                    </li>
+                </ul>
+            </div>
 
             <!-- Tab Content -->
             <div class="tab-content" id="mainTabContent">
@@ -97,52 +95,52 @@
                 <div class="tab-pane fade show active" id="dashboard" role="tabpanel">
                     <div class="row mb-4">
                         <div class="col">
-                            <h2>13-System Health Dashboard</h2>
-                            <p class="text-muted">Monitor your health across all major body systems</p>
+                            <h2>Health Overview</h2>
+                            <p class="text-small">Monitor your wellness across all major body systems</p>
                         </div>
                         <div class="col-auto">
                             <button id="refreshDashboard" class="btn btn-outline-primary">
-                                <i class="fas fa-sync-alt me-2"></i>Refresh
+                                <i class="fas fa-arrow-clockwise me-2"></i>Refresh
                             </button>
                         </div>
                     </div>
 
                     <!-- Dashboard Summary -->
                     <div class="row mb-4">
-                        <div class="col-md-3">
-                            <div class="card bg-light">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-database fa-2x text-primary mb-2"></i>
-                                    <h4 id="totalMetrics">-</h4>
-                                    <small class="text-muted">Total Metrics</small>
+                        <div class="col-md-3 mb-3">
+                            <div class="summary-card card-hover">
+                                <div class="summary-icon primary">
+                                    <i class="fas fa-chart-bar"></i>
                                 </div>
+                                <div class="summary-value" id="totalMetrics">-</div>
+                                <div class="summary-label">Total Metrics</div>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="card bg-light">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
-                                    <h4 id="systemsWithData">-</h4>
-                                    <small class="text-muted">Systems with Data</small>
+                        <div class="col-md-3 mb-3">
+                            <div class="summary-card card-hover">
+                                <div class="summary-icon success">
+                                    <i class="fas fa-check-circle"></i>
                                 </div>
+                                <div class="summary-value" id="systemsWithData">-</div>
+                                <div class="summary-label">Active Systems</div>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="card bg-light">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-upload fa-2x text-info mb-2"></i>
-                                    <h4 id="recentUploads">-</h4>
-                                    <small class="text-muted">Recent Uploads</small>
+                        <div class="col-md-3 mb-3">
+                            <div class="summary-card card-hover">
+                                <div class="summary-icon secondary">
+                                    <i class="fas fa-plus-circle"></i>
                                 </div>
+                                <div class="summary-value" id="recentUploads">-</div>
+                                <div class="summary-label">Recent Uploads</div>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="card bg-light">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-brain fa-2x text-warning mb-2"></i>
-                                    <h4 id="aiInsights">-</h4>
-                                    <small class="text-muted">AI Insights</small>
+                        <div class="col-md-3 mb-3">
+                            <div class="summary-card card-hover">
+                                <div class="summary-icon warning">
+                                    <i class="fas fa-sparkles"></i>
                                 </div>
+                                <div class="summary-value" id="aiInsights">-</div>
+                                <div class="summary-label">AI Insights</div>
                             </div>
                         </div>
                     </div>
@@ -157,12 +155,12 @@
                 <div class="tab-pane fade" id="daily-plan" role="tabpanel">
                     <div class="row mb-4">
                         <div class="col">
-                            <h2>Daily Health Plan</h2>
-                            <p class="text-muted">AI-generated personalized recommendations</p>
+                            <h2>Daily Plan</h2>
+                            <p class="text-small">Personalized recommendations powered by AI</p>
                         </div>
                         <div class="col-auto">
                             <button id="regeneratePlan" class="btn btn-outline-primary">
-                                <i class="fas fa-sync-alt me-2"></i>Regenerate
+                                <i class="fas fa-arrow-clockwise me-2"></i>Regenerate
                             </button>
                         </div>
                     </div>
@@ -176,45 +174,45 @@
                 <div class="tab-pane fade" id="uploads" role="tabpanel">
                     <div class="row mb-4">
                         <div class="col">
-                            <h2>Upload Health Data</h2>
-                            <p class="text-muted">Upload lab reports, images, or enter data manually</p>
+                            <h2>Add Health Data</h2>
+                            <p class="text-small">Upload lab reports, images, or enter data manually</p>
                         </div>
                     </div>
 
                     <!-- Upload Section -->
                     <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="card">
+                        <div class="col-md-6 mb-3">
+                            <div class="card card-hover">
                                 <div class="card-body">
                                     <h5 class="card-title">
-                                        <i class="fas fa-file-upload me-2"></i>File Upload
+                                        <i class="fas fa-cloud-arrow-up me-2"></i>Upload Files
                                     </h5>
-                                    <p class="text-muted">Upload PDFs, images, or CSV files</p>
+                                    <p class="card-subtitle">Upload PDFs, images, or CSV files</p>
                                     <div class="mb-3">
                                         <input type="file" class="form-control" id="fileUpload" multiple accept=".pdf,.png,.jpg,.jpeg,.csv">
                                     </div>
                                     <button id="uploadBtn" class="btn btn-primary" disabled>
-                                        <i class="fas fa-upload me-2"></i>Upload Files
+                                        <i class="fas fa-arrow-up me-2"></i>Upload
                                     </button>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="card">
+                        <div class="col-md-6 mb-3">
+                            <div class="card card-hover">
                                 <div class="card-body">
                                     <h5 class="card-title">
                                         <i class="fas fa-envelope me-2"></i>Email Upload
                                     </h5>
-                                    <p class="text-muted">Forward lab reports to:</p>
-                                    <div class="input-group">
+                                    <p class="card-subtitle">Forward lab reports to:</p>
+                                    <div class="input-group mb-3">
                                         <input type="text" class="form-control" value="upload@yourapp.com" readonly>
-                                        <button class="btn btn-outline-secondary" onclick="copyToClipboard('upload@yourapp.com')">
+                                        <button class="btn btn-outline-primary" onclick="copyToClipboard('upload@yourapp.com')">
                                             <i class="fas fa-copy"></i>
                                         </button>
                                     </div>
-                                    <small class="text-muted mt-2 d-block">
-                                        Make sure to send from your registered email address
-                                    </small>
+                                    <p class="text-tiny">
+                                        Send from your registered email address
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -223,8 +221,8 @@
                     <!-- Upload History -->
                     <div class="card">
                         <div class="card-header">
-                            <h5 class="mb-0">
-                                <i class="fas fa-history me-2"></i>Upload History
+                            <h5 class="card-title">
+                                <i class="fas fa-clock me-2"></i>Upload History
                             </h5>
                         </div>
                         <div class="card-body">
@@ -240,49 +238,33 @@
                     <div class="row mb-4">
                         <div class="col">
                             <h2>Health Trends</h2>
-                            <p class="text-muted">Track key biomarkers over time</p>
+                            <p class="text-small">Track key biomarkers over time</p>
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-md-6 mb-4">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="mb-0">LDL Cholesterol</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div id="ldlChart" style="height: 300px;"></div>
-                                </div>
+                            <div class="chart-container">
+                                <h5 class="card-title">LDL Cholesterol</h5>
+                                <div id="ldlChart" style="height: 300px;"></div>
                             </div>
                         </div>
                         <div class="col-md-6 mb-4">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="mb-0">ApoB</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div id="apoBChart" style="height: 300px;"></div>
-                                </div>
+                            <div class="chart-container">
+                                <h5 class="card-title">ApoB</h5>
+                                <div id="apoBChart" style="height: 300px;"></div>
                             </div>
                         </div>
                         <div class="col-md-6 mb-4">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="mb-0">CRP (Inflammation)</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div id="crpChart" style="height: 300px;"></div>
-                                </div>
+                            <div class="chart-container">
+                                <h5 class="card-title">CRP (Inflammation)</h5>
+                                <div id="crpChart" style="height: 300px;"></div>
                             </div>
                         </div>
                         <div class="col-md-6 mb-4">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="mb-0">IL-6</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div id="il6Chart" style="height: 300px;"></div>
-                                </div>
+                            <div class="chart-container">
+                                <h5 class="card-title">IL-6</h5>
+                                <div id="il6Chart" style="height: 300px;"></div>
                             </div>
                         </div>
                     </div>
@@ -307,8 +289,8 @@
     </div>
 
     <!-- Loading Spinner -->
-    <div id="loadingSpinner" class="d-none position-fixed top-50 start-50 translate-middle">
-        <div class="spinner-border text-primary" role="status">
+    <div id="loadingSpinner" class="d-none loading-spinner">
+        <div class="spinner-border" role="status">
             <span class="visually-hidden">Loading...</span>
         </div>
     </div>
