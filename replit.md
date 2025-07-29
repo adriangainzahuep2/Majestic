@@ -36,9 +36,10 @@ The frontend is a **vanilla JavaScript SPA** served as static files:
 ### Recent Changes (July 29, 2025)
 - **✓ Fixed all contrast issues** - White text clearly visible in dark mode, proper navbar contrast
 - **✓ Updated branding to "Majestic"** - Replaced "Health" with "Majestic" throughout the app
-- **✓ New crown icon** - Replaced heart icon with crown to represent "Majestic"
+- **✓ New minimalist "Rising Sun over Horizon" icon** - Clean circle above horizontal line with warm orange/gold gradients
 - **✓ Navbar contrast fixes** - Dark text on light background, white text on dark background
 - **✓ AI icon alignment fixed** - Centered "AI" text in orange circle using absolute positioning
+- **✓ Premium icon design** - Modern, flat, Apple Health + Calm aesthetic with soft gradients
 
 ### Previous Changes (July 28, 2025)
 - **✓ Fixed Redis connection issues** with graceful fallback to direct processing

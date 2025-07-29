@@ -160,9 +160,36 @@ p {
     color: #1D1D1F !important;
 }
 
-.navbar-brand i {
-    color: #007AFF;
+.navbar-brand .rising-sun-icon {
+    width: 24px;
+    height: 16px;
     margin-right: var(--space-sm);
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.navbar-brand .rising-sun-icon::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #8E8E93;
+}
+
+.navbar-brand .rising-sun-icon::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FF9500 0%, #FFCC02 50%, #FFE4B5 100%);
+    box-shadow: 0 0 8px rgba(255, 149, 0, 0.3);
 }
 
 /* Light mode navbar text contrast fixes */
@@ -702,14 +729,44 @@ p {
 .login-icon {
     width: 80px;
     height: 80px;
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+    background: linear-gradient(135deg, #F9F9F9, #FFFFFF);
     border-radius: var(--radius-xl);
     display: flex;
     align-items: center;
     justify-content: center;
     margin: 0 auto var(--space-lg);
-    font-size: var(--font-size-2xl);
-    color: var(--text-on-color);
+    border: 1px solid var(--border-light);
+}
+
+.rising-sun-icon-large {
+    width: 48px;
+    height: 32px;
+    position: relative;
+    display: inline-block;
+}
+
+.rising-sun-icon-large::before {
+    content: '';
+    position: absolute;
+    bottom: 8px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #8E8E93;
+    border-radius: 1px;
+}
+
+.rising-sun-icon-large::after {
+    content: '';
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FF9500 0%, #FFCC02 50%, #FFE4B5 100%);
+    box-shadow: 0 0 16px rgba(255, 149, 0, 0.4);
 }
 
 /* Modals - Clean and elevated */
@@ -953,6 +1010,30 @@ p {
     .navbar .btn-outline-primary {
         color: #007AFF !important;
         border-color: #007AFF !important;
+    }
+    
+    /* Rising sun icon for dark mode */
+    .navbar-brand .rising-sun-icon::before {
+        background: #ABABAB;
+    }
+    
+    .navbar-brand .rising-sun-icon::after {
+        background: linear-gradient(135deg, #FF9500 0%, #FFCC02 50%, #FFE4B5 100%);
+        box-shadow: 0 0 8px rgba(255, 149, 0, 0.4);
+    }
+    
+    .login-icon {
+        background: linear-gradient(135deg, #1C1C1E, #2C2C2E) !important;
+        border: 1px solid #38383A !important;
+    }
+    
+    .rising-sun-icon-large::before {
+        background: #ABABAB !important;
+    }
+    
+    .rising-sun-icon-large::after {
+        background: linear-gradient(135deg, #FF9500 0%, #FFCC02 50%, #FFE4B5 100%) !important;
+        box-shadow: 0 0 16px rgba(255, 149, 0, 0.4) !important;
     }
     
     /* Card titles */
