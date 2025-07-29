@@ -173,7 +173,7 @@ p {
 .navbar-brand .rising-sun-icon::before {
     content: '';
     position: absolute;
-    bottom: 4px;
+    bottom: -6px;
     left: 0;
     right: 0;
     height: 2px;
@@ -751,7 +751,7 @@ p {
 .rising-sun-icon-large::before {
     content: '';
     position: absolute;
-    bottom: 12px;
+    bottom: -12px;
     left: 0;
     right: 0;
     height: 4px;
