@@ -376,6 +376,27 @@ p {
     color: var(--text-on-color);
 }
 
+/* AI Insights Icon - Replace orange square with styled AI text */
+.ai-insights-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, #FF6B35, #F7931E);
+    color: var(--text-on-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-sm);
+    letter-spacing: 1px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    margin: 0 auto var(--space-md);
+}
+
+.ai-insights-icon::before {
+    content: 'AI';
+}
+
 .summary-value {
     font-size: var(--font-size-2xl);
     font-weight: var(--font-weight-bold);
@@ -870,7 +891,7 @@ p {
     }
 }
 
-/* Dark mode support (future enhancement) */
+/* Dark mode support - High contrast for readability */
 @media (prefers-color-scheme: dark) {
     :root {
         --bg-primary: #000000;
@@ -879,10 +900,74 @@ p {
         --bg-card: #1C1C1E;
         --bg-elevated: #2C2C2E;
         --text-primary: #FFFFFF;
-        --text-secondary: #8E8E93;
-        --text-tertiary: #636366;
+        --text-secondary: #EBEBF5;
+        --text-tertiary: #ABABAB;
         --border-color: #38383A;
         --border-light: #2C2C2E;
+    }
+    
+    /* Force high contrast text in dark mode */
+    .navbar-brand {
+        color: #FFFFFF !important;
+    }
+    
+    .card-title,
+    .system-title,
+    h1, h2, h3, h4, h5, h6 {
+        color: #FFFFFF !important;
+    }
+    
+    .table th {
+        color: #FFFFFF !important;
+        background: #2C2C2E !important;
+    }
+    
+    .table td {
+        color: #FFFFFF !important;
+    }
+    
+    .modal-title {
+        color: #FFFFFF !important;
+    }
+    
+    /* AI Insights styling - high contrast */
+    .insights-panel {
+        background: #1C1C1E !important;
+        border: 1px solid #38383A !important;
+    }
+    
+    .insights-panel .card-body {
+        background: transparent !important;
+    }
+    
+    .insights-panel h5,
+    .insights-panel p,
+    .insights-panel .card-text {
+        color: #FFFFFF !important;
+    }
+    
+    /* Button contrast fixes */
+    .btn-outline-primary {
+        color: #FFFFFF !important;
+        border-color: #007AFF !important;
+    }
+    
+    .btn-outline-primary:hover {
+        color: #FFFFFF !important;
+        background: #007AFF !important;
+        border-color: #007AFF !important;
+    }
+    
+    .btn-secondary {
+        color: #FFFFFF !important;
+        background: #2C2C2E !important;
+        border-color: #38383A !important;
+    }
+    
+    .btn-secondary:hover {
+        color: #FFFFFF !important;
+        background: #38383A !important;
+        border-color: #48484A !important;
     }
 }
 

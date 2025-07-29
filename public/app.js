@@ -229,7 +229,7 @@ class HealthDashboard {
                 <div class="col-md-8">
                     <!-- Key Metrics -->
                     <div class="card mb-4">
-                        <div class="card-header bg-${colorClass} text-white">
+                        <div class="card-header" style="background: var(--${colorClass}-color); color: var(--text-on-color);">
                             <h6 class="mb-0">
                                 <i class="fas fa-star me-2"></i>Key Metrics
                             </h6>
@@ -237,7 +237,7 @@ class HealthDashboard {
                         <div class="card-body">
                             ${systemData.keyMetrics.length > 0 ? 
                                 this.renderMetricsTable(systemData.keyMetrics) :
-                                '<p class="text-muted">No key metrics available</p>'
+                                '<p class="text-secondary">No key metrics available</p>'
                             }
                         </div>
                     </div>
@@ -245,14 +245,14 @@ class HealthDashboard {
                     <!-- Non-Key Metrics -->
                     <div class="card mb-4">
                         <div class="card-header">
-                            <h6 class="mb-0">
+                            <h6 class="mb-0" style="color: var(--text-primary);">
                                 <i class="fas fa-list me-2"></i>Additional Metrics
                             </h6>
                         </div>
                         <div class="card-body">
                             ${systemData.nonKeyMetrics.length > 0 ? 
                                 this.renderMetricsTable(systemData.nonKeyMetrics) :
-                                '<p class="text-muted">No additional metrics available</p>'
+                                '<p class="text-secondary">No additional metrics available</p>'
                             }
                         </div>
                     </div>
@@ -260,16 +260,16 @@ class HealthDashboard {
 
                 <div class="col-md-4">
                     <!-- AI Insights -->
-                    <div class="card mb-4">
+                    <div class="card mb-4 insights-panel">
                         <div class="card-header">
-                            <h6 class="mb-0">
-                                <i class="fas fa-brain me-2"></i>AI Insights
+                            <h6 class="mb-0" style="color: var(--text-primary);">
+                                <div class="ai-insights-icon" style="display: inline-block; width: 20px; height: 20px; margin-right: 8px; font-size: 10px;"></div>AI Insights
                             </h6>
                         </div>
                         <div class="card-body">
                             ${systemData.insights ? 
                                 this.renderSystemInsights(systemData.insights) :
-                                '<p class="text-muted">No insights available yet. Upload health data to generate AI insights.</p>'
+                                '<p style="color: var(--text-secondary);">No insights available yet. Upload health data to generate AI insights.</p>'
                             }
                         </div>
                     </div>
@@ -286,19 +286,19 @@ class HealthDashboard {
                 <table class="table table-sm">
                     <thead>
                         <tr>
-                            <th>Metric</th>
-                            <th>Value</th>
-                            <th>Unit</th>
-                            <th>Date</th>
+                            <th style="color: var(--text-primary);">Metric</th>
+                            <th style="color: var(--text-primary);">Value</th>
+                            <th style="color: var(--text-primary);">Unit</th>
+                            <th style="color: var(--text-primary);">Date</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${metrics.map(metric => `
                             <tr>
-                                <td class="fw-medium">${metric.metric_name}</td>
-                                <td>${metric.metric_value || '-'}</td>
-                                <td class="text-muted">${metric.metric_unit || '-'}</td>
-                                <td class="text-muted">${metric.test_date ? new Date(metric.test_date).toLocaleDateString() : '-'}</td>
+                                <td style="color: var(--text-primary); font-weight: var(--font-weight-medium);">${metric.metric_name}</td>
+                                <td style="color: var(--text-primary);">${metric.metric_value || '-'}</td>
+                                <td style="color: var(--text-secondary);">${metric.metric_unit || '-'}</td>
+                                <td style="color: var(--text-secondary);">${metric.test_date ? new Date(metric.test_date).toLocaleDateString() : '-'}</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -317,10 +317,10 @@ class HealthDashboard {
             
             ${insights.key_findings && insights.key_findings.length > 0 ? `
                 <div class="mb-3">
-                    <h6 class="text-muted">Key Findings:</h6>
+                    <h6 style="color: var(--text-primary);">Key Findings:</h6>
                     <ul class="list-unstyled">
                         ${insights.key_findings.map(finding => `
-                            <li class="mb-1">
+                            <li class="mb-1" style="color: var(--text-primary);">
                                 <i class="fas fa-check-circle text-info me-2"></i>
                                 ${finding}
                             </li>
@@ -331,19 +331,19 @@ class HealthDashboard {
 
             ${insights.recommendations && insights.recommendations.length > 0 ? `
                 <div class="mb-3">
-                    <h6 class="text-muted">Recommendations:</h6>
+                    <h6 style="color: var(--text-primary);">Recommendations:</h6>
                     <ul class="list-unstyled">
                         ${insights.recommendations.slice(0, 3).map(rec => `
                             <li class="mb-2">
-                                <div class="fw-medium">${rec.action}</div>
-                                <small class="text-muted">${rec.rationale}</small>
+                                <div style="color: var(--text-primary); font-weight: var(--font-weight-medium);">${rec.action}</div>
+                                <small style="color: var(--text-secondary);">${rec.rationale}</small>
                             </li>
                         `).join('')}
                     </ul>
                 </div>
             ` : ''}
 
-            <small class="text-muted">
+            <small style="color: var(--text-secondary);">
                 Generated: ${insights.generated_at ? new Date(insights.generated_at).toLocaleString() : 'Recently'}
             </small>
         `;
@@ -529,10 +529,12 @@ class HealthDashboard {
         
         if (uploads.length === 0) {
             container.innerHTML = `
-                <div class="text-center py-4">
-                    <i class="fas fa-file-upload fa-3x text-muted mb-3"></i>
-                    <h5>No uploads yet</h5>
-                    <p class="text-muted">Upload your first health document to get started</p>
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-cloud-arrow-up"></i>
+                    </div>
+                    <div class="empty-state-title">No uploads yet</div>
+                    <div class="empty-state-text">Upload your first health document to get started</div>
                 </div>
             `;
             return;
@@ -543,18 +545,18 @@ class HealthDashboard {
                 <table class="table table-hover">
                     <thead>
                         <tr>
-                            <th>Filename</th>
-                            <th>Type</th>
-                            <th>Status</th>
-                            <th>Upload Date</th>
-                            <th>Actions</th>
+                            <th style="color: var(--text-primary);">Filename</th>
+                            <th style="color: var(--text-primary);">Type</th>
+                            <th style="color: var(--text-primary);">Status</th>
+                            <th style="color: var(--text-primary);">Upload Date</th>
+                            <th style="color: var(--text-primary);">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${uploads.map(upload => `
                             <tr>
-                                <td>
-                                    <i class="fas fa-file me-2 text-muted"></i>
+                                <td style="color: var(--text-primary);">
+                                    <i class="fas fa-file me-2" style="color: var(--text-secondary);"></i>
                                     ${upload.filename}
                                 </td>
                                 <td>
@@ -565,7 +567,7 @@ class HealthDashboard {
                                         ${upload.processing_status}
                                     </span>
                                 </td>
-                                <td class="text-muted">
+                                <td style="color: var(--text-secondary);">
                                     ${new Date(upload.created_at).toLocaleString()}
                                 </td>
                                 <td>
