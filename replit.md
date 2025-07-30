@@ -34,10 +34,12 @@ The frontend is a **vanilla JavaScript SPA** served as static files:
 - **Structured JSON outputs** for consistent data handling
 
 ### Recent Changes (July 30, 2025)
-- **✓ Clinical metrics data import** - Parsed Excel file with 126 clinical metrics across 12 body systems
-- **✓ Structured metrics database** - Created `src/data/metrics.json` with normalized data format
-- **✓ Comprehensive metric coverage** - Cardiovascular (29), Endocrine (14), Urinary (14), Nervous (11), and 8 other systems
-- **✓ Production-ready data structure** - MetricRecord type with system, metric, ranges, units, and sources
+- **✓ Updated clinical metrics database** - Processed new v4 Excel file with 126 clinical metrics across 12 body systems
+- **✓ Enhanced drill-down interface** - Full-width modals with two-column layout for better user experience
+- **✓ Inline metric editing** - Added pencil icons with dropdown selectors for metric names, units, values, and dates
+- **✓ Metric validation system** - "Needs Review" indicators for uncertain AI matches with user correction capability
+- **✓ Public API endpoint** - `/api/metrics/reference` serves 126 clinical metrics without authentication
+- **✓ Comprehensive system coverage** - Cardiovascular (29), Urinary/Renal (14), Endocrine/Hormonal (13), and 9 other systems
 
 ### Previous Changes (July 29, 2025)
 - **✓ Fixed all contrast issues** - White text clearly visible in dark mode, proper navbar contrast

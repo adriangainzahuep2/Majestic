@@ -49,7 +49,7 @@
   },
   {
     "system": "Cardiovascular",
-    "metric": "LDL (“Bad” Cholesterol)",
+    "metric": "LDL",
     "normalRangeMin": 0,
     "normalRangeMax": 100,
     "units": "mg/dL",
@@ -57,7 +57,7 @@
   },
   {
     "system": "Cardiovascular",
-    "metric": "HDL (“Good” Cholesterol)",
+    "metric": "HDL",
     "normalRangeMin": 40,
     "normalRangeMax": 0,
     "units": "mg/dL",
