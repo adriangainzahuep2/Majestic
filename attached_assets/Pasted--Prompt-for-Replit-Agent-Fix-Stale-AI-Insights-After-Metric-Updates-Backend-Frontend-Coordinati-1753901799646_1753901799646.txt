@@ -1,0 +1,101 @@
+
+Prompt for Replit Agent – Fix Stale AI Insights After Metric Updates (Backend + Frontend Coordination)
+
+⸻
+
+Issue
+
+When a user edits or corrects a metric:
+	•	Tiles and out-of-range indicators update correctly (live from the metrics table).
+	•	AI insights (per-system) and Key Findings summaries stay stale and do not reflect the edited data.
+	•	Cause: Cached AI outputs in ai_outputs_log are not being invalidated and recomputed, or recomputation is using stale data.
+
+⸻
+
+Required Behavior
+
+1. Trigger AI recomputation after metric changes (backend)
+
+Whenever these occur:
+	•	Manual metric edit (inline editing)
+	•	New lab report upload (manual or via email ingestion)
+
+Perform these steps:
+	1.	Invalidate cached AI outputs in ai_outputs_log for:
+	•	The affected system (per-system insights)
+	•	Global Key Findings and Daily Plan (only if a key metric was changed)
+	2.	Query fresh data directly from the metrics table (never reuse cached payloads).
+	3.	Re-run:
+	1.	generate_system_insights(system_id)
+	2.	generate_key_findings() (if a key metric changed)
+	3.	generate_daily_plan() (if a key metric changed)
+	4.	Save new AI outputs and trigger a frontend event/notification that updated insights are ready.
+
+⸻
+
+2. No cached data
+	•	GPT must always pull the latest metrics from the database at recomputation time.
+	•	Do not reuse any stale data from initial uploads.
+
+⸻
+
+3. Frontend behavior (refresh and event handling)
+
+Current behavior: The toast “AI Insights refreshed” already works correctly.
+
+Additional required behavior:
+	•	Listen for recomputation events:
+	•	Use WebSocket or polling to detect when new insights are saved for:
+	•	Per-system insights
+	•	Key Findings
+	•	Daily Plan
+	•	Replace stale insights in the UI automatically when updated data arrives:
+	•	Key Findings panel
+	•	Per-system insights panels
+	•	Loading indicators:
+	•	While waiting for recomputation, show a subtle “Refreshing insights…” label or spinner only in the affected panels.
+	•	Remove the spinner once the new insights arrive.
+
+This ensures the user sees updated insights without manual page refresh.
+
+⸻
+
+4. Cost optimization (key vs. non-key metrics)
+	•	Always recompute per-system insights on metric edits.
+	•	Recompute Key Findings and Daily Plan only if the edit changes a key metric (tile-color driver).
+	•	Non-key metric edits:
+	•	Update only that system’s insights.
+	•	Skip global recomputation.
+
+⸻
+
+Additional Requirements
+
+A. Logging (mandatory for debugging)
+
+Log:
+	•	When an edit/upload triggers recomputation
+	•	Which GPT jobs are queued
+	•	When new AI outputs are saved and ready
+
+B. Event-driven architecture
+	•	Metric updates must emit an event that always triggers the recomputation workflow.
+	•	Frontend must subscribe to these events so UI updates automatically.
+
+⸻
+
+Goal
+	•	AI summaries (per-system insights, Key Findings, and Daily Plan) must always reflect the latest metric data.
+	•	Tiles remain live and unchanged.
+	•	After this fix:
+	•	Edit → recompute → UI refresh happens reliably.
+	•	Stale “all metrics normal” summaries disappear automatically.
+
+⸻
+
+Expected Outcome
+	•	Event-driven, cost-efficient pipeline:
+	•	Accurate, up-to-date insights
+	•	Efficient GPT usage
+	•	Smooth, asynchronous user experience
+	•	No manual refresh required by the user.

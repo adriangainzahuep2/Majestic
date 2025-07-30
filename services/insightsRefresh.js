@@ -146,7 +146,54 @@ class InsightsRefreshService {
     }
 
     /**
-     * Process immediate refresh for single metric edit (called from API)
+     * Process refresh after upload completion
+     * @param {object} db - Database connection
+     * @param {string} userId - User ID
+     * @param {Array} affectedSystems - Array of system IDs affected by upload
+     */
+    async processUploadRefresh(db, userId, affectedSystems) {
+        try {
+            // Invalidate cache for all affected systems + global
+            await this.invalidateCache(db, userId, null, true);
+            
+            // Queue refresh for each affected system
+            for (const systemId of affectedSystems) {
+                await this.queueRefresh(userId, systemId, 'upload_metric', 'upload');
+            }
+            
+            console.log(`Upload refresh triggered for user ${userId}, systems: [${affectedSystems}]`);
+            
+        } catch (error) {
+            console.error('Error processing upload refresh:', error);
+        }
+    }
+
+    /**
+     * Process refresh after manual metric edit
+     * @param {object} db - Database connection
+     * @param {string} userId - User ID
+     * @param {number} systemId - System ID
+     * @param {string} metricName - Metric name
+     */
+    async processEditRefresh(db, userId, systemId, metricName) {
+        try {
+            const isKey = this.isKeyMetric(systemId, metricName);
+            
+            // Invalidate cache
+            await this.invalidateCache(db, userId, systemId, isKey);
+            
+            // Queue refresh
+            await this.queueRefresh(userId, systemId, metricName, 'edit');
+            
+            console.log(`Edit refresh triggered for user ${userId}, system ${systemId}, metric: ${metricName}, isKey: ${isKey}`);
+            
+        } catch (error) {
+            console.error('Error processing edit refresh:', error);
+        }
+    }
+
+    /**
+     * Process refresh after metric edit via API
      * @param {object} db - Database connection
      * @param {string} userId - User ID
      * @param {number} metricId - Metric ID that was changed
@@ -168,40 +215,14 @@ class InsightsRefreshService {
             }
 
             const { system_id: systemId, system_name: systemName } = systemResult.rows[0];
-            const isKey = this.isKeyMetric(systemId, metricData.metric_name);
-
-            // Invalidate cache
-            await this.invalidateCache(db, userId, systemId, isKey);
-
-            // Queue refresh
-            await this.queueRefresh(userId, systemId, metricData.metric_name, 'edit');
+            
+            // Process the refresh
+            await this.processEditRefresh(db, userId, systemId, metricData.metric_name);
 
             console.log(`Processed metric edit for user ${userId}, metric ${metricId}, system ${systemName}`);
 
         } catch (error) {
             console.error('Error processing metric edit:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Process upload-based refresh (called from upload processing)
-     * @param {object} db - Database connection
-     * @param {string} userId - User ID
-     * @param {Array} affectedSystems - Array of system IDs that had metrics added/updated
-     */
-    async processUploadRefresh(db, userId, affectedSystems) {
-        try {
-            // Invalidate cache for all affected systems and global
-            for (const systemId of affectedSystems) {
-                await this.invalidateCache(db, userId, systemId, true);
-                await this.queueRefresh(userId, systemId, 'multiple_metrics', 'upload');
-            }
-
-            console.log(`Processed upload refresh for user ${userId}, systems: [${affectedSystems}]`);
-
-        } catch (error) {
-            console.error('Error processing upload refresh:', error);
             throw error;
         }
     }

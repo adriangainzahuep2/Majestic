@@ -97,7 +97,11 @@ router.post('/demo', async (req, res) => {
 // Get current user profile
 router.get('/me', async (req, res) => {
   try {
-    // This route requires auth middleware to be applied
+    // Check if user is authenticated
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
     const user = await authService.getUserById(req.user.userId);
     res.json({ user });
   } catch (error) {

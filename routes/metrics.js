@@ -278,9 +278,14 @@ router.put('/:id', async (req, res) => {
 
     const result = await req.db.query(query, values);
 
+    // Trigger insights refresh for the updated metric
+    const insightsRefreshService = require('../services/insightsRefresh');
+    await insightsRefreshService.processMetricEdit(req.db, userId, metricId, result.rows[0]);
+
     res.json({
       success: true,
-      metric: result.rows[0]
+      metric: result.rows[0],
+      message: 'Metric updated successfully. AI insights and daily plan will be refreshed.'
     });
 
   } catch (error) {

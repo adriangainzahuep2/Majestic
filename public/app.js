@@ -455,6 +455,47 @@ class HealthDashboard {
         refreshingDivs.forEach(div => div.remove());
     }
 
+    // Start polling for updated insights after metric changes
+    startInsightsPolling(userId) {
+        if (this.insightsPollingInterval) {
+            clearInterval(this.insightsPollingInterval);
+        }
+
+        let pollCount = 0;
+        const maxPolls = 8; // Poll for up to 2 minutes (15s intervals)
+
+        this.insightsPollingInterval = setInterval(async () => {
+            pollCount++;
+            
+            try {
+                // Check if new insights are available
+                const response = await this.apiCall('/api/dashboard');
+                if (response.success && response.data) {
+                    // Update system insights if they're different
+                    this.hideInsightsRefreshing();
+                    
+                    // Refresh current system view if modal is open
+                    const modal = document.getElementById('systemModal');
+                    if (modal && modal.classList.contains('show')) {
+                        this.refreshCurrentSystemView();
+                    }
+                    
+                    this.showToast('success', 'Insights Updated', 'AI insights have been refreshed with your latest data.');
+                    clearInterval(this.insightsPollingInterval);
+                    return;
+                }
+            } catch (error) {
+                console.warn('Insights polling error:', error);
+            }
+
+            // Stop polling after max attempts
+            if (pollCount >= maxPolls) {
+                this.hideInsightsRefreshing();
+                clearInterval(this.insightsPollingInterval);
+            }
+        }, 15000); // Poll every 15 seconds
+    }
+
     refreshCurrentSystemView() {
         // Get current system from modal title
         const modalTitle = document.getElementById('systemModalTitle');
@@ -549,15 +590,13 @@ class HealthDashboard {
                 // Show refreshing state for insights
                 this.showInsightsRefreshing();
                 
-                // Refresh the current system view after a brief delay
-                setTimeout(() => {
-                    this.refreshCurrentSystemView();
-                }, 2000);
+                // Start polling for updated insights
+                this.startInsightsPolling(this.user?.id);
                 
-                // Refresh main dashboard to update tile colors
+                // Refresh main dashboard to update tile colors immediately  
                 setTimeout(() => {
                     this.loadDashboard();
-                }, 3000);
+                }, 1000);
             } else {
                 throw new Error(response.message || 'Failed to update metric');
             }
