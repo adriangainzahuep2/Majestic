@@ -1,5 +1,6 @@
 const express = require('express');
 const healthSystemsService = require('../services/healthSystems');
+const insightsRefreshService = require('../services/insightsRefresh');
 
 const router = express.Router();
 
@@ -471,6 +472,14 @@ router.put('/:metricId', async (req, res) => {
       JSON.stringify({ original: updatedMetric, updated: req.body }),
       'user_edit'
     ]);
+
+    // Process insights refresh
+    await insightsRefreshService.processMetricEdit(req.db, userId, metricId, {
+      metric_name,
+      metric_value,
+      metric_unit,
+      test_date
+    });
 
     res.json({
       success: true,

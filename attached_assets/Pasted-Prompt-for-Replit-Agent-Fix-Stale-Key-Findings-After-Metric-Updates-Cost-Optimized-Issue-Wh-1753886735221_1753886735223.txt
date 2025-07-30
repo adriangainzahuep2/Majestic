@@ -1,0 +1,100 @@
+Prompt for Replit Agent – Fix Stale Key Findings After Metric Updates (Cost-Optimized)
+
+⸻
+
+Issue
+
+When a user edits or adds a metric, the dashboard tiles and out‑of‑range indicators update correctly, but the Key Findings summary remains stale.
+This is because Key Findings and Daily Plan (stored in ai_outputs_log) are not automatically recomputed after metric changes.
+
+⸻
+
+Required Behavior (Cost-Aware)
+
+1. Trigger GPT recomputations only when necessary
+	•	Manual metric edit:
+	•	Always recompute per-system insights for that system.
+	•	If a key metric (tile-color driver) changes, also recompute:
+	1.	Key Findings (global summary)
+	2.	Daily Plan (global)
+	•	If a non-key metric changes, update only that system’s insights (skip global recomputation).
+	•	Lab uploads / Email ingestion:
+	•	Always re-run:
+	1.	All affected per-system insights
+	2.	Global Key Findings
+	3.	Daily Plan
+
+Important:
+Do not trigger recomputation for Apple Health sync updates.
+
+⸻
+
+2. Batching
+
+If multiple edits/uploads occur within 60 seconds, batch them into a single recomputation job to reduce GPT calls.
+
+⸻
+
+3. Asynchronous Handling
+	•	While recomputation runs, display: “Refreshing insights…” or a spinner in the affected panels.
+	•	Replace stale Key Findings text and insights as soon as new AI outputs are saved.
+
+⸻
+
+4. Scope
+
+This behavior must apply to:
+	•	Manual metric edits (inline editing)
+	•	Lab uploads
+	•	Email ingestion
+
+(Apple Health sync is excluded)
+
+⸻
+
+5. Confirmation Feedback
+
+After a user edit, display a toast/banner:
+
+Metric updated. AI insights and daily plan refreshed.
+
+	•	Auto-dismiss after 3 seconds
+	•	Non-blocking (does not interrupt workflow)
+
+⸻
+
+Implementation Details
+
+Backend:
+	1.	Detect metric_record insert/update.
+	2.	Determine if the changed metric is a key metric.
+	3.	Invalidate cached AI outputs in ai_outputs_log:
+	•	Always for the affected system
+	•	Global outputs only if a key metric changed
+	4.	Queue GPT jobs as needed:
+	•	generate_system_insights(system_id)
+	•	generate_key_findings() (if required)
+	•	generate_daily_plan() (if required)
+	5.	Save new results and notify frontend (WebSocket or polling).
+
+⸻
+
+Frontend:
+	•	Subscribe to AI output updates.
+	•	Refresh affected panels as soon as new results arrive.
+	•	Tiles remain live (computed directly from raw metrics, no change).
+
+⸻
+
+Goal
+	•	Always keep Key Findings, Per-System Insights, and Daily Plan in sync with the latest metrics.
+	•	Minimize GPT costs by only recomputing when relevant changes occur.
+
+⸻
+
+Outcome
+	•	Always fresh, consistent insights
+	•	Efficient GPT usage
+	•	Smooth, asynchronous user experience
+
+"

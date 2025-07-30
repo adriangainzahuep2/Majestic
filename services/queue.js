@@ -39,6 +39,7 @@ class QueueService {
 
       this.setupUploadProcessor();
       this.setupDailyPlanProcessor();
+      this.setupInsightsProcessors();
       this.setupScheduledJobs();
 
       this.isInitialized = true;
@@ -101,11 +102,10 @@ class QueueService {
           ['completed', uploadId]
         );
 
-        // Trigger system insights regeneration
-        await this.regenerateSystemInsights(userId);
-
-        // Schedule daily plan regeneration
-        await this.addJob('generate-daily-plan', { userId }, { delay: 5000 });
+        // Trigger insights refresh using the new service
+        const insightsRefreshService = require('./insightsRefresh');
+        const affectedSystems = await this.getAffectedSystems(userId, extractedData.metrics);
+        await insightsRefreshService.processUploadRefresh(pool, userId, affectedSystems);
 
         console.log(`Successfully processed upload ${uploadId} for user ${userId}`);
 
@@ -305,6 +305,166 @@ class QueueService {
     }
 
     return organized;
+  }
+
+  async getAffectedSystems(userId, metrics) {
+    const healthSystemsService = require('./healthSystems');
+    const systemIds = new Set();
+    
+    if (metrics && Array.isArray(metrics)) {
+      for (const metric of metrics) {
+        const systemId = healthSystemsService.mapMetricToSystem(metric.metric_name);
+        if (systemId) {
+          systemIds.add(systemId);
+        }
+      }
+    }
+    
+    return Array.from(systemIds);
+  }
+
+  setupInsightsProcessors() {
+    // System insights processor
+    this.uploadQueue.process('generate-system-insights', 2, async (job) => {
+      const { userId, systemId } = job.data;
+      
+      try {
+        const openaiService = require('./openai');
+        
+        // Get system name
+        const systemResult = await pool.query(
+          'SELECT name FROM health_systems WHERE id = $1',
+          [systemId]
+        );
+        
+        if (systemResult.rows.length === 0) {
+          throw new Error(`System ${systemId} not found`);
+        }
+        
+        const systemName = systemResult.rows[0].name;
+        
+        // Get current metrics for this system
+        const metricsResult = await pool.query(`
+          SELECT * FROM metrics 
+          WHERE user_id = $1 AND system_id = $2 
+          AND test_date >= CURRENT_DATE - INTERVAL '6 months'
+          ORDER BY test_date DESC
+        `, [userId, systemId]);
+        
+        if (metricsResult.rows.length > 0) {
+          const insights = await openaiService.generateSystemInsights(
+            systemName, 
+            metricsResult.rows.slice(0, 10), // Recent metrics
+            metricsResult.rows // Historical data
+          );
+          
+          // Save insights
+          await openaiService.logAIOutput(
+            userId,
+            'system_insights',
+            `system_id:${systemId}`,
+            insights,
+            0
+          );
+        }
+        
+        console.log(`Generated system insights for user ${userId}, system ${systemName}`);
+        
+      } catch (error) {
+        console.error(`Error generating system insights:`, error);
+        throw error;
+      }
+    });
+
+    // Key findings processor
+    this.uploadQueue.process('generate-key-findings', 1, async (job) => {
+      const { userId } = job.data;
+      
+      try {
+        const openaiService = require('./openai');
+        
+        // Get all user metrics from last 3 months
+        const metricsResult = await pool.query(`
+          SELECT m.*, hs.name as system_name 
+          FROM metrics m
+          JOIN health_systems hs ON m.system_id = hs.id
+          WHERE m.user_id = $1 
+          AND m.test_date >= CURRENT_DATE - INTERVAL '3 months'
+          ORDER BY m.test_date DESC
+        `, [userId]);
+        
+        if (metricsResult.rows.length > 0) {
+          const organizedMetrics = this.organizeMetricsBySystem(metricsResult.rows);
+          const keyFindings = await openaiService.generateKeyFindings(organizedMetrics);
+          
+          // Save key findings
+          await openaiService.logAIOutput(
+            userId,
+            'key_findings',
+            'Generate key health findings',
+            keyFindings,
+            0
+          );
+        }
+        
+        console.log(`Generated key findings for user ${userId}`);
+        
+      } catch (error) {
+        console.error(`Error generating key findings:`, error);
+        throw error;
+      }
+    });
+
+    // Daily plan processor (update existing to use new queue)
+    this.uploadQueue.process('generate-daily-plan', 1, async (job) => {
+      const { userId } = job.data;
+      
+      try {
+        const openaiService = require('./openai');
+        
+        // Get user's recent metrics
+        const metricsResult = await pool.query(`
+          SELECT m.*, hs.name as system_name 
+          FROM metrics m
+          JOIN health_systems hs ON m.system_id = hs.id
+          WHERE m.user_id = $1 
+          AND m.test_date >= CURRENT_DATE - INTERVAL '30 days'
+          ORDER BY m.test_date DESC
+        `, [userId]);
+
+        // Get recent questionnaire responses
+        const responsesResult = await pool.query(`
+          SELECT * FROM questionnaire_responses 
+          WHERE user_id = $1 
+          AND response_date >= CURRENT_DATE - INTERVAL '7 days'
+          ORDER BY response_date DESC
+        `, [userId]);
+
+        const userMetrics = this.organizeMetricsBySystem(metricsResult.rows);
+        const recentData = {
+          questionnaire_responses: responsesResult.rows,
+          last_upload_date: metricsResult.rows[0]?.test_date
+        };
+
+        // Generate daily plan
+        const dailyPlan = await openaiService.generateDailyPlan(userMetrics, recentData);
+
+        // Save to database
+        await openaiService.logAIOutput(
+          userId, 
+          'daily_plan', 
+          'Generate daily health plan', 
+          dailyPlan, 
+          0
+        );
+
+        console.log(`Generated daily plan for user ${userId}`);
+
+      } catch (error) {
+        console.error(`Error generating daily plan for user ${userId}:`, error);
+        throw error;
+      }
+    });
   }
 
   async addJob(jobType, data, options = {}) {

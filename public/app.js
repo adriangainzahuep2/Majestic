@@ -435,6 +435,47 @@ class HealthDashboard {
         return tooltip;
     }
 
+    showInsightsRefreshing() {
+        // Add refreshing indicator to insights panels
+        const insightsPanels = document.querySelectorAll('.insights-panel .card-body');
+        insightsPanels.forEach(panel => {
+            const refreshingDiv = document.createElement('div');
+            refreshingDiv.className = 'text-center py-3 insights-refreshing';
+            refreshingDiv.innerHTML = `
+                <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                <span style="color: #EBEBF5; font-size: 13px;">Refreshing insights...</span>
+            `;
+            panel.insertBefore(refreshingDiv, panel.firstChild);
+        });
+    }
+
+    hideInsightsRefreshing() {
+        // Remove refreshing indicators
+        const refreshingDivs = document.querySelectorAll('.insights-refreshing');
+        refreshingDivs.forEach(div => div.remove());
+    }
+
+    refreshCurrentSystemView() {
+        // Get current system from modal title
+        const modalTitle = document.getElementById('systemModalTitle');
+        if (modalTitle && modalTitle.textContent) {
+            const systemMatch = modalTitle.textContent.match(/(\w+)\s+System/);
+            if (systemMatch) {
+                const systemName = systemMatch[1];
+                
+                // Find system ID from dashboard data
+                if (this.dashboardData && this.dashboardData.systems) {
+                    const system = this.dashboardData.systems.find(s => 
+                        s.name.toLowerCase().includes(systemName.toLowerCase())
+                    );
+                    if (system) {
+                        this.showSystemDetails(system.id);
+                    }
+                }
+            }
+        }
+    }
+
     generateMetricOptions(systemData, currentMetric) {
         const metricsData = window.metricUtils?.metricsData || [];
         const systemMetrics = metricsData.filter(m => m.system === systemData.name);
@@ -502,18 +543,21 @@ class HealthDashboard {
             if (response.success) {
                 this.showToast('success', 'Metric Updated', 'Metric updated. AI insights and daily plan refreshed.');
                 
-                // Hide edit form
+                // Hide edit form  
                 this.cancelMetricEdit(metricId);
                 
-                // Refresh the current system view
-                const systemTitle = document.getElementById('systemModalTitle').textContent;
-                const systemId = systemTitle.match(/(\d+)/)?.[1]; // Extract system ID if available
+                // Show refreshing state for insights
+                this.showInsightsRefreshing();
                 
-                if (systemId) {
-                    setTimeout(() => {
-                        this.showSystemDetails(systemId);
-                    }, 1000);
-                }
+                // Refresh the current system view after a brief delay
+                setTimeout(() => {
+                    this.refreshCurrentSystemView();
+                }, 2000);
+                
+                // Refresh main dashboard to update tile colors
+                setTimeout(() => {
+                    this.loadDashboard();
+                }, 3000);
             } else {
                 throw new Error(response.message || 'Failed to update metric');
             }
