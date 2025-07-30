@@ -507,17 +507,23 @@ class HealthDashboard {
             nameCell.textContent = updatedMetric.metric_name;
         }
 
-        // Update the value cell
+        // Update the value cell (show value with unit)
         const valueCell = metricRow.querySelector('.metric-value');
         if (valueCell) {
-            const valueText = updatedMetric.metric_value;
+            const valueText = updatedMetric.metric_value || '-';
             const unitText = updatedMetric.metric_unit ? ` ${updatedMetric.metric_unit}` : '';
-            valueCell.innerHTML = `${valueText}${unitText}`;
+            valueCell.textContent = `${valueText}${unitText}`;
+        }
+
+        // Update the unit cell
+        const unitCells = metricRow.querySelectorAll('td');
+        if (unitCells.length > 2) {
+            unitCells[2].textContent = updatedMetric.metric_unit || '—';
         }
 
         // Update the date cell
         const dateCell = metricRow.querySelector('.metric-date');
-        if (dateCell) {
+        if (dateCell && updatedMetric.test_date) {
             const testDate = new Date(updatedMetric.test_date);
             dateCell.textContent = testDate.toLocaleDateString();
         }
@@ -525,34 +531,34 @@ class HealthDashboard {
         // Update the data attributes for future edits
         metricRow.dataset.testDate = updatedMetric.test_date;
 
-        // Update the range indicator if needed
+        // Update the range indicator using existing metric utilities
         const rangeCell = metricRow.querySelector('.range-indicator');
-        if (rangeCell && updatedMetric.reference_range) {
-            // Recalculate range status
-            const value = parseFloat(updatedMetric.metric_value);
-            const rangeMatch = updatedMetric.reference_range.match(/([0-9.]+)\s*-\s*([0-9.]+)/);
-            
-            if (rangeMatch && !isNaN(value)) {
-                const [, min, max] = rangeMatch;
-                const minVal = parseFloat(min);
-                const maxVal = parseFloat(max);
+        if (rangeCell && window.metricUtils) {
+            const metricMatch = window.metricUtils.findMetricMatch(updatedMetric.metric_name);
+            if (metricMatch && updatedMetric.metric_value) {
+                const status = window.metricUtils.calculateStatus(
+                    updatedMetric.metric_value, 
+                    metricMatch.normalRangeMin, 
+                    metricMatch.normalRangeMax
+                );
+                const statusClass = status.toLowerCase().replace(' ', '-');
+                const rangeBar = window.metricUtils.generateMicroRangeBar(
+                    updatedMetric.metric_value, 
+                    metricMatch.normalRangeMin, 
+                    metricMatch.normalRangeMax
+                );
                 
-                let status = 'in-range';
-                let icon = 'check-circle';
-                let color = 'success';
-                
-                if (value < minVal) {
-                    status = 'below-range';
-                    icon = 'arrow-down-circle';
-                    color = 'warning';
-                } else if (value > maxVal) {
-                    status = 'above-range';
-                    icon = 'arrow-up-circle';
-                    color = 'danger';
-                }
-                
-                rangeCell.innerHTML = `<i class="fas fa-${icon} text-${color}"></i>`;
-                rangeCell.title = `${status.replace('-', ' ').toUpperCase()}: ${updatedMetric.reference_range}`;
+                rangeCell.innerHTML = `
+                    <div class="metric-range-block">
+                        <div class="metric-status-chip ${statusClass}">${status}</div>
+                        ${rangeBar}
+                        <div class="normal-range-caption">
+                            Normal range: ${metricMatch.normalRangeMin}–${metricMatch.normalRangeMax}${metricMatch.units ? ` ${metricMatch.units}` : ''}
+                            <span class="info-icon" data-metric="${updatedMetric.metric_name}" data-bs-toggle="tooltip" 
+                                  title="${this.generateTooltipTitle(metricMatch, updatedMetric.metric_name)}">i</span>
+                        </div>
+                    </div>
+                `;
             }
         }
     }
@@ -621,7 +627,14 @@ class HealthDashboard {
             const existingDate = metricRow.dataset.testDate;
             const dateInput = document.getElementById(`edit-date-${metricId}`);
             if (dateInput && existingDate) {
-                dateInput.value = existingDate;
+                // Convert date to YYYY-MM-DD format for HTML date input
+                const dateObj = new Date(existingDate);
+                if (!isNaN(dateObj.getTime())) {
+                    const year = dateObj.getFullYear();
+                    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                    const day = String(dateObj.getDate()).padStart(2, '0');
+                    dateInput.value = `${year}-${month}-${day}`;
+                }
             }
         }
         

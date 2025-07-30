@@ -251,7 +251,7 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Metric not found' });
     }
 
-    const allowedUpdates = ['metric_value', 'metric_unit', 'reference_range', 'test_date'];
+    const allowedUpdates = ['metric_name', 'metric_value', 'metric_unit', 'reference_range', 'test_date'];
     const setClause = [];
     const values = [];
     let paramCount = 1;

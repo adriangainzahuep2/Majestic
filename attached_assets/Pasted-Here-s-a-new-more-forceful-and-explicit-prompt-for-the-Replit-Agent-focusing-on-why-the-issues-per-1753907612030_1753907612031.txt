@@ -1,0 +1,109 @@
+Here’s a new, more forceful and explicit prompt for the Replit Agent, focusing on why the issues persist and how to fix them. This version assumes the previous attempt did not address the root causes (UI state update, stale table data, and incorrect date initialization):
+
+⸻
+
+Prompt for Replit Agent – Fix Inline Metric Editing (Persistent UI Update & Correct Default Date)
+
+⸻
+
+Issue
+
+In the drill‑down screen (e.g., Cardiovascular System):
+
+Current behavior after editing a metric row:
+	1.	User clicks the pencil icon to edit a metric.
+	2.	Edits the metric name, value, units, or date and clicks the checkmark to save.
+	3.	The toast “Metric updated. AI insights and daily plan refreshed.” appears.
+	4.	Problems that remain:
+	•	The table row does not show the updated values (name, value, units, date).
+	•	Even after the backend update, the displayed row stays unchanged until the page is reloaded.
+	•	When entering edit mode, the date picker still defaults to today’s date instead of the existing date.
+
+⸻
+
+Required Fixes
+
+1. Force UI state refresh after saving
+
+What to do:
+	•	After the user clicks the checkmark and the API call succeeds:
+	•	Use the API response (updated metric record) to immediately update the metric in the table state in memory (React state).
+	•	Do not wait for a page reload or a refetch—update the local state immediately.
+	•	Ensure the UI row (Key Metrics and Additional Metrics) re-renders with the new:
+	•	Metric name (canonical name)
+	•	Value
+	•	Units
+	•	Date
+
+Explicitly confirm:
+	•	After saving, the UI must reflect the changes immediately without any refresh.
+
+⸻
+
+2. Correct default date behavior
+
+What to do:
+	•	When entering edit mode:
+	•	Pre-fill the date picker with the existing metric date from the metric record.
+	•	Only use today’s date as a fallback if the metric does not have an existing date.
+	•	The user must see the correct existing date as soon as they open the edit form.
+
+⸻
+
+3. Ensure backend API returns updated data
+	•	The backend edit endpoint must return the updated metric record (including name, value, units, and date).
+	•	If it already does, confirm that the frontend is actually consuming this response to update the table.
+
+⸻
+
+Root Cause to Fix
+
+This bug strongly suggests:
+	1.	The frontend is not updating local React state after receiving the API response (likely just showing a toast).
+	2.	The edit form always defaults the date picker to today’s date, ignoring the metric’s existing date.
+
+These must be corrected.
+
+⸻
+
+Implementation Details
+
+Frontend:
+	•	After saving:
+	•	Update React state for that metric row using the API response.
+	•	Close edit mode and re-render with the new values.
+	•	When entering edit mode:
+	•	Pass the existing date value to the date picker component.
+
+Backend:
+	•	Ensure the edit endpoint reliably returns the full updated metric record.
+
+⸻
+
+Acceptance Criteria
+	1.	Inline edit → save:
+	•	The table row immediately updates (name, value, units, date).
+	2.	Edit mode:
+	•	The date picker always shows the current saved date for the metric, not today’s date.
+	3.	Toast message:
+	•	Still appears as before.
+	4.	No page refresh needed.
+
+⸻
+
+Testing Instructions
+	1.	Open Cardiovascular drill‑down.
+	2.	Edit a Key Metric (e.g., LDL value or date).
+	3.	Click save:
+	•	Toast appears.
+	•	Row instantly reflects new data.
+	4.	Open edit again:
+	•	Date picker shows the date you just saved.
+
+⸻
+
+Fix these behaviors so that editing a metric in drill‑down works exactly as expected in real time.
+
+⸻
+
+Would you like me to also give you a second prompt that forces a full table refetch after saving as a fallback, in case local state management is buggy? Or do you prefer this approach (instant update via API response)?
