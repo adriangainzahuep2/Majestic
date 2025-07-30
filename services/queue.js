@@ -127,13 +127,12 @@ class QueueService {
       const { userId } = job.data;
 
       try {
-        // Get user's recent metrics
+        // Get ALL user metrics for comprehensive daily plan - NO TIME LIMIT
         const metricsResult = await pool.query(`
           SELECT m.*, hs.name as system_name 
           FROM metrics m
           JOIN health_systems hs ON m.system_id = hs.id
           WHERE m.user_id = $1 
-          AND m.test_date >= CURRENT_DATE - INTERVAL '30 days'
           ORDER BY m.test_date DESC
         `, [userId]);
 
@@ -144,6 +143,13 @@ class QueueService {
           AND response_date >= CURRENT_DATE - INTERVAL '7 days'
           ORDER BY response_date DESC
         `, [userId]);
+
+        // DIAGNOSTIC LOGGING - Required for debugging
+        console.log(`=== DAILY PLAN DEBUG (dailyPlanQueue) ===`);
+        console.log(`User: ${userId}`);
+        console.log(`Total metrics fetched from DB: ${metricsResult.rows.length}`);
+        console.log(`Systems with data: [${[...new Set(metricsResult.rows.map(m => m.system_name))].join(', ')}]`);
+        console.log(`========================================`);
 
         const userMetrics = this.organizeMetricsBySystem(metricsResult.rows);
         const recentData = {
@@ -247,7 +253,7 @@ class QueueService {
 
   async regenerateSystemInsights(userId) {
     try {
-      // Get metrics grouped by system
+      // Get ALL metrics grouped by system - NO TIME LIMITS
       const metricsResult = await pool.query(`
         SELECT m.*, hs.name as system_name
         FROM metrics m
@@ -256,36 +262,33 @@ class QueueService {
         ORDER BY m.system_id, m.test_date DESC
       `, [userId]);
 
+      // DIAGNOSTIC LOGGING - Required for debugging
+      console.log(`=== REGENERATE SYSTEM INSIGHTS DEBUG ===`);
+      console.log(`User: ${userId}`);
+      console.log(`Total metrics fetched from DB: ${metricsResult.rows.length}`);
+      console.log(`======================================`);
+
       const systemMetrics = this.organizeMetricsBySystem(metricsResult.rows);
 
       // Generate insights for each system with data
       for (const [systemName, metrics] of Object.entries(systemMetrics)) {
         if (metrics.length > 0) {
-          // Check if insights are cached (within 24 hours)
-          const cachedInsights = await pool.query(`
-            SELECT * FROM ai_outputs_log
-            WHERE user_id = $1 AND output_type = $2 AND created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
-            ORDER BY created_at DESC LIMIT 1
-          `, [userId, `system_insights_${systemName.toLowerCase()}`]);
+          console.log(`Processing ${systemName}: ${metrics.length} metrics [${metrics.map(m => m.metric_name).join(', ')}]`);
+          
+          // ALWAYS REGENERATE - Don't use cached insights for debugging
+          // Pass ALL metrics for the system to AI analysis
+          const insights = await openaiService.generateSystemInsights(
+            systemName, metrics, [] // All metrics, no separate historical data
+          );
 
-          if (cachedInsights.rows.length === 0) {
-            // Generate new insights
-            const historicalData = metrics.slice(5); // Use older data for trends
-            const currentMetrics = metrics.slice(0, 5); // Recent data
-
-            const insights = await openaiService.generateSystemInsights(
-              systemName, currentMetrics, historicalData
-            );
-
-            // Cache insights
-            await openaiService.logAIOutput(
-              userId,
-              `system_insights_${systemName.toLowerCase()}`,
-              `Generate insights for ${systemName} system`,
-              insights,
-              0
-            );
-          }
+          // Cache insights
+          await openaiService.logAIOutput(
+            userId,
+            `system_insights_${systemName.toLowerCase()}`,
+            `Generate insights for ${systemName} system`,
+            insights,
+            0
+          );
         }
       }
     } catch (error) {
@@ -343,19 +346,27 @@ class QueueService {
         
         const systemName = systemResult.rows[0].name;
         
-        // Get current metrics for this system
+        // Get ALL current metrics for this system - NO LIMIT
         const metricsResult = await pool.query(`
           SELECT * FROM metrics 
           WHERE user_id = $1 AND system_id = $2 
-          AND test_date >= CURRENT_DATE - INTERVAL '6 months'
           ORDER BY test_date DESC
         `, [userId, systemId]);
         
+        // DIAGNOSTIC LOGGING - Required for debugging
+        console.log(`=== AI INSIGHTS DEBUG ===`);
+        console.log(`System: ${systemName} (ID: ${systemId})`);
+        console.log(`Total metrics fetched from DB: ${metricsResult.rows.length}`);
+        console.log(`Metric names: [${metricsResult.rows.map(m => m.metric_name).join(', ')}]`);
+        console.log(`Metric IDs: [${metricsResult.rows.map(m => m.id).join(', ')}]`);
+        console.log(`========================`);
+        
         if (metricsResult.rows.length > 0) {
+          // Pass ALL metrics to AI analysis - not just recent ones
           const insights = await openaiService.generateSystemInsights(
             systemName, 
-            metricsResult.rows.slice(0, 10), // Recent metrics
-            metricsResult.rows // Historical data
+            metricsResult.rows, // ALL metrics for this system
+            [] // No separate historical data needed
           );
           
           // Save insights
@@ -383,15 +394,21 @@ class QueueService {
       try {
         const openaiService = require('./openai');
         
-        // Get all user metrics from last 3 months
+        // Get ALL user metrics - NO TIME LIMIT for comprehensive analysis
         const metricsResult = await pool.query(`
           SELECT m.*, hs.name as system_name 
           FROM metrics m
           JOIN health_systems hs ON m.system_id = hs.id
           WHERE m.user_id = $1 
-          AND m.test_date >= CURRENT_DATE - INTERVAL '3 months'
           ORDER BY m.test_date DESC
         `, [userId]);
+        
+        // DIAGNOSTIC LOGGING - Required for debugging
+        console.log(`=== KEY FINDINGS DEBUG ===`);
+        console.log(`User: ${userId}`);
+        console.log(`Total metrics fetched from DB: ${metricsResult.rows.length}`);
+        console.log(`Systems with data: [${[...new Set(metricsResult.rows.map(m => m.system_name))].join(', ')}]`);
+        console.log(`=========================`);
         
         if (metricsResult.rows.length > 0) {
           const organizedMetrics = this.organizeMetricsBySystem(metricsResult.rows);
@@ -422,13 +439,12 @@ class QueueService {
       try {
         const openaiService = require('./openai');
         
-        // Get user's recent metrics
+        // Get ALL user metrics for comprehensive daily plan - NO TIME LIMIT
         const metricsResult = await pool.query(`
           SELECT m.*, hs.name as system_name 
           FROM metrics m
           JOIN health_systems hs ON m.system_id = hs.id
           WHERE m.user_id = $1 
-          AND m.test_date >= CURRENT_DATE - INTERVAL '30 days'
           ORDER BY m.test_date DESC
         `, [userId]);
 
@@ -439,6 +455,13 @@ class QueueService {
           AND response_date >= CURRENT_DATE - INTERVAL '7 days'
           ORDER BY response_date DESC
         `, [userId]);
+
+        // DIAGNOSTIC LOGGING - Required for debugging
+        console.log(`=== DAILY PLAN DEBUG (uploadQueue) ===`);
+        console.log(`User: ${userId}`);
+        console.log(`Total metrics fetched from DB: ${metricsResult.rows.length}`);
+        console.log(`Systems with data: [${[...new Set(metricsResult.rows.map(m => m.system_name))].join(', ')}]`);
+        console.log(`=====================================`);
 
         const userMetrics = this.organizeMetricsBySystem(metricsResult.rows);
         const recentData = {
@@ -576,15 +599,21 @@ class QueueService {
     const { userId } = data;
 
     try {
-      // Get user's recent metrics
+      // Get ALL user metrics for comprehensive daily plan - NO TIME LIMIT
       const metricsResult = await pool.query(`
         SELECT m.*, hs.name as system_name 
         FROM metrics m
         JOIN health_systems hs ON m.system_id = hs.id
         WHERE m.user_id = $1 
-        AND m.test_date >= CURRENT_DATE - INTERVAL '30 days'
         ORDER BY m.test_date DESC
       `, [userId]);
+
+      // DIAGNOSTIC LOGGING - Required for debugging
+      console.log(`=== DAILY PLAN DIRECT PROCESSING DEBUG ===`);
+      console.log(`User: ${userId}`);
+      console.log(`Total metrics fetched from DB: ${metricsResult.rows.length}`);
+      console.log(`Systems with data: [${[...new Set(metricsResult.rows.map(m => m.system_name))].join(', ')}]`);
+      console.log(`=========================================`);
 
       // Get recent questionnaire responses
       const responsesResult = await pool.query(`

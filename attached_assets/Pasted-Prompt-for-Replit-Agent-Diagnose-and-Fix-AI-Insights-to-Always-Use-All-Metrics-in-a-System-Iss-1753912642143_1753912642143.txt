@@ -1,0 +1,82 @@
+Prompt for Replit Agent – Diagnose and Fix AI Insights to Always Use All Metrics in a System
+
+⸻
+
+Issue
+
+In the drill‑down (e.g., Cardiovascular system):
+	•	Key Metrics and Additional Metrics tables show several out‑of‑range values.
+	•	However, AI insights (per‑system and Key Findings) still say “all metrics are within normal ranges.”
+
+This strongly suggests that AI recomputation is not using all metrics.
+It likely uses only metrics from the most recent upload or cached payload, instead of the full set of metrics currently stored in the database.
+
+⸻
+
+Required Behavior
+
+On every AI recomputation (triggered by metric edits or uploads):
+
+1. Fetch the Complete Dataset
+	•	Query the metrics table for all metrics for that user and that biological system.
+	•	Do not rely on:
+	•	Cached payloads from ai_outputs_log
+	•	Only the latest uploaded file
+	•	In-memory request data
+
+2. Use These Metrics as the Only Source of Truth
+	•	Per‑system AI insights
+	•	Key Findings summary
+	•	Daily Plan
+
+⸻
+
+Diagnostic Logging (Required)
+
+Before calling generate_system_insights, generate_key_findings, or generate_daily_plan:
+	•	Log the total count of metrics fetched from the database for that user/system.
+	•	Also log the names (or IDs) of all fetched metrics to confirm the exact dataset being passed to GPT.
+	•	Compare this count and list to the metrics shown in the drill‑down tables.
+	•	If these counts/lists differ, the dataset passed to GPT is incomplete.
+
+⸻
+
+Technical Changes
+
+Backend:
+	•	Modify the data retrieval logic inside:
+	•	generate_system_insights(system_id)
+	•	generate_key_findings()
+	•	generate_daily_plan()
+	•	Ensure these functions always:
+	1.	Query the DB for the latest metric_records for that user/system.
+	2.	Pass the fresh dataset into the GPT prompt.
+	3.	Never use stale ai_outputs_log data as input.
+
+Frontend:
+	•	No change needed; it already refreshes after new insights are saved.
+
+⸻
+
+Testing Steps
+	1.	Go to a system drill‑down (e.g., Cardiovascular).
+	2.	Confirm that several metrics appear out of range in the tables.
+	3.	Trigger recomputation (by editing a metric or uploading a lab file).
+	4.	Check backend logs:
+	•	Confirm the logged count and metric names/IDs match exactly what’s shown in the UI.
+	5.	Verify that:
+	•	AI insights now analyze all metrics for the system (not just the latest upload).
+
+⸻
+
+Expected Outcome
+	•	AI insights always analyze all metrics for that system currently stored in the database.
+	•	Any incomplete or cached dataset will be replaced by the live dataset.
+	•	Debug logging confirms the exact metrics being used for each recomputation.
+
+⸻
+
+Key Instruction
+
+Always query the metrics table for the full dataset at runtime and log both the count and metric names/IDs before recomputation. Do not use cached inputs or the last upload payload.
+
