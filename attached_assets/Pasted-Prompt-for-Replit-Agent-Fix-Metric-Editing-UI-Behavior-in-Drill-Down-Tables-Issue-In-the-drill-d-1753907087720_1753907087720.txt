@@ -1,0 +1,75 @@
+Prompt for Replit Agent – Fix Metric Editing UI/Behavior in Drill‑Down Tables
+
+Issue
+
+In the drill‑down screen (e.g., Cardiovascular System), when a user edits a metric in the Key Metrics or Additional Metrics tables:
+	1.	The user clicks the pencil icon to edit.
+	2.	They modify the metric name, value, units, or date, then click the checkmark to save.
+	3.	A toast appears:
+“Metric updated. AI insights and daily plan refreshed.”
+	4.	Problems:
+	•	The table row does not refresh with the edited data.
+	•	The name, value, units, and/or date stay the same as before.
+	•	When entering edit mode, the date field defaults to today’s date instead of the existing metric date.
+
+⸻
+
+Required Behavior
+
+1. Update the Table Immediately After Edits
+	•	After saving (clicking the checkmark):
+	•	Update the metric row in the UI immediately with the edited values:
+	•	Metric Name (canonical name selected from dropdown)
+	•	Value
+	•	Units
+	•	Date
+	•	These values must come from the updated record returned by the backend.
+	•	The UI should not require a manual page refresh.
+
+⸻
+
+2. Correct Default Date in Edit Mode
+	•	When the pencil icon is clicked and the edit form opens:
+	•	Pre-populate the date picker with the existing metric date (from the metric record).
+	•	Do not default to today’s date unless the metric has no existing date.
+
+⸻
+
+Implementation Details
+
+Frontend:
+	1.	Inline Editing Behavior:
+	•	When the user clicks save (checkmark):
+	•	Send the updated data to the backend.
+	•	Use the API response to update the table row immediately.
+	•	Close edit mode after success.
+	2.	Date Picker Default:
+	•	Populate the edit form’s date picker with the metric’s current stored date.
+	•	Only fall back to today if there is no stored date.
+	3.	UI Consistency:
+	•	The toast message still appears as it does now.
+	•	Ensure the row update is instant so the user sees the new values without reloading.
+
+⸻
+
+Backend:
+	•	Ensure the edit endpoint returns the updated metric record (including name, value, units, date) in the response.
+	•	This ensures the frontend can update the row immediately.
+
+⸻
+
+Expected Outcome
+	•	After clicking save, the table row instantly reflects:
+	•	The new metric name
+	•	The updated value
+	•	The updated units
+	•	The correct updated date
+	•	When entering edit mode, the current date of the metric (not today) appears by default.
+
+⸻
+
+Acceptance Criteria
+	1.	Edit a metric → save → row updates instantly in Key Metrics and Additional Metrics tables.
+	2.	When opening the edit form, the date picker shows the existing date for that metric.
+	3.	Toast still appears as before.
+	4.	No manual page refresh is needed for changes to appear.

@@ -402,15 +402,15 @@ class HealthDashboard {
         `;
 
         return `
-            <tr id="metric-row-${metric.id}">
+            <tr id="metric-row-${metric.id}" data-metric-id="${metric.id}" data-test-date="${metric.test_date}">
                 <td style="color: #FFFFFF; font-weight: 600;">
-                    ${metric.metric_name}
+                    <span class="metric-name">${metric.metric_name}</span>
                     ${needsReview ? '<span class="needs-review-indicator">NEEDS REVIEW</span>' : ''}
                 </td>
-                <td style="color: #FFFFFF;">${metric.metric_value || '-'}</td>
+                <td style="color: #FFFFFF;" class="metric-value">${metric.metric_value || '-'}${metric.metric_unit ? ` ${metric.metric_unit}` : ''}</td>
                 <td style="color: #EBEBF5;">${metric.metric_unit || '-'}</td>
-                <td style="color: #EBEBF5;">${metric.test_date ? new Date(metric.test_date).toLocaleDateString() : '-'}</td>
-                <td>${rangeBlock}</td>
+                <td style="color: #EBEBF5;" class="metric-date">${metric.test_date ? new Date(metric.test_date).toLocaleDateString() : '-'}</td>
+                <td class="range-indicator">${rangeBlock}</td>
                 <td>
                     <i class="fas fa-edit metric-edit-icon" onclick="healthDashboard.editMetric(${metric.id})" title="Edit metric"></i>
                 </td>
@@ -496,6 +496,67 @@ class HealthDashboard {
         }, 15000); // Poll every 15 seconds
     }
 
+    updateMetricRowInTable(metricId, updatedMetric) {
+        // Find the metric row and update it with new values
+        const metricRow = document.querySelector(`[data-metric-id="${metricId}"]`);
+        if (!metricRow) return;
+
+        // Update the metric name cell
+        const nameCell = metricRow.querySelector('.metric-name');
+        if (nameCell) {
+            nameCell.textContent = updatedMetric.metric_name;
+        }
+
+        // Update the value cell
+        const valueCell = metricRow.querySelector('.metric-value');
+        if (valueCell) {
+            const valueText = updatedMetric.metric_value;
+            const unitText = updatedMetric.metric_unit ? ` ${updatedMetric.metric_unit}` : '';
+            valueCell.innerHTML = `${valueText}${unitText}`;
+        }
+
+        // Update the date cell
+        const dateCell = metricRow.querySelector('.metric-date');
+        if (dateCell) {
+            const testDate = new Date(updatedMetric.test_date);
+            dateCell.textContent = testDate.toLocaleDateString();
+        }
+
+        // Update the data attributes for future edits
+        metricRow.dataset.testDate = updatedMetric.test_date;
+
+        // Update the range indicator if needed
+        const rangeCell = metricRow.querySelector('.range-indicator');
+        if (rangeCell && updatedMetric.reference_range) {
+            // Recalculate range status
+            const value = parseFloat(updatedMetric.metric_value);
+            const rangeMatch = updatedMetric.reference_range.match(/([0-9.]+)\s*-\s*([0-9.]+)/);
+            
+            if (rangeMatch && !isNaN(value)) {
+                const [, min, max] = rangeMatch;
+                const minVal = parseFloat(min);
+                const maxVal = parseFloat(max);
+                
+                let status = 'in-range';
+                let icon = 'check-circle';
+                let color = 'success';
+                
+                if (value < minVal) {
+                    status = 'below-range';
+                    icon = 'arrow-down-circle';
+                    color = 'warning';
+                } else if (value > maxVal) {
+                    status = 'above-range';
+                    icon = 'arrow-up-circle';
+                    color = 'danger';
+                }
+                
+                rangeCell.innerHTML = `<i class="fas fa-${icon} text-${color}"></i>`;
+                rangeCell.title = `${status.replace('-', ' ').toUpperCase()}: ${updatedMetric.reference_range}`;
+            }
+        }
+    }
+
     refreshCurrentSystemView() {
         // Get current system from modal title
         const modalTitle = document.getElementById('systemModalTitle');
@@ -554,6 +615,16 @@ class HealthDashboard {
         const editRow = document.getElementById(`edit-row-${metricId}`);
         const editForm = document.getElementById(`edit-form-${metricId}`);
         
+        // Pre-populate the date field with the existing metric date
+        const metricRow = document.querySelector(`[data-metric-id="${metricId}"]`);
+        if (metricRow) {
+            const existingDate = metricRow.dataset.testDate;
+            const dateInput = document.getElementById(`edit-date-${metricId}`);
+            if (dateInput && existingDate) {
+                dateInput.value = existingDate;
+            }
+        }
+        
         editRow.classList.remove('d-none');
         editForm.classList.remove('d-none');
     }
@@ -583,6 +654,9 @@ class HealthDashboard {
 
             if (response.success) {
                 this.showToast('success', 'Metric Updated', 'Metric updated. AI insights and daily plan refreshed.');
+                
+                // Update the metric row in the table immediately
+                this.updateMetricRowInTable(metricId, response.metric);
                 
                 // Hide edit form  
                 this.cancelMetricEdit(metricId);
