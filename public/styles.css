@@ -780,6 +780,80 @@ p {
     overflow: hidden;
 }
 
+/* Full-width drill-down modal */
+.system-drill-down .modal-dialog {
+    max-width: 95vw;
+    width: 95vw;
+    margin: 1rem auto;
+}
+
+.system-drill-down .modal-content {
+    min-height: 85vh;
+}
+
+/* Inline editing styles */
+.metric-edit-icon {
+    width: 16px;
+    height: 16px;
+    color: #007AFF;
+    cursor: pointer;
+    margin-left: 8px;
+    opacity: 0.7;
+    transition: all 0.2s ease;
+}
+
+.metric-edit-icon:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.metric-edit-form {
+    background: rgba(0, 122, 255, 0.08);
+    border: 1px solid rgba(0, 122, 255, 0.2);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 8px 0;
+}
+
+.metric-edit-form .form-control,
+.metric-edit-form .form-select {
+    background: #2C2C2E;
+    border: 1px solid rgba(142, 142, 147, 0.3);
+    color: #FFFFFF;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.metric-edit-form .form-control:focus,
+.metric-edit-form .form-select:focus {
+    background: #2C2C2E;
+    border-color: #007AFF;
+    color: #FFFFFF;
+    box-shadow: 0 0 0 0.2rem rgba(0, 122, 255, 0.25);
+}
+
+.metric-edit-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.metric-edit-buttons .btn {
+    font-size: 12px;
+    padding: 4px 12px;
+}
+
+.needs-review-indicator {
+    background: rgba(255, 159, 10, 0.15);
+    color: #FF9F0A;
+    border: 1px solid rgba(255, 159, 10, 0.3);
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
 .modal-header {
     background: var(--bg-elevated);
     border-bottom: 1px solid var(--border-light);

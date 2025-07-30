@@ -421,4 +421,71 @@ router.get('/reference', async (req, res) => {
   }
 });
 
+// Update specific metric
+router.put('/:metricId', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const metricId = req.params.metricId;
+    const { metric_name, metric_value, metric_unit, test_date, source } = req.body;
+
+    // Update the metric
+    const updateResult = await req.db.query(`
+      UPDATE metrics 
+      SET metric_name = $1, metric_value = $2, metric_unit = $3, test_date = $4, 
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $5 AND user_id = $6
+      RETURNING *
+    `, [metric_name, metric_value, metric_unit, test_date, metricId, userId]);
+
+    if (updateResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Metric not found or unauthorized'
+      });
+    }
+
+    const updatedMetric = updateResult.rows[0];
+
+    // Re-map to health system if metric name changed
+    if (metric_name !== updatedMetric.metric_name) {
+      const systemId = healthSystemsService.mapMetricToSystem(metric_name);
+      const isKeyMetric = healthSystemsService.isKeyMetric(systemId, metric_name);
+      
+      if (systemId) {
+        await req.db.query(`
+          UPDATE metrics 
+          SET system_id = $1, is_key_metric = $2
+          WHERE id = $3
+        `, [systemId, isKeyMetric, metricId]);
+      }
+    }
+
+    // Log the edit for future learning
+    await req.db.query(`
+      INSERT INTO ai_outputs_log (user_id, output_type, prompt, response, model_version)
+      VALUES ($1, $2, $3, $4, $5)
+    `, [
+      userId,
+      'metric_edit',
+      `User edited metric: ${updatedMetric.metric_name} -> ${metric_name}`,
+      JSON.stringify({ original: updatedMetric, updated: req.body }),
+      'user_edit'
+    ]);
+
+    res.json({
+      success: true,
+      message: 'Metric updated successfully',
+      metric: updatedMetric
+    });
+
+  } catch (error) {
+    console.error('Update metric error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update metric',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

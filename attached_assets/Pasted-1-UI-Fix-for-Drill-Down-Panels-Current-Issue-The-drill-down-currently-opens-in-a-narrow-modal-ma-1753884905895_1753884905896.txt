@@ -1,0 +1,134 @@
+1. UI Fix for Drill‑Down Panels
+
+Current Issue:
+The drill‑down currently opens in a narrow modal, making metrics, normalizer, and editing UI hard to read.
+
+Required Fix:
+	•	Keep the navigation exactly as is. Do not change how users open or close drill‑downs.
+	•	Widen the panel only:
+	•	Make the drill‑down panel span the full page width (same width as the dashboard).
+	•	Give enough horizontal space for metrics, graphs, and editing tools.
+	•	Optional two-column layout:
+	•	Left column: Metrics list with enhanced range bars
+	•	Right column: AI insights, trend graphs, and upload history
+
+Result:
+The drill‑down will remain part of the same navigation flow but will look full-width, Apple/Calm-style, clean, and much easier to use.
+
+⸻
+
+2. Improved Normalizer Module
+
+Pipeline:
+
+Stage A – Pre-processing
+	1.	Lowercase text
+	2.	Remove punctuation, hyphens, brackets, quotes
+	3.	Expand abbreviations (e.g., “chol” → “cholesterol”)
+	4.	Tokenize text
+
+Stage B – Alias & Dictionary Matching
+	•	Use a system-specific alias dictionary.
+	•	Example for Cardiovascular:
+	•	“ldl cholesterol”, “ldl-c”, “ldl (“bad” cholesterol)” → LDL Cholesterol
+	•	“hdl”, “good cholesterol” → HDL Cholesterol
+	•	Do not allow cross-system matches.
+
+Stage C – Fuzzy Matching
+	•	Compute similarity (Levenshtein/Jaro-Winkler).
+	•	Threshold: ≥ 0.85
+	•	Add +0.05 if units match.
+	•	Penalize extra terms like “calculated” or “direct” unless part of an alias.
+
+Stage D – Final Decision
+	•	Exact alias match → accept
+	•	Fuzzy match ≥ threshold (adjusted) → accept
+	•	Else → mark as Needs Review
+
+Stage E – Negative Qualifier Filter
+	•	Block matches where qualifiers change meaning (e.g., “LDL particle number” ≠ “LDL cholesterol”).
+
+⸻
+
+3. Editable Metric System (User Fix for Mismatches)
+
+UI Behavior:
+	•	Add a pencil icon next to each metric row.
+	•	On click, open inline editing with fields:
+	1.	Metric name – Dropdown (limited to metrics in that system)
+	2.	Units – Dropdown (valid units for that metric)
+	3.	Date – Date picker
+	•	When the user saves changes:
+	•	Update only that user’s data (private to their account).
+	•	Refresh the dashboard for that user.
+	•	Immediately re-run AI insights and daily plan generation for that specific system.
+	•	Show a confirmation toast/banner:
+	•	“Metric updated. AI insights and daily plan refreshed.”
+	•	The toast auto-dismisses after ~3 seconds and does not block interaction.
+
+⸻
+
+Implementation Details
+
+Backend:
+	•	Store both original text and user-edited canonical values.
+	•	Use canonical values for tile colors and AI insights.
+	•	Edits are per-user and do not affect other users.
+	•	After each edit, trigger:
+	1.	Regeneration of system-specific AI insights
+	2.	A new daily plan calculation
+	•	Over time, aggregate user edits to improve alias dictionaries.
+
+Data Model:
+
+metric_record {
+  id,
+  user_id,
+  upload_id,
+  system_id,
+  original_text,
+  canonical_metric_id,
+  value,
+  units,
+  date,
+  source: "AI" | "User Edited"
+}
+
+
+⸻
+
+Why This Works
+	•	Handles 80–90% of metric matching automatically.
+	•	Users can quickly correct mismatches when AI gets it wrong.
+	•	AI insights and daily plans update immediately after a correction.
+	•	Confirmation feedback reassures users.
+
+⸻
+
+Prompt for Replit Agent
+
+Update the drill‑down implementation as follows:
+	1.	Do not change the navigation flow. Keep how drill‑downs open/close the same.
+	2.	Widen the drill‑down panel to full page width (same as the dashboard).
+	•	Optional: Use a two-column layout:
+	•	Left: Metrics list with enhanced range bars
+	•	Right: AI insights, trend graphs, and upload history
+	3.	Add inline editing for metrics:
+	•	Pencil icon next to each metric row
+	•	Editable fields: Metric name (dropdown for that system), Units (dropdown for that metric), Date (date picker)
+	•	On save:
+	•	Update only that user’s data
+	•	Refresh dashboard for that user
+	•	Immediately regenerate AI insights and the daily plan for that system
+	•	Display a confirmation toast/banner (auto-dismiss after 3s):
+“Metric updated. AI insights and daily plan refreshed.”
+	4.	Implement an improved normalizer module:
+	•	Pre-processing (lowercase, remove punctuation, expand abbreviations)
+	•	Alias dictionary matching (per-system)
+	•	Fuzzy matching (≥0.85) with unit bias (+0.05)
+	•	Negative qualifier filtering (“particle number” ≠ “cholesterol”)
+	5.	If parsing fails or is uncertain:
+	•	Mark the metric as Needs Review
+	•	Allow manual user fixes through inline editing
+	6.	Store both original text and user-edited canonical values. All edits are private to that user.
+

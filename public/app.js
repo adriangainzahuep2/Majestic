@@ -226,7 +226,7 @@ class HealthDashboard {
 
         body.innerHTML = `
             <div class="row">
-                <div class="col-md-8">
+                <div class="col-lg-8">
                     <!-- Key Metrics -->
                     <div class="card mb-4">
                         <div class="card-header" style="background: #007AFF; color: #FFFFFF;">
@@ -236,7 +236,7 @@ class HealthDashboard {
                         </div>
                         <div class="card-body">
                             ${systemData.keyMetrics.length > 0 ? 
-                                this.renderMetricsTable(systemData.keyMetrics) :
+                                this.renderMetricsTable(systemData.keyMetrics, systemData.system) :
                                 '<p style="color: #EBEBF5;">No key metrics available</p>'
                             }
                         </div>
@@ -251,14 +251,14 @@ class HealthDashboard {
                         </div>
                         <div class="card-body">
                             ${systemData.nonKeyMetrics.length > 0 ? 
-                                this.renderMetricsTable(systemData.nonKeyMetrics) :
+                                this.renderMetricsTable(systemData.nonKeyMetrics, systemData.system) :
                                 '<p style="color: #EBEBF5;">No additional metrics available</p>'
                             }
                         </div>
                     </div>
                 </div>
 
-                <div class="col-md-4">
+                <div class="col-lg-4">
                     <!-- AI Insights -->
                     <div class="card mb-4 insights-panel">
                         <div class="card-header">
@@ -271,6 +271,30 @@ class HealthDashboard {
                                 this.renderSystemInsights(systemData.insights) :
                                 '<p style="color: #EBEBF5;">No insights available yet. Upload health data to generate AI insights.</p>'
                             }
+                        </div>
+                    </div>
+
+                    <!-- Upload History -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0" style="color: #FFFFFF;">
+                                <i class="fas fa-history me-2"></i>Recent Uploads
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <p style="color: #EBEBF5; font-size: 13px;">Upload history for this system will appear here.</p>
+                        </div>
+                    </div>
+
+                    <!-- Trends Preview -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0" style="color: #FFFFFF;">
+                                <i class="fas fa-chart-line me-2"></i>Trends
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <p style="color: #EBEBF5; font-size: 13px;">Trend graphs for key metrics will appear here.</p>
                         </div>
                     </div>
                 </div>
@@ -287,7 +311,7 @@ class HealthDashboard {
         });
     }
 
-    renderMetricsTable(metrics) {
+    renderMetricsTable(metrics, systemData) {
         return `
             <div class="table-responsive">
                 <table class="table table-sm">
@@ -298,18 +322,20 @@ class HealthDashboard {
                             <th style="color: #FFFFFF; background-color: #2C2C2E;">Unit</th>
                             <th style="color: #FFFFFF; background-color: #2C2C2E;">Date</th>
                             <th style="color: #FFFFFF; background-color: #2C2C2E;">Range Analysis</th>
+                            <th style="color: #FFFFFF; background-color: #2C2C2E;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${metrics.map(metric => this.renderMetricRow(metric)).join('')}
+                        ${metrics.map(metric => this.renderMetricRow(metric, systemData)).join('')}
                     </tbody>
                 </table>
             </div>
         `;
     }
 
-    renderMetricRow(metric) {
+    renderMetricRow(metric, systemData) {
         const metricMatch = window.metricUtils ? window.metricUtils.findMetricMatch(metric.metric_name) : null;
+        const needsReview = !metricMatch || metric.needs_review;
         
         let rangeBlock = '';
         if (metricMatch) {
@@ -337,13 +363,62 @@ class HealthDashboard {
             `;
         }
 
+        const editForm = `
+            <div class="metric-edit-form d-none" id="edit-form-${metric.id}">
+                <div class="row">
+                    <div class="col-md-4">
+                        <label class="form-label" style="color: #FFFFFF; font-size: 12px;">Metric Name</label>
+                        <select class="form-select" id="edit-metric-${metric.id}">
+                            ${this.generateMetricOptions(systemData, metric.metric_name)}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" style="color: #FFFFFF; font-size: 12px;">Value</label>
+                        <input type="number" class="form-control" id="edit-value-${metric.id}" value="${metric.metric_value || ''}" step="0.01">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" style="color: #FFFFFF; font-size: 12px;">Unit</label>
+                        <select class="form-select" id="edit-unit-${metric.id}">
+                            ${this.generateUnitOptions(metricMatch, metric.metric_unit)}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" style="color: #FFFFFF; font-size: 12px;">Date</label>
+                        <input type="date" class="form-control" id="edit-date-${metric.id}" value="${metric.test_date || ''}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" style="color: #FFFFFF; font-size: 12px;">&nbsp;</label>
+                        <div class="metric-edit-buttons">
+                            <button class="btn btn-success btn-sm" onclick="healthDashboard.saveMetricEdit(${metric.id})">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            <button class="btn btn-secondary btn-sm" onclick="healthDashboard.cancelMetricEdit(${metric.id})">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
         return `
-            <tr>
-                <td style="color: #FFFFFF; font-weight: 600;">${metric.metric_name}</td>
+            <tr id="metric-row-${metric.id}">
+                <td style="color: #FFFFFF; font-weight: 600;">
+                    ${metric.metric_name}
+                    ${needsReview ? '<span class="needs-review-indicator">NEEDS REVIEW</span>' : ''}
+                </td>
                 <td style="color: #FFFFFF;">${metric.metric_value || '-'}</td>
                 <td style="color: #EBEBF5;">${metric.metric_unit || '-'}</td>
                 <td style="color: #EBEBF5;">${metric.test_date ? new Date(metric.test_date).toLocaleDateString() : '-'}</td>
                 <td>${rangeBlock}</td>
+                <td>
+                    <i class="fas fa-edit metric-edit-icon" onclick="healthDashboard.editMetric(${metric.id})" title="Edit metric"></i>
+                </td>
+            </tr>
+            <tr id="edit-row-${metric.id}" class="d-none">
+                <td colspan="6">
+                    ${editForm}
+                </td>
             </tr>
         `;
     }
@@ -358,6 +433,94 @@ class HealthDashboard {
             tooltip += `\nSource: ${metricData.source}`;
         }
         return tooltip;
+    }
+
+    generateMetricOptions(systemData, currentMetric) {
+        const metricsData = window.metricUtils?.metricsData || [];
+        const systemMetrics = metricsData.filter(m => m.system === systemData.name);
+        
+        let options = `<option value="${currentMetric}">${currentMetric}</option>`;
+        
+        systemMetrics.forEach(metric => {
+            if (metric.metric !== currentMetric) {
+                options += `<option value="${metric.metric}">${metric.metric}</option>`;
+            }
+        });
+        
+        return options;
+    }
+
+    generateUnitOptions(metricMatch, currentUnit) {
+        const commonUnits = ['mg/dL', 'mmHg', 'g/dL', '%', 'U/L', 'ng/mL', 'pg/mL', 'μg/L', 'IU/mL', 'beats/min', 'L/min'];
+        
+        let options = `<option value="${currentUnit || ''}">${currentUnit || 'Select unit'}</option>`;
+        
+        if (metricMatch && metricMatch.units && metricMatch.units !== currentUnit) {
+            options += `<option value="${metricMatch.units}">${metricMatch.units} (recommended)</option>`;
+        }
+        
+        commonUnits.forEach(unit => {
+            if (unit !== currentUnit && (!metricMatch || unit !== metricMatch.units)) {
+                options += `<option value="${unit}">${unit}</option>`;
+            }
+        });
+        
+        return options;
+    }
+
+    editMetric(metricId) {
+        const editRow = document.getElementById(`edit-row-${metricId}`);
+        const editForm = document.getElementById(`edit-form-${metricId}`);
+        
+        editRow.classList.remove('d-none');
+        editForm.classList.remove('d-none');
+    }
+
+    cancelMetricEdit(metricId) {
+        const editRow = document.getElementById(`edit-row-${metricId}`);
+        const editForm = document.getElementById(`edit-form-${metricId}`);
+        
+        editRow.classList.add('d-none');
+        editForm.classList.add('d-none');
+    }
+
+    async saveMetricEdit(metricId) {
+        try {
+            const metricName = document.getElementById(`edit-metric-${metricId}`).value;
+            const metricValue = document.getElementById(`edit-value-${metricId}`).value;
+            const metricUnit = document.getElementById(`edit-unit-${metricId}`).value;
+            const testDate = document.getElementById(`edit-date-${metricId}`).value;
+
+            const response = await this.apiCall(`/metrics/${metricId}`, 'PUT', {
+                metric_name: metricName,
+                metric_value: parseFloat(metricValue),
+                metric_unit: metricUnit,
+                test_date: testDate,
+                source: 'User Edited'
+            });
+
+            if (response.success) {
+                this.showToast('success', 'Metric Updated', 'Metric updated. AI insights and daily plan refreshed.');
+                
+                // Hide edit form
+                this.cancelMetricEdit(metricId);
+                
+                // Refresh the current system view
+                const systemTitle = document.getElementById('systemModalTitle').textContent;
+                const systemId = systemTitle.match(/(\d+)/)?.[1]; // Extract system ID if available
+                
+                if (systemId) {
+                    setTimeout(() => {
+                        this.showSystemDetails(systemId);
+                    }, 1000);
+                }
+            } else {
+                throw new Error(response.message || 'Failed to update metric');
+            }
+        } catch (error) {
+            console.error('Error updating metric:', error);
+            this.showToast('error', 'Update Failed', error.message);
+        }
     }
 
     renderSystemInsights(insights) {
@@ -856,4 +1019,5 @@ function copyToClipboard(text) {
 let app;
 document.addEventListener('DOMContentLoaded', () => {
     app = new HealthDashboard();
+    window.healthDashboard = app; // Make globally accessible
 });
