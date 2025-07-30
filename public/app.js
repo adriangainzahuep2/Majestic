@@ -6,6 +6,8 @@ class HealthDashboard {
         this.user = null;
         this.dashboard = null;
         this.systemsData = new Map();
+        this.isRefreshingInsights = false;
+        this.insightsPollingInterval = null;
         
         this.init();
     }
@@ -436,9 +438,22 @@ class HealthDashboard {
     }
 
     showInsightsRefreshing() {
+        // Prevent multiple spinners by checking if already refreshing
+        if (this.isRefreshingInsights) {
+            return;
+        }
+        
+        this.isRefreshingInsights = true;
+        
         // Add refreshing indicator to insights panels
         const insightsPanels = document.querySelectorAll('.insights-panel .card-body');
         insightsPanels.forEach(panel => {
+            // Remove any existing refreshing indicators first
+            const existingRefreshing = panel.querySelector('.insights-refreshing');
+            if (existingRefreshing) {
+                existingRefreshing.remove();
+            }
+            
             const refreshingDiv = document.createElement('div');
             refreshingDiv.className = 'text-center py-3 insights-refreshing';
             refreshingDiv.innerHTML = `
@@ -450,6 +465,9 @@ class HealthDashboard {
     }
 
     hideInsightsRefreshing() {
+        // Reset the refreshing state
+        this.isRefreshingInsights = false;
+        
         // Remove refreshing indicators
         const refreshingDivs = document.querySelectorAll('.insights-refreshing');
         refreshingDivs.forEach(div => div.remove());
@@ -501,10 +519,31 @@ class HealthDashboard {
         const metricRow = document.querySelector(`[data-metric-id="${metricId}"]`);
         if (!metricRow) return;
 
-        // Update the metric name cell
-        const nameCell = metricRow.querySelector('.metric-name');
+        // Check if this metric has a valid canonical match to remove "Needs Review"
+        const metricMatch = window.metricUtils ? window.metricUtils.findMetricMatch(updatedMetric.metric_name) : null;
+        const needsReview = !metricMatch || updatedMetric.needs_review;
+
+        // Update the metric name cell and remove "Needs Review" badge if metric is now valid
+        const nameCell = metricRow.querySelector('td:first-child');
         if (nameCell) {
-            nameCell.textContent = updatedMetric.metric_name;
+            const metricNameSpan = nameCell.querySelector('.metric-name');
+            if (metricNameSpan) {
+                metricNameSpan.textContent = updatedMetric.metric_name;
+            }
+            
+            // Remove existing "Needs Review" indicator
+            const existingIndicator = nameCell.querySelector('.needs-review-indicator');
+            if (existingIndicator) {
+                existingIndicator.remove();
+            }
+            
+            // Add "Needs Review" indicator only if still needed
+            if (needsReview) {
+                const indicator = document.createElement('span');
+                indicator.className = 'needs-review-indicator';
+                indicator.textContent = 'NEEDS REVIEW';
+                nameCell.appendChild(indicator);
+            }
         }
 
         // Update the value cell (show value with unit)
@@ -533,9 +572,8 @@ class HealthDashboard {
 
         // Update the range indicator using existing metric utilities
         const rangeCell = metricRow.querySelector('.range-indicator');
-        if (rangeCell && window.metricUtils) {
-            const metricMatch = window.metricUtils.findMetricMatch(updatedMetric.metric_name);
-            if (metricMatch && updatedMetric.metric_value) {
+        if (rangeCell && window.metricUtils && metricMatch) {
+            if (updatedMetric.metric_value) {
                 const status = window.metricUtils.calculateStatus(
                     updatedMetric.metric_value, 
                     metricMatch.normalRangeMin, 
@@ -560,6 +598,14 @@ class HealthDashboard {
                     </div>
                 `;
             }
+        } else if (rangeCell) {
+            // No range data available
+            rangeCell.innerHTML = `
+                <div class="metric-range-block">
+                    <div class="metric-status-chip no-data">No data</div>
+                    <div style="color: #8E8E93; font-size: 11px; margin-top: 4px;">Reference range not available</div>
+                </div>
+            `;
         }
     }
 

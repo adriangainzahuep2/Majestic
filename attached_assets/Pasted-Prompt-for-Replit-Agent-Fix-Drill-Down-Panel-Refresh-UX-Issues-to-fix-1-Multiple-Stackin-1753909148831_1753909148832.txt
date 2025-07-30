@@ -1,0 +1,64 @@
+Prompt for Replit Agent – Fix Drill‑Down Panel Refresh UX
+
+⸻
+
+Issues to fix:
+
+⸻
+
+1. Multiple Stacking Spinners
+
+Current behavior:
+When multiple metrics are edited in quick succession (while AI insights are still refreshing), the panel displays multiple “Refreshing insights…” spinners stacked one below another—one for each edit.
+
+Required fix:
+	•	Use a single panel-level loading state for AI insights.
+	•	When the first edit triggers AI recomputation:
+	•	Set isRefreshingInsights = true.
+	•	Suppress additional spinner instances for subsequent edits while this flag is true.
+	•	When the backend finishes recomputation and updated insights are received:
+	•	Replace stale insights with the new text.
+	•	Reset isRefreshingInsights = false.
+	•	At all times there should be exactly one spinner, no matter how many edits happen during an ongoing refresh.
+
+⸻
+
+2. “Needs Review” Badge Does Not Clear After Edit
+
+Current behavior:
+When a metric row is in Needs Review state and the user edits it (selects a known metric, updates value/units/date, and saves):
+	•	The backend updates successfully.
+	•	The table row stays in “Needs Review” state until the page is reloaded.
+
+Required fix:
+	•	After a successful edit (200 OK):
+	•	Use the backend’s updated metric record to immediately update the row in local React state.
+	•	If the returned record has a valid canonical_metric_id, remove the “Needs Review” badge immediately (no refresh required).
+
+⸻
+
+Backend Requirements
+	•	Ensure the edit endpoint returns the updated metric record with:
+	•	canonical_metric_id
+	•	name
+	•	value
+	•	units
+	•	date
+	•	The frontend must:
+	1.	Replace the stale table row with the updated data.
+	2.	Remove “Needs Review” if applicable.
+	3.	Maintain the single-spinner refresh behavior described above.
+
+⸻
+
+Expected Outcome
+	1.	Editing multiple metrics in succession:
+	•	Shows only one loading spinner for AI insights.
+	•	Insights refresh once and replace the content after recomputation completes.
+	2.	After editing a “Needs Review” metric:
+	•	The row immediately shows the updated name/value/units/date.
+	•	The “Needs Review” badge disappears instantly.
+
+⸻
+
+This fix will eliminate spinner stacking and ensure immediate UI state updates after metric edits.
