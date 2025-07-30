@@ -1,0 +1,191 @@
+Here is the **maximally clear and corrected version** of your final prompt for Replit Agent, ensuring it explicitly imports the `description` field if it exists and uses it in the tooltip:
+
+---
+
+## **PROMPT FOR REPLIT AGENT (FINAL)**
+
+### **0) OBJECTIVE (what to build)**
+
+In each System drill‑down page (13 systems total), render two tables:
+
+* **Key Metrics**
+* **Additional Metrics**
+
+Current columns per row (already exist): Metric (name) · Result (value) · Units · Date Taken.
+
+**Change:**
+
+* Add a new block to the right of “Date Taken” that contains:
+
+  1. A status chip: **Low / Normal / High** (or **No data**)
+  2. A **Micro Range Bar** (green‑only window representing the normal range)
+  3. A neutral caption: **Normal range: X–Y units**
+  4. An **info ("i") icon** next to the caption. On hover/tap, show a tooltip that includes:
+
+     * A plain‑language explanation of the metric (**from the `description` field, if available**)
+     * The source of the normal range (**from the `source` field**)
+
+Leave a little horizontal padding before this new block so the row remains visually balanced.
+
+---
+
+### **1) DATA CONTRACT (reference normal ranges)**
+
+Source: attached Excel with these exact columns:
+
+* Column A: System
+* Column B: Metric
+* Column D: Normal Range Min
+* Column E: Normal Range Max
+* Column F: Units
+* Column G: Source
+* Column H: Description (**optional; may not currently exist in Excel**)
+
+Map to camelCase and commit to `src/data/metrics.json`:
+
+```ts
+export type MetricRecord = {
+  system: string;            // Column A "System"
+  metric: string;            // Column B "Metric"
+  normalRangeMin: number;    // Column D "Normal Range Min"
+  normalRangeMax: number;    // Column E "Normal Range Max"
+  units: string;             // Column F "Units" (trimmed; allow "" if blank)
+  source: string;            // Column G "Source" (trimmed; allow "" if blank)
+  description?: string;      // Column H "Description" (trimmed; allow "" if blank)
+};
+```
+
+**Data rules:**
+
+* Trim all string values.
+* Parse `normalRangeMin` and `normalRangeMax` as numbers.
+* If `units`, `source`, or `description` are missing or blank, set them to `""`.
+* **If Column H does not exist**, still include `description` as an optional key in the JSON.
+
+---
+
+### **2) TECH & STYLE**
+
+* React + TypeScript + TailwindCSS
+* No new runtime dependencies (do not add UI libraries)
+* Aesthetic: **Apple Health + Calm** — minimal, premium, rounded corners, soft shadow, high contrast, no heavy borders, no clutter
+
+---
+
+### **3) FILES TO ADD / MODIFY**
+
+#### **A) `src/data/metrics.json`**
+
+* Commit a clean JSON array of `MetricRecord` created from Excel columns A/B/D/E/F/G and optional H.
+
+---
+
+#### **B) `src/lib/metricMatching.ts`**
+
+*(No changes from the original prompt)*
+
+---
+
+#### **C) `src/components/MicroRangeRow.tsx` (range UI)**
+
+*(No changes from the original prompt)*
+
+---
+
+#### **D) `src/components/MetricInfoTooltip.tsx` (NEW)**
+
+```tsx
+type MetricInfoTooltipProps = {
+  metricName: string;
+  description?: string;
+  source: string;
+  normalRangeMin: number;
+  normalRangeMax: number;
+  units: string;
+};
+
+export function MetricInfoTooltip({
+  metricName,
+  description,
+  source,
+  normalRangeMin,
+  normalRangeMax,
+  units
+}: MetricInfoTooltipProps) {
+  return (
+    <div className="text-sm text-gray-900 p-2 max-w-xs">
+      <p className="font-medium mb-1">{metricName}</p>
+      {description && <p className="mb-2">{description}</p>}
+      <p className="text-xs text-gray-600">
+        Normal range: {normalRangeMin}–{normalRangeMax}{units ? ` ${units}` : ""}
+      </p>
+      {source && <p className="text-xs text-gray-500 mt-1">Source: {source}</p>}
+    </div>
+  );
+}
+```
+
+---
+
+#### **E) `src/pages/SystemDrillDown.tsx`**
+
+* Render an **i-icon** next to the "Normal range" caption.
+* On hover/tap, show the `MetricInfoTooltip` populated with:
+
+  * `description` (if present)
+  * `source` (always)
+  * Normal range min/max and units
+
+---
+
+### **4) ACCEPTANCE CRITERIA**
+
+* `metrics.json` includes `system`, `metric`, `normalRangeMin`, `normalRangeMax`, `units`, `source`, and optional `description`.
+* Each row in the UI includes the i-icon tooltip.
+* Tooltip content matches:
+
+  * Metric name
+  * Description (if present)
+  * Normal range (X–Y units)
+  * Source
+* Tooltip design matches Calm/Apple Health style.
+
+---
+
+### **5) EXAMPLES**
+
+**Tooltip with description:**
+
+```
+LDL Cholesterol
+
+A measure of low-density lipoproteins ("bad cholesterol").
+High levels can increase heart disease risk.
+
+Normal range: 0–99 mg/dL
+Source: CDC Guidelines 2024
+```
+
+**Tooltip without description:**
+
+```
+LDL Cholesterol
+
+Normal range: 0–99 mg/dL
+Source: CDC Guidelines 2024
+```
+
+---
+
+### **6) DEFINITION OF DONE**
+
+* `metrics.json` correctly imports the optional `description` field if it exists in Excel (Column H).
+* If Column H does not exist, the `description` key remains optional and is simply omitted in JSON records.
+* Tooltip UI adapts gracefully when `description` is missing.
+* No extra runtime dependencies, clean and minimal UI.
+
+---
+
+👉 **This version is maximally clear for Replit Agent**: it guarantees that `description` is imported if it exists and that the tooltip displays the information consistently.
+
+Do you want me to **merge this final build prompt with the Data Import prompt** into a single all-in-one instruction so you only have to send one command to Replit Agent? Or do you prefer keeping them separate?

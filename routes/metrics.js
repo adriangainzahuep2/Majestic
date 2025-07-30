@@ -393,4 +393,32 @@ router.get('/export/:format', async (req, res) => {
   }
 });
 
+// Get reference metrics data
+router.get('/reference', async (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    
+    const metricsPath = path.join(__dirname, '../src/data/metrics.json');
+    
+    if (!fs.existsSync(metricsPath)) {
+      return res.status(404).json({
+        error: 'Reference metrics data not found',
+        message: 'metrics.json file does not exist'
+      });
+    }
+    
+    const metricsData = JSON.parse(fs.readFileSync(metricsPath, 'utf8'));
+    
+    res.json(metricsData);
+    
+  } catch (error) {
+    console.error('Get reference metrics error:', error);
+    res.status(500).json({
+      error: 'Failed to load reference metrics',
+      message: error.message
+    });
+  }
+});
+
 module.exports = router;

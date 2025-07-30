@@ -277,7 +277,14 @@ class HealthDashboard {
             </div>
         `;
 
-        new bootstrap.Modal(modal).show();
+        const modalInstance = new bootstrap.Modal(modal);
+        modalInstance.show();
+        
+        // Initialize tooltips after modal is shown
+        modal.addEventListener('shown.bs.modal', () => {
+            const tooltipTriggerList = modal.querySelectorAll('[data-bs-toggle="tooltip"]');
+            const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+        });
     }
 
     renderMetricsTable(metrics) {
@@ -290,21 +297,67 @@ class HealthDashboard {
                             <th style="color: #FFFFFF; background-color: #2C2C2E;">Value</th>
                             <th style="color: #FFFFFF; background-color: #2C2C2E;">Unit</th>
                             <th style="color: #FFFFFF; background-color: #2C2C2E;">Date</th>
+                            <th style="color: #FFFFFF; background-color: #2C2C2E;">Range Analysis</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${metrics.map(metric => `
-                            <tr>
-                                <td style="color: #FFFFFF; font-weight: 600;">${metric.metric_name}</td>
-                                <td style="color: #FFFFFF;">${metric.metric_value || '-'}</td>
-                                <td style="color: #EBEBF5;">${metric.metric_unit || '-'}</td>
-                                <td style="color: #EBEBF5;">${metric.test_date ? new Date(metric.test_date).toLocaleDateString() : '-'}</td>
-                            </tr>
-                        `).join('')}
+                        ${metrics.map(metric => this.renderMetricRow(metric)).join('')}
                     </tbody>
                 </table>
             </div>
         `;
+    }
+
+    renderMetricRow(metric) {
+        const metricMatch = window.metricUtils ? window.metricUtils.findMetricMatch(metric.metric_name) : null;
+        
+        let rangeBlock = '';
+        if (metricMatch) {
+            const status = window.metricUtils.calculateStatus(metric.metric_value, metricMatch.normalRangeMin, metricMatch.normalRangeMax);
+            const statusClass = status.toLowerCase().replace(' ', '-');
+            const rangeBar = window.metricUtils.generateMicroRangeBar(metric.metric_value, metricMatch.normalRangeMin, metricMatch.normalRangeMax);
+            
+            rangeBlock = `
+                <div class="metric-range-block">
+                    <div class="metric-status-chip ${statusClass}">${status}</div>
+                    ${rangeBar}
+                    <div class="normal-range-caption">
+                        Normal range: ${metricMatch.normalRangeMin}–${metricMatch.normalRangeMax}${metricMatch.units ? ` ${metricMatch.units}` : ''}
+                        <span class="info-icon" data-metric="${metric.metric_name}" data-bs-toggle="tooltip" 
+                              title="${this.generateTooltipTitle(metricMatch, metric.metric_name)}">i</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            rangeBlock = `
+                <div class="metric-range-block">
+                    <div class="metric-status-chip no-data">No data</div>
+                    <div style="color: #8E8E93; font-size: 11px; margin-top: 4px;">Reference range not available</div>
+                </div>
+            `;
+        }
+
+        return `
+            <tr>
+                <td style="color: #FFFFFF; font-weight: 600;">${metric.metric_name}</td>
+                <td style="color: #FFFFFF;">${metric.metric_value || '-'}</td>
+                <td style="color: #EBEBF5;">${metric.metric_unit || '-'}</td>
+                <td style="color: #EBEBF5;">${metric.test_date ? new Date(metric.test_date).toLocaleDateString() : '-'}</td>
+                <td>${rangeBlock}</td>
+            </tr>
+        `;
+    }
+
+    generateTooltipTitle(metricData, metricName) {
+        let tooltip = metricName;
+        if (metricData.description) {
+            tooltip += `\n\n${metricData.description}`;
+        }
+        tooltip += `\n\nNormal range: ${metricData.normalRangeMin}–${metricData.normalRangeMax}${metricData.units ? ` ${metricData.units}` : ''}`;
+        if (metricData.source) {
+            tooltip += `\nSource: ${metricData.source}`;
+        }
+        return tooltip;
     }
 
     renderSystemInsights(insights) {

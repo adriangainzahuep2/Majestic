@@ -40,6 +40,34 @@ app.use((req, res, next) => {
   next();
 });
 
+// Public route for reference metrics data (no auth required)
+app.get('/api/metrics/reference', (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    
+    const metricsPath = path.join(__dirname, 'src/data/metrics.json');
+    
+    if (!fs.existsSync(metricsPath)) {
+      return res.status(404).json({
+        error: 'Reference metrics data not found',
+        message: 'metrics.json file does not exist'
+      });
+    }
+    
+    const metricsData = JSON.parse(fs.readFileSync(metricsPath, 'utf8'));
+    
+    res.json(metricsData);
+    
+  } catch (error) {
+    console.error('Get reference metrics error:', error);
+    res.status(500).json({
+      error: 'Failed to load reference metrics',
+      message: error.message
+    });
+  }
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/uploads', authMiddleware, uploadRoutes);
