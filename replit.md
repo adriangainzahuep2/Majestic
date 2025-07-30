@@ -33,7 +33,13 @@ The frontend is a **vanilla JavaScript SPA** served as static files:
 - **Daily plan generation** with personalized health recommendations
 - **Structured JSON outputs** for consistent data handling
 
-### Recent Changes (July 29, 2025)
+### Recent Changes (July 30, 2025)
+- **✓ Clinical metrics data import** - Parsed Excel file with 126 clinical metrics across 12 body systems
+- **✓ Structured metrics database** - Created `src/data/metrics.json` with normalized data format
+- **✓ Comprehensive metric coverage** - Cardiovascular (29), Endocrine (14), Urinary (14), Nervous (11), and 8 other systems
+- **✓ Production-ready data structure** - MetricRecord type with system, metric, ranges, units, and sources
+
+### Previous Changes (July 29, 2025)
 - **✓ Fixed all contrast issues** - White text clearly visible in dark mode, proper navbar contrast
 - **✓ Updated branding to "Majestic"** - Replaced "Health" with "Majestic" throughout the app
 - **✓ New minimalist "Rising Sun over Horizon" icon** - Clean circle above horizontal line with warm orange/gold gradients
