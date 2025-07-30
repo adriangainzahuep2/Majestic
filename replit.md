@@ -34,6 +34,10 @@ The frontend is a **vanilla JavaScript SPA** served as static files:
 - **Structured JSON outputs** for consistent data handling
 
 ### Recent Changes (July 30, 2025)
+- **✓ Enhanced AI insights system** - Updated OpenAI prompts with structured medical analysis format for better clinical assessments
+- **✓ Fixed database schema** - Added missing 'updated_at' column to ai_outputs_log table for proper cache management
+- **✓ Improved drill-down UX** - Fixed multiple spinner stacking and "Needs Review" badge clearing after edits
+- **✓ Complete inline editing** - Real-time table updates with proper date handling and immediate UI feedback
 - **✓ Cost-optimized AI insights refresh** - Smart recomputation system triggers GPT calls only when necessary (key metrics vs non-key)
 - **✓ Batched processing** - 60-second batching window prevents excessive API calls from rapid edits
 - **✓ Asynchronous refresh system** - "Refreshing insights..." indicators with automatic panel updates

@@ -314,29 +314,48 @@ Return JSON in this format:
   // Generate per-system insights
   async generateSystemInsights(systemName, systemMetrics, historicalData) {
     try {
-      const prompt = `Analyze the ${systemName} health system based on current metrics and historical trends.
+      // Format metrics for the new prompt structure
+      const formattedMetrics = systemMetrics.map(metric => ({
+        metric: metric.metric_name,
+        system: systemName,
+        normalMin: metric.normalRangeMin || metric.reference_range_min || 0,
+        normalMax: metric.normalRangeMax || metric.reference_range_max || 100,
+        value: metric.metric_value,
+        units: metric.metric_unit || metric.units
+      }));
 
-Current Metrics:
-${JSON.stringify(systemMetrics, null, 2)}
+      const prompt = `You are a medical AI system analyzing one biological system (${systemName}) using lab metrics.
 
-Historical Data:
-${JSON.stringify(historicalData, null, 2)}
+Input:
+${JSON.stringify(formattedMetrics, null, 2)}
 
-Return JSON analysis:
+Analyze these metrics following this format:
+
+Your Tasks:
+1. Analyze Metrics in Context - Evaluate all metrics for this system together, not in isolation
+2. Assign an Overall System Status - Choose exactly one: Optimal, Mild Concern, At Risk, High Risk  
+3. Generate a Plain-Language Summary
+4. For Each Out-of-Range Metric (if any): Provide metric name, value vs range, definition, implication, recommendations
+5. Practical Recommendations (2-5 total)
+
+Return JSON in this exact format:
 {
-  "system_name": "${systemName}",
-  "overall_status": "excellent|good|fair|concerning|critical",
-  "key_findings": ["finding1", "finding2"],
-  "recommendations": [
+  "system_status": "Optimal|Mild Concern|At Risk|High Risk",
+  "summary_insight": "Concise system-level explanation",
+  "out_of_range_metrics": [
     {
-      "action": "specific_recommendation",
-      "rationale": "scientific_reasoning",
-      "timeline": "immediate|short_term|long_term"
+      "metric_name": "string",
+      "value_and_range": "value units vs. normalMin–normalMax units",
+      "definition": "What the metric measures",
+      "implication": "What being out of range could indicate",
+      "recommendations": "Specific steps to bring it back to normal"
     }
   ],
-  "trend_analysis": "improving|stable|declining|insufficient_data",
-  "risk_factors": ["factor1", "factor2"],
-  "next_steps": ["step1", "step2"]
+  "recommendations": [
+    "Recommendation 1",
+    "Recommendation 2",
+    "Recommendation 3"
+  ]
 }`;
 
       const response = await openai.chat.completions.create({
@@ -344,7 +363,7 @@ Return JSON analysis:
         messages: [
           {
             role: "system",
-            content: "You are a medical AI specializing in health system analysis. Provide evidence-based insights and recommendations."
+            content: "You are a medical AI system analyzing biological systems using lab metrics. Base your evaluation strictly on value vs. normalMin/normalMax. Remain neutral, evidence-based, and professional. Do not provide a diagnosis—focus on risk assessment and actionable guidance."
           },
           {
             role: "user",

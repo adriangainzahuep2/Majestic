@@ -740,42 +740,74 @@ class HealthDashboard {
     }
 
     renderSystemInsights(insights) {
+        // Handle both old and new insight formats
+        const systemStatus = insights.system_status || insights.overall_status;
+        const summaryInsight = insights.summary_insight || insights.key_findings?.join('. ');
+        const outOfRangeMetrics = insights.out_of_range_metrics || [];
+        const recommendations = insights.recommendations || [];
+
+        // Map status to badge color
+        const statusColor = {
+            'Optimal': 'success',
+            'excellent': 'success',
+            'Mild Concern': 'primary', 
+            'good': 'primary',
+            'At Risk': 'warning',
+            'fair': 'warning',
+            'High Risk': 'danger',
+            'concerning': 'danger',
+            'critical': 'danger'
+        }[systemStatus] || 'secondary';
+
         return `
             <div class="mb-3">
-                <span class="badge bg-${insights.overall_status === 'excellent' ? 'success' : 
-                    insights.overall_status === 'good' ? 'primary' :
-                    insights.overall_status === 'fair' ? 'warning' : 'danger'}">${insights.overall_status}</span>
+                <span class="badge bg-${statusColor} mb-2" style="font-size: 0.9rem;">${systemStatus}</span>
+                ${summaryInsight ? `<div style="color: #FFFFFF; margin-top: 8px; line-height: 1.4;">${summaryInsight}</div>` : ''}
             </div>
             
-            ${insights.key_findings && insights.key_findings.length > 0 ? `
+            ${outOfRangeMetrics && outOfRangeMetrics.length > 0 ? `
                 <div class="mb-3">
-                    <h6 style="color: #FFFFFF;">Key Findings:</h6>
+                    <h6 style="color: #FFFFFF; font-size: 0.9rem; margin-bottom: 12px;">
+                        <i class="fas fa-exclamation-triangle text-warning me-2"></i>Metrics Needing Attention:
+                    </h6>
+                    ${outOfRangeMetrics.map(metric => `
+                        <div class="mb-3" style="background: rgba(255,193,7,0.1); padding: 12px; border-radius: 8px; border-left: 3px solid #ffc107;">
+                            <div style="color: #FFFFFF; font-weight: 600; font-size: 0.9rem;">${metric.metric_name}</div>
+                            <div style="color: #ffc107; font-size: 0.85rem; margin: 4px 0;">${metric.value_and_range}</div>
+                            <div style="color: #EBEBF5; font-size: 0.8rem; line-height: 1.3;">
+                                ${metric.definition} ${metric.implication}
+                            </div>
+                            ${metric.recommendations ? `
+                                <div style="color: #FFFFFF; font-size: 0.8rem; margin-top: 6px; font-style: italic;">
+                                    💡 ${metric.recommendations}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            ` : ''}
+
+            ${recommendations && recommendations.length > 0 ? `
+                <div class="mb-3">
+                    <h6 style="color: #FFFFFF; font-size: 0.9rem; margin-bottom: 12px;">
+                        <i class="fas fa-lightbulb text-info me-2"></i>Recommendations:
+                    </h6>
                     <ul class="list-unstyled">
-                        ${insights.key_findings.map(finding => `
-                            <li class="mb-1" style="color: #FFFFFF;">
-                                <i class="fas fa-check-circle text-info me-2"></i>
-                                ${finding}
+                        ${recommendations.slice(0, 5).map(rec => `
+                            <li class="mb-2" style="color: #FFFFFF; font-size: 0.85rem; line-height: 1.3;">
+                                <i class="fas fa-arrow-right text-info me-2" style="font-size: 0.7rem;"></i>
+                                ${typeof rec === 'string' ? rec : (rec.action || rec)}
+                                ${typeof rec === 'object' && rec.rationale ? 
+                                    `<div style="color: #ABABAB; font-size: 0.75rem; margin-left: 16px; margin-top: 2px;">${rec.rationale}</div>` : ''
+                                }
                             </li>
                         `).join('')}
                     </ul>
                 </div>
             ` : ''}
 
-            ${insights.recommendations && insights.recommendations.length > 0 ? `
-                <div class="mb-3">
-                    <h6 style="color: #FFFFFF;">Recommendations:</h6>
-                    <ul class="list-unstyled">
-                        ${insights.recommendations.slice(0, 3).map(rec => `
-                            <li class="mb-2">
-                                <div style="color: #FFFFFF; font-weight: 600;">${rec.action}</div>
-                                <small style="color: #EBEBF5;">${rec.rationale}</small>
-                            </li>
-                        `).join('')}
-                    </ul>
-                </div>
-            ` : ''}
-
-            <small style="color: #ABABAB;">
+            <small style="color: #8E8E93; font-size: 0.75rem;">
+                <i class="fas fa-clock me-1"></i>
                 Generated: ${insights.generated_at ? new Date(insights.generated_at).toLocaleString() : 'Recently'}
             </small>
         `;
