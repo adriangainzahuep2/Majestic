@@ -1,0 +1,46 @@
+
+Prompt for Replit Agent – Analysis Only: Should We Add a system_id Column?
+
+⸻
+
+Context
+	•	Current behavior:
+	•	System-level insights are now saved with output_type = 'system_insights'.
+	•	Fetching is done by parsing system_id:X from the prompt column because ai_outputs_log does not have a system_id column.
+	•	Issue:
+	•	This temporary approach fixed Cardiovascular insights but broke other systems (e.g., Immune/Inflammation), as parsing is fragile.
+	•	Goal:
+	•	Evaluate if adding a proper system_id column is the correct long-term fix.
+
+⸻
+
+Analysis Tasks (Do NOT Modify Code or DB)
+	1.	Assess Long-Term Solution
+Is adding a dedicated system_id column to ai_outputs_log the best and most robust solution for system-level insights?
+	•	Would this eliminate the need to parse prompt strings?
+	•	Would this ensure correct insights retrieval for all systems?
+	2.	Identify Potential Side Effects
+Would this schema change break or affect other parts of the application?
+	•	Specifically confirm that global Key Findings and Daily Plan (which use different output_types) are unaffected.
+	3.	Code Impact Assessment
+If a system_id column were added, list all functions, queries, or modules that would need changes:
+	•	Saving logic for system-level insights
+	•	Fetch logic for getLatestSystemInsights
+	•	Any jobs, caching, or background services that currently depend on parsing prompt or using system_insights_<system>.
+	4.	Alternative Solutions
+Are there alternative approaches (without schema changes) that would be as robust and future-proof?
+	5.	Migration Plan (High-Level Only)
+If the schema change is recommended:
+	•	Outline a safe migration plan:
+	•	Schema changes
+	•	Data backfill strategy
+	•	Code changes
+	•	Deployment/testing steps
+	•	Do not implement—just describe.
+
+⸻
+
+Important Instructions
+	•	Do not make any code or database changes.
+	•	Perform static analysis and provide a clear recommendation.
+	•	End result: a detailed report with pros/cons and migration plan (if adding system_id is best).
