@@ -312,14 +312,26 @@ class HealthSystemsService {
         ORDER BY m.test_date DESC, m.is_key_metric DESC
       `, [userId, systemId]);
 
-      // Get cached insights
-      const insightsResult = await pool.query(`
+      // Get cached insights using system_id (with fallback to prompt parsing)
+      let insightsResult = await pool.query(`
         SELECT response, created_at
         FROM ai_outputs_log
-        WHERE user_id = $1 AND output_type = $2 AND prompt = $3
+        WHERE user_id = $1 AND output_type = $2 AND system_id = $3
         ORDER BY created_at DESC
         LIMIT 1
-      `, [userId, 'system_insights', `system_id:${system.id}`]);
+      `, [userId, 'system_insights', system.id]);
+      
+      // Feature flag: Fallback to prompt parsing if system_id lookup fails
+      if (insightsResult.rows.length === 0) {
+        console.log(`[FALLBACK] system_id lookup failed for userId=${userId} systemId=${system.id}, trying prompt parsing`);
+        insightsResult = await pool.query(`
+          SELECT response, created_at
+          FROM ai_outputs_log
+          WHERE user_id = $1 AND output_type = $2 AND prompt = $3
+          ORDER BY created_at DESC
+          LIMIT 1
+        `, [userId, 'system_insights', `system_id:${system.id}`]);
+      }
 
       const insights = insightsResult.rows.length > 0 ? 
         JSON.parse(insightsResult.rows[0].response) : null;

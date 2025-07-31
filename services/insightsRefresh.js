@@ -128,10 +128,10 @@ class InsightsRefreshService {
             let paramCount = 2;
 
             if (systemId) {
-                // Invalidate system-specific insights
-                conditions.push(`(output_type = 'system_insights' AND prompt LIKE $${paramCount})`);
-                params.push(`%system_id:${systemId}%`);
-                paramCount++;
+                // Invalidate system-specific insights using system_id (with fallback to prompt parsing)
+                conditions.push(`(output_type = 'system_insights' AND (system_id = $${paramCount} OR prompt LIKE $${paramCount + 1}))`);
+                params.push(systemId, `%system_id:${systemId}%`);
+                paramCount += 2;
             }
 
             if (includeGlobal) {

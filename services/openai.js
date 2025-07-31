@@ -393,24 +393,25 @@ Return JSON in this exact format:
   }
 
   // Log AI output for tracking
-  async logAIOutput(userId, outputType, prompt, response, processingTime) {
+  async logAIOutput(userId, outputType, prompt, response, processingTime, systemId = null) {
     const { pool } = require('../database/schema');
     
     try {
       console.log("[DEBUG SAVE PREP]", {
         userId,
         outputType,
+        systemId,
         payloadKeys: Object.keys(response || {}),
       });
       
       const sql = `
-        INSERT INTO ai_outputs_log (user_id, output_type, prompt, response, model_version, processing_time_ms)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO ai_outputs_log (user_id, output_type, prompt, response, model_version, processing_time_ms, system_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id, created_at
       `;
-      const params = [userId, outputType, prompt, JSON.stringify(response), 'gpt-4o', processingTime];
+      const params = [userId, outputType, prompt, JSON.stringify(response), 'gpt-4o', processingTime, systemId];
       
-      console.log("[DEBUG SAVE SQL]", { sql, params: [userId, outputType, prompt, '[response]', 'gpt-4o', processingTime] });
+      console.log("[DEBUG SAVE SQL]", { sql, params: [userId, outputType, prompt, '[response]', 'gpt-4o', processingTime, systemId] });
       
       const saveResult = await pool.query(sql, params);
       

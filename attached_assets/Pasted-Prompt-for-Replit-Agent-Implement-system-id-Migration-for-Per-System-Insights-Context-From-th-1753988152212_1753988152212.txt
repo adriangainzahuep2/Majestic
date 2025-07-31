@@ -1,0 +1,100 @@
+Prompt for Replit Agent – Implement system_id Migration for Per-System Insights
+
+⸻
+
+Context
+
+From the completed analysis, it is safe to migrate ai_outputs_log to use a dedicated system_id column instead of relying on prompt parsing.
+This change will fix stale insights across all systems (e.g., Immune/Inflammation) and future-proof the architecture.
+
+⸻
+
+Phased Implementation – Follow EXACTLY
+
+⸻
+
+Phase 1 – Schema Update
+	1.	Add a new column and index:
+
+ALTER TABLE ai_outputs_log ADD COLUMN system_id INTEGER REFERENCES health_systems(id);
+CREATE INDEX idx_ai_outputs_user_system ON ai_outputs_log(user_id, system_id, output_type);
+
+	•	Column must be nullable (non-breaking).
+
+⸻
+
+Phase 2 – Data Backfill
+
+For existing rows:
+	1.	For output_type = 'system_insights' with prompt = 'system_id:X', parse X and populate system_id.
+	2.	For legacy output_type = 'system_insights_<system>', map to the correct system_id, normalize output_type to 'system_insights', and preserve created_at.
+
+Add logging for rows updated to confirm correctness.
+Do not remove prompt-based lookups yet.
+
+⸻
+
+Phase 3 – Code Changes (Behind Feature Flag)
+	1.	Save Logic
+Pass systemId directly to INSERT into ai_outputs_log.
+	2.	Fetch Logic
+Replace prompt parsing with:
+
+SELECT response, created_at
+FROM ai_outputs_log
+WHERE user_id = $1
+  AND output_type = 'system_insights'
+  AND system_id = $2
+ORDER BY created_at DESC
+LIMIT 1;
+
+	3.	Cache Invalidation & Jobs
+Update all background jobs and cache logic to use system_id instead of parsing prompt.
+
+Important:
+Keep a feature flag/rollback mechanism so that prompt parsing remains a fallback until fully verified.
+
+⸻
+
+Phase 4 – Cleanup
+
+After staging verification:
+	1.	Remove all legacy prompt-based logic.
+	2.	Remove any unused indexes or string parsing.
+
+⸻
+
+Verification Steps
+	1.	Run the full test suite after each phase. Stop immediately if any test fails.
+	2.	After Phase 3:
+	•	Manually edit metrics in Cardiovascular and Immune/Inflammation systems.
+	•	Verify insights refresh immediately.
+	3.	Confirm that:
+	•	Per-system insights update correctly.
+	•	Global insights (daily_plan, key_findings) continue to work as before.
+
+⸻
+
+Rollback Safety
+	•	If regressions appear:
+	•	Revert Phase 3 code changes (keep schema changes).
+	•	Legacy prompt parsing remains available as a fallback.
+
+⸻
+
+Acceptance Criteria
+	•	Insights refresh correctly for all 13 systems.
+	•	Global insights unaffected.
+	•	Tests pass.
+	•	Logs confirm system_id filtering instead of prompt parsing.
+
+⸻
+
+Important:
+	•	Implement these phases incrementally.
+	•	Do not combine phases into a single commit.
+	•	After each phase, rerun the test suite.
+
+⸻
+
+Proceed with implementation following these steps.

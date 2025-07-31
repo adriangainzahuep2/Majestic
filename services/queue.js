@@ -752,7 +752,8 @@ class QueueService {
           'system_insights',
           `system_id:${systemId}`,
           insights,
-          0
+          0,
+          systemId
         );
         
         console.log(
@@ -800,10 +801,10 @@ class QueueService {
         const verify = await pool.query(`
           SELECT response, created_at
           FROM ai_outputs_log
-          WHERE user_id = $1 AND output_type = $2 AND prompt = $3
+          WHERE user_id = $1 AND output_type = $2 AND system_id = $3
           ORDER BY created_at DESC
           LIMIT 1
-        `, [userId, fetchOutputType, fetchPrompt]);
+        `, [userId, fetchOutputType, systemId]);
         
         console.log(
           "[DEBUG FETCH RESULT] userId=",
