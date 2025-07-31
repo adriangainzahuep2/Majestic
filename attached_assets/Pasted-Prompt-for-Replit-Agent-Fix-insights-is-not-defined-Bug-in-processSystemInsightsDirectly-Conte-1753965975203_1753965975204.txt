@@ -1,0 +1,79 @@
+Prompt for Replit Agent – Fix insights is not defined Bug in processSystemInsightsDirectly
+
+⸻
+
+Context (From Logs)
+	1.	The recomputation pipeline works correctly:
+	•	[RECOMPUTE TRIGGERED] fires.
+	•	31 metrics are fetched and passed to GPT.
+	•	[GPT OUTPUT RECEIVED] confirms GPT returns valid JSON with High Risk and multiple out‑of‑range metrics.
+	2.	Immediately after [GPT OUTPUT SAVED], the server throws:
+
+[GEN-INSIGHTS ERROR] userId=1 systemId=1 error=insights is not defined
+ReferenceError: insights is not defined
+    at QueueService.processSystemInsightsDirectly (/home/runner/workspace/services/queue.js:753:37)
+
+	3.	Because of this:
+	•	The GPT output is not written to the database.
+	•	The UI continues to display stale insights (e.g., “all metrics normal”).
+
+⸻
+
+Root Cause
+
+In /services/queue.js, inside processSystemInsightsDirectly,
+the variable insights is being referenced without being defined.
+This is likely because the GPT response was never parsed or assigned to insights before it was used.
+
+⸻
+
+Required Fix
+	1.	Open /services/queue.js and locate processSystemInsightsDirectly (around line 753).
+	2.	Before any reference to insights, assign it from the GPT response, for example:
+
+const insights = JSON.parse(gptResponse); // or from gptResult
+
+	3.	Add a log statement immediately before saving:
+
+[INSIGHTS SAVE PAYLOAD] userId=<id> systemId=<id> payload=<JSON.stringify(insights)>
+
+	4.	Save insights to the database as originally intended.
+	5.	Ensure there are no references to insights before it has been defined.
+
+⸻
+
+Acceptance Criteria (Clear and Explicit)
+
+When you run the recomputation after this fix:
+	1.	The ReferenceError: insights is not defined must no longer appear.
+	2.	GPT insights must be successfully saved into ai_outputs_log.
+	3.	After saving, the frontend automatically refreshes and shows the new analysis (e.g., High Risk, out-of-range metrics).
+	4.	Logs must show these lines in order:
+
+[INSIGHTS SAVE PAYLOAD] userId=<id> systemId=<id> payload=...
+[GPT OUTPUT SAVED] userId=<id> systemId=<id>
+[INSIGHTS SAVE CONFIRMED] ai_outputs_log.id=<rowId>
+
+
+
+⸻
+
+Why This Fix Matters
+	•	GPT is returning correct JSON already.
+	•	The only failure is during the save step because of the undefined variable.
+	•	Fixing this ensures that updated insights appear in the UI after every metric edit or lab upload.
+
+⸻
+
+Optional Improvement (REQUIRED FOR DEBUGGING)
+After the save operation, add a final log:
+
+[INSIGHTS SAVE CONFIRMED] ai_outputs_log.id=<rowId>
+
+This will confirm that the database record was successfully updated.
+
+⸻
+
+This prompt provides the exact cause, fix steps, and explicit success criteria so there is no confusion about what needs to change.
+
+"

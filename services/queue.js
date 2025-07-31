@@ -735,8 +735,11 @@ class QueueService {
         console.log(`[GPT OUTPUT RECEIVED] userId=${userId} systemId=${systemId} responseLength=${JSON.stringify(insights).length}`);
         console.log(`RESPONSE=${JSON.stringify(insights, null, 2)}`);
         
+        // Log payload before saving
+        console.log(`[INSIGHTS SAVE PAYLOAD] userId=${userId} systemId=${systemId} payload=${JSON.stringify(insights)}`);
+        
         // Save insights
-        await openaiService.logAIOutput(
+        const saveResult = await openaiService.logAIOutput(
           userId,
           'system_insights',
           `system_id:${systemId}`,
@@ -745,12 +748,15 @@ class QueueService {
         );
         
         console.log(`[GPT OUTPUT SAVED] userId=${userId} systemId=${systemId}`);
+        console.log(`[INSIGHTS SAVE CONFIRMED] ai_outputs_log record saved successfully`);
+        
+        console.log(`Generated system insights for user ${userId}, system ${systemName} (direct processing)`);
+        return { success: true, data: insights };
       } else {
         console.log(`[GEN-INSIGHTS ERROR] userId=${userId} systemId=${systemId} error=No metrics found`);
+        console.log(`Generated system insights for user ${userId}, system ${systemName} (direct processing) - no metrics`);
+        return { success: false, error: 'No metrics found' };
       }
-      
-      console.log(`Generated system insights for user ${userId}, system ${systemName} (direct processing)`);
-      return { success: true, data: insights };
       
     } catch (error) {
       console.error(`[GEN-INSIGHTS ERROR] userId=${userId} systemId=${systemId} error=${error.message}`);
