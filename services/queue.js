@@ -765,6 +765,16 @@ class QueueService {
         console.log(`[GPT OUTPUT SAVED] userId=${userId} systemId=${systemId}`);
         console.log(`[INSIGHTS SAVE CONFIRMED] ai_outputs_log record saved successfully`);
         
+        // Direct DB check after save - show recent rows
+        const recent = await pool.query(`
+          SELECT id, output_type, created_at
+          FROM ai_outputs_log
+          WHERE user_id = $1
+          ORDER BY created_at DESC
+          LIMIT 5
+        `, [userId]);
+        console.log("[DEBUG RECENT ROWS]", recent.rows);
+        
         // Post-save verification: fetch the same insights that were just saved
         const fetchQuery = `
           SELECT response, created_at
@@ -773,6 +783,8 @@ class QueueService {
           ORDER BY created_at DESC
           LIMIT 1
         `;
+        const fetchOutputType = `system_insights_${systemName.toLowerCase()}`;
+        console.log("[DEBUG FETCH FILTER]", { userId, systemId, output_type: fetchOutputType });
         console.log(
           "[DEBUG FETCH QUERY] userId=",
           userId,
@@ -781,10 +793,10 @@ class QueueService {
           "query=",
           fetchQuery,
           "params=",
-          [userId, `system_insights_${systemName.toLowerCase()}`]
+          [userId, fetchOutputType]
         );
         
-        const verify = await pool.query(fetchQuery, [userId, `system_insights_${systemName.toLowerCase()}`]);
+        const verify = await pool.query(fetchQuery, [userId, fetchOutputType]);
         
         console.log(
           "[DEBUG FETCH RESULT] userId=",

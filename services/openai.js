@@ -397,10 +397,25 @@ Return JSON in this exact format:
     const { pool } = require('../database/schema');
     
     try {
-      await pool.query(`
+      console.log("[DEBUG SAVE PREP]", {
+        userId,
+        outputType,
+        payloadKeys: Object.keys(response || {}),
+      });
+      
+      const sql = `
         INSERT INTO ai_outputs_log (user_id, output_type, prompt, response, model_version, processing_time_ms)
         VALUES ($1, $2, $3, $4, $5, $6)
-      `, [userId, outputType, prompt, JSON.stringify(response), 'gpt-4o', processingTime]);
+        RETURNING id, created_at
+      `;
+      const params = [userId, outputType, prompt, JSON.stringify(response), 'gpt-4o', processingTime];
+      
+      console.log("[DEBUG SAVE SQL]", { sql, params: [userId, outputType, prompt, '[response]', 'gpt-4o', processingTime] });
+      
+      const saveResult = await pool.query(sql, params);
+      
+      console.log("[DEBUG SAVE RESULT]", saveResult.rows[0]);
+      
     } catch (error) {
       console.error('Failed to log AI output:', error);
     }

@@ -1,0 +1,134 @@
+Prompt for Replit Agent – Deep Diagnostics for Insights Save/Fetch Mismatch
+
+⸻
+
+Context
+
+From recent logs:
+	1.	Save succeeds:
+[INSIGHTS SAVE CONFIRMED] ai_outputs_log record saved successfully
+	2.	Fetch immediately after save retrieves old data:
+overall_status":"good" (stale)
+	3.	Compare shows mismatch:
+justSavedPayload = At Risk
+fetchedPayload = old stable record
+	4.	Post-save verify returns old data (not what was just saved).
+
+This means:
+The new GPT output is being written but not retrieved by getLatestSystemInsights.
+
+⸻
+
+Possible Root Causes
+	1.	Wrong output_type:
+The save may use output_type='system_insights', while fetch filters for system_insights_cardiovascular.
+	2.	Stale created_at / ordering bug:
+If the update does not set created_at correctly, ORDER BY created_at DESC may select an older record.
+	3.	Transaction/commit issue:
+The save might be done in a transaction that isn’t committed before the immediate fetch.
+
+⸻
+
+Required Diagnostic Additions (NO FIXES)
+
+1. Log During Save
+
+In the function that writes insights to ai_outputs_log, before performing the INSERT/UPDATE:
+
+console.log("[DEBUG SAVE PREP]", {
+  userId,
+  systemId,
+  output_type,
+  payloadKeys: Object.keys(insights),
+});
+
+After executing the INSERT/UPDATE:
+	•	Log the SQL (or ORM query) used, and include:
+	•	user_id
+	•	output_type
+	•	created_at
+	•	id (primary key)
+	•	affectedRows/returning row ID
+
+console.log("[DEBUG SAVE SQL]", { sql, params });
+console.log("[DEBUG SAVE RESULT]", saveResult);
+
+⸻
+
+2. Direct DB Check After Save
+
+Immediately after saving and before calling getLatestSystemInsights, run:
+
+const recent = await db.query(
+  SELECT id, output_type, created_at
+  FROM ai_outputs_log
+  WHERE user_id = $1
+  ORDER BY created_at DESC
+  LIMIT 5
+, [userId]);
+
+console.log("[DEBUG RECENT ROWS]", recent.rows);
+
+This will show whether a new row actually exists, its output_type, and whether created_at is correct.
+
+⸻
+
+3. Log Output Type in Fetch
+
+Inside db.getLatestSystemInsights, before the query:
+
+console.log("[DEBUG FETCH FILTER]", { userId, systemId, output_type });
+
+After running the query, log the SQL and params, and confirm which row was selected.
+
+⸻
+
+4. Compare Saved vs Fetched
+
+Already present, but keep:
+
+console.log("[COMPARE SAVE vs FETCH]", {
+  userId,
+  systemId,
+  justSavedPayload: JSON.stringify(insights).slice(0, 500),
+  fetchedPayload: JSON.stringify(verify).slice(0, 500)
+});
+
+⸻
+
+Expected Results
+	•	If the recent rows log shows the new row under a different output_type,
+→ Fix is to standardize output_type naming.
+	•	If the recent rows log shows the new row has an old created_at or no new row is added,
+→ The bug is in the save query (created_at not updated).
+	•	If the recent rows log shows the new row correctly but fetch still returns old data,
+→ The fetch query’s WHERE/ORDER BY logic is wrong (e.g., wrong output_type).
+	•	If no new row appears at all,
+→ The save isn’t being committed properly.
+
+⸻
+
+Acceptance Criteria
+	•	Add 3 new diagnostic logs:
+	1.	[DEBUG SAVE PREP] + [DEBUG SAVE SQL/RESULT]
+	2.	[DEBUG RECENT ROWS]
+	3.	[DEBUG FETCH FILTER]
+	•	Do not modify any logic or data.
+	•	The purpose is to produce a full audit trail of:
+	•	What is being saved
+	•	Where it is being saved
+	•	Why the fetch does not return the latest record.
+
+⸻
+
+Why This Approach
+
+This approach:
+	•	Fully eliminates guesswork on output_type.
+	•	Ensures ordering (created_at) problems are visible.
+	•	Ensures commit/transaction problems are visible.
+	•	Avoids another round of “add more logs” by giving us a full picture.
+
+⸻
+
+After running this, the logs will tell us exactly why the stale data is being fetched.
