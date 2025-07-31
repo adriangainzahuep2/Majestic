@@ -222,12 +222,23 @@ router.get('/insights/:systemId', async (req, res) => {
       console.log(`[INSIGHTS FOUND] userId=${userId} system=${systemName} generatedAt=${insightsResult.rows[0].created_at}`);
       console.log(`[INSIGHTS CONTENT]`, JSON.stringify(insights, null, 2));
       
-      res.json({
+      const result = {
         insights: {
           ...insights,
           generated_at: insightsResult.rows[0].created_at
         }
-      });
+      };
+      
+      console.log(
+        "[FRONTEND FETCH] userId=",
+        userId,
+        "systemId=",
+        systemId,
+        "returningInsights=",
+        JSON.stringify(result).slice(0, 500)
+      );
+      
+      res.json(result);
     } catch (parseError) {
       console.error('[INSIGHTS PARSE ERROR]', parseError);
       res.status(500).json({ 

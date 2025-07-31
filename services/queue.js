@@ -750,6 +750,23 @@ class QueueService {
         console.log(`[GPT OUTPUT SAVED] userId=${userId} systemId=${systemId}`);
         console.log(`[INSIGHTS SAVE CONFIRMED] ai_outputs_log record saved successfully`);
         
+        // Post-save verification: fetch the same insights that were just saved
+        const verify = await pool.query(`
+          SELECT response, created_at
+          FROM ai_outputs_log
+          WHERE user_id = $1 AND output_type = $2
+          ORDER BY created_at DESC
+          LIMIT 1
+        `, [userId, `system_insights_${systemName.toLowerCase()}`]);
+        console.log(
+          "[POST-SAVE VERIFY] userId=",
+          userId,
+          "systemId=",
+          systemId,
+          "latestInsights=",
+          JSON.stringify(verify.rows[0] || {}).slice(0, 500)
+        );
+        
         console.log(`Generated system insights for user ${userId}, system ${systemName} (direct processing)`);
         return { success: true, data: insights };
       } else {

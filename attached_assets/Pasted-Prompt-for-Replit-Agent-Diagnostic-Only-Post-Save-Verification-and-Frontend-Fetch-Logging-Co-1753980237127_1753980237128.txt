@@ -1,0 +1,101 @@
+Prompt for Replit Agent – Diagnostic Only (Post-Save Verification and Frontend Fetch Logging)
+
+⸻
+
+Context
+	•	Per-system AI insights (e.g., Cardiovascular) recompute correctly.
+	•	Logs already confirm:
+
+[GPT OUTPUT SAVED]
+[INSIGHTS SAVE CONFIRMED]
+
+	•	Problem: After editing a metric, the UI still displays stale insights.
+
+We need to determine if the problem is:
+	1.	Backend – insights are not actually being saved or retrieved correctly, OR
+	2.	Frontend – insights are saved but the UI is not requesting or displaying the updated data.
+
+⸻
+
+Required Diagnostic Changes
+
+Make no functional fixes.
+Only add two log statements as described below.
+
+⸻
+
+1. Add Post-Save Verification (Backend)
+
+In the function generate-system-insights, immediately after:
+
+console.log("[INSIGHTS SAVE CONFIRMED] ai_outputs_log record saved successfully");
+
+Add:
+
+// Post-save verification: fetch the same insights that were just saved
+const verify = await db.getLatestSystemInsights(userId, systemId);
+console.log(
+  "[POST-SAVE VERIFY] userId=",
+  userId,
+  "systemId=",
+  systemId,
+  "latestInsights=",
+  JSON.stringify(verify).slice(0, 500)
+);
+
+Important: Replace db.getLatestSystemInsights with the same query or function that your API uses to return insights to the frontend.
+This guarantees we verify the exact same data path that the frontend depends on.
+
+⸻
+
+2. Add Logging in Frontend Insights Fetch Endpoint
+
+In the API route/controller that serves per-system insights to the frontend (likely /api/insights/system/:systemId), add a log just before returning the result:
+
+console.log(
+  "[FRONTEND FETCH] userId=",
+  userId,
+  "systemId=",
+  systemId,
+  "returningInsights=",
+  JSON.stringify(result).slice(0, 500)
+);
+
+This shows exactly what insights are sent back to the frontend when it requests data.
+
+⸻
+
+Expected Outcome
+	•	If [POST-SAVE VERIFY] shows updated GPT data but [FRONTEND FETCH] never appears:
+→ The frontend is not requesting updated insights (UI bug).
+	•	If [POST-SAVE VERIFY] shows old/stale data:
+→ The save step is failing (backend persistence issue).
+	•	If [FRONTEND FETCH] logs the updated insights but the UI still shows stale text:
+→ The frontend is receiving the new data but not updating state (UI rendering issue).
+
+⸻
+
+Acceptance Criteria
+	1.	Add exactly two logs:
+	•	[POST-SAVE VERIFY] inside generate-system-insights
+	•	[FRONTEND FETCH] in the API endpoint that serves insights
+	2.	Do not modify any other logic, caching, or GPT calls.
+	3.	These logs will make it clear whether the stale insights problem is in:
+	•	Data persistence (backend), or
+	•	Data fetching/refresh (frontend).
+
+⸻
+
+Why This Diagnostic Step Is Best
+	•	A single verification log confirms if the database was updated immediately after save.
+	•	A fetch log confirms whether the frontend is pulling and receiving the latest data.
+	•	This approach provides a full picture with only two logs.
+
+⸻
+
+Important
+
+Do not make any other changes.
+This task is diagnostic-only.
+
+⸻
