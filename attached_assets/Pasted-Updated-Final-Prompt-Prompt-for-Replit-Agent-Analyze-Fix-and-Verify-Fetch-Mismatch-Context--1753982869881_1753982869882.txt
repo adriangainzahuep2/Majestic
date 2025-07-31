@@ -1,0 +1,97 @@
+Updated Final Prompt
+
+Prompt for Replit Agent – Analyze, Fix, and Verify Fetch Mismatch
+
+⸻
+Context
+
+From diagnostics:
+• Save: ai_outputs_log stores per-system insights with
+  output_type = 'system_insights' and a system_id column.
+• Fetch: db.getLatestSystemInsights currently uses
+  output_type = 'system_insights_<system>' (like system_insights_cardiovascular)
+  and does not filter by system_id.
+
+This mismatch causes the UI to always fetch stale insights.
+
+⸻
+Goal
+
+Unify the save and fetch logic:
+• Always use output_type = 'system_insights'
+• Always filter by system_id when retrieving per-system insights
+
+⸻
+Step 1 – Codebase Analysis (No Changes Yet)
+
+1. Search the codebase for:
+   • "system_insights_" (underscore suffix)
+   • "system_insights" (exact string)
+2. Produce a detailed impact report:
+   • Each file and line where these appear
+   • Whether these references are used for:
+       – Per-system insights
+       – Global insights
+       – Other features
+3. Confirm:
+   • That ai_outputs_log has a `system_id` column
+   • That global insights use different output_type values (like 'key_findings', 'daily_plan').
+
+If there is any ambiguity or conflicting usage of system_insights_<system>, STOP and report instead of applying changes.
+
+⸻
+Step 2 – Apply Fix (Only If Safe)
+
+If the analysis confirms it is safe to unify:
+1. Modify db.getLatestSystemInsights (and any similar helper):
+   ```sql
+   SELECT response, created_at
+   FROM ai_outputs_log
+   WHERE user_id = $1
+     AND output_type = 'system_insights'
+     AND system_id = $2
+   ORDER BY created_at DESC
+   LIMIT 1
+
+	2.	Remove any logic that constructs system_insights_<system> dynamically.
+	3.	Ensure all fetch calls for per-system insights pass system_id explicitly.
+	4.	Do NOT change behavior for global insights (key_findings/daily_plan).
+
+If schema or other code conflicts prevent this, STOP and report.
+
+⸻
+Step 3 – Verification
+
+After applying the fix:
+	1.	Run the app’s full test suite.
+	2.	If all tests pass:
+• Log one manual fetch after saving new insights:
+
+[POST-FIX VERIFY] userId=<id> systemId=<id> 
+insights=<fetched JSON>
+
+
+	3.	Confirm:
+• [COMPARE SAVE vs FETCH] payloads now match
+• The UI displays updated insights after editing a metric
+
+⸻
+Acceptance Criteria
+• Per-system insights refresh immediately after edits.
+• Fetch logic is consistent with save logic.
+• All tests pass, proving no regressions.
+• Manual post-fix verify log confirms the new insights are returned.
+
+⸻
+Key Instructions
+• First, perform analysis and confirm no conflicts.
+• If safe, proceed with fix and run tests automatically.
+• If unsafe, STOP and output the detailed analysis instead of making changes.
+
+---
+
+### **Why this version is better**
+1. **Protects global insights** by explicitly requiring confirmation before fixing.
+2. **Adds schema safety** (checks for system_id).
+3. **Adds a final manual log** to confirm the fix works beyond just passing tests.
+4. **Explicit stop conditions** to avoid unsafe changes.

@@ -202,10 +202,10 @@ router.get('/insights/:systemId', async (req, res) => {
     const insightsResult = await req.db.query(`
       SELECT response, created_at
       FROM ai_outputs_log
-      WHERE user_id = $1 AND output_type = $2
+      WHERE user_id = $1 AND output_type = $2 AND prompt = $3
       ORDER BY created_at DESC
       LIMIT 1
-    `, [userId, `system_insights_${systemName.toLowerCase()}`]);
+    `, [userId, 'system_insights', `system_id:${systemId}`]);
 
     console.log(`[INSIGHTS QUERY RESULT] userId=${userId} system=${systemName} cachedInsightsFound=${insightsResult.rows.length > 0}`);
 

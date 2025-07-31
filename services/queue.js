@@ -783,8 +783,9 @@ class QueueService {
           ORDER BY created_at DESC
           LIMIT 1
         `;
-        const fetchOutputType = `system_insights_${systemName.toLowerCase()}`;
-        console.log("[DEBUG FETCH FILTER]", { userId, systemId, output_type: fetchOutputType });
+        const fetchOutputType = 'system_insights';
+        const fetchPrompt = `system_id:${systemId}`;
+        console.log("[DEBUG FETCH FILTER]", { userId, systemId, output_type: fetchOutputType, prompt: fetchPrompt });
         console.log(
           "[DEBUG FETCH QUERY] userId=",
           userId,
@@ -793,10 +794,16 @@ class QueueService {
           "query=",
           fetchQuery,
           "params=",
-          [userId, fetchOutputType]
+          [userId, fetchOutputType, fetchPrompt]
         );
         
-        const verify = await pool.query(fetchQuery, [userId, fetchOutputType]);
+        const verify = await pool.query(`
+          SELECT response, created_at
+          FROM ai_outputs_log
+          WHERE user_id = $1 AND output_type = $2 AND prompt = $3
+          ORDER BY created_at DESC
+          LIMIT 1
+        `, [userId, fetchOutputType, fetchPrompt]);
         
         console.log(
           "[DEBUG FETCH RESULT] userId=",
