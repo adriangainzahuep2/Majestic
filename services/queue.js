@@ -736,6 +736,14 @@ class QueueService {
         console.log(`RESPONSE=${JSON.stringify(insights, null, 2)}`);
         
         // Log payload before saving
+        console.log(
+          "[DEBUG SAVE INIT] userId=",
+          userId,
+          "systemId=",
+          systemId,
+          "payloadToSave=",
+          JSON.stringify(insights).slice(0, 500)
+        );
         console.log(`[INSIGHTS SAVE PAYLOAD] userId=${userId} systemId=${systemId} payload=${JSON.stringify(insights)}`);
         
         // Save insights
@@ -747,17 +755,57 @@ class QueueService {
           0
         );
         
+        console.log(
+          "[DEBUG SAVE COMPLETE] userId=",
+          userId,
+          "systemId=",
+          systemId,
+          "table=ai_outputs_log"
+        );
         console.log(`[GPT OUTPUT SAVED] userId=${userId} systemId=${systemId}`);
         console.log(`[INSIGHTS SAVE CONFIRMED] ai_outputs_log record saved successfully`);
         
         // Post-save verification: fetch the same insights that were just saved
-        const verify = await pool.query(`
+        const fetchQuery = `
           SELECT response, created_at
           FROM ai_outputs_log
           WHERE user_id = $1 AND output_type = $2
           ORDER BY created_at DESC
           LIMIT 1
-        `, [userId, `system_insights_${systemName.toLowerCase()}`]);
+        `;
+        console.log(
+          "[DEBUG FETCH QUERY] userId=",
+          userId,
+          "systemId=",
+          systemId,
+          "query=",
+          fetchQuery,
+          "params=",
+          [userId, `system_insights_${systemName.toLowerCase()}`]
+        );
+        
+        const verify = await pool.query(fetchQuery, [userId, `system_insights_${systemName.toLowerCase()}`]);
+        
+        console.log(
+          "[DEBUG FETCH RESULT] userId=",
+          userId,
+          "systemId=",
+          systemId,
+          "dbResult=",
+          JSON.stringify(verify.rows[0] || {}).slice(0, 500)
+        );
+        
+        console.log(
+          "[COMPARE SAVE vs FETCH] userId=",
+          userId,
+          "systemId=",
+          systemId,
+          "\njustSavedPayload=",
+          JSON.stringify(insights).slice(0, 500),
+          "\nfetchedPayload=",
+          JSON.stringify(verify.rows[0] || {}).slice(0, 500)
+        );
+        
         console.log(
           "[POST-SAVE VERIFY] userId=",
           userId,

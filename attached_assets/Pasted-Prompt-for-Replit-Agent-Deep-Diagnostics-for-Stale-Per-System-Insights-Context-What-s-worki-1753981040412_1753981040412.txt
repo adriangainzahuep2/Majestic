@@ -1,0 +1,159 @@
+Prompt for Replit Agent – Deep Diagnostics for Stale Per‑System Insights
+
+⸻
+
+Context
+	•	What’s working:
+	•	GPT recomputation completes successfully.
+	•	Logs show:
+
+[GPT OUTPUT SAVED]
+[INSIGHTS SAVE CONFIRMED]
+
+
+	•	Problem:
+	•	After saving, the UI still shows old insights (stale text).
+	•	The getLatestSystemInsights function is returning old data instead of the new GPT output.
+
+Goal:
+Add diagnostic logging to determine whether:
+	1.	The save operation works but the fetch query is wrong.
+	2.	The save works, but the frontend isn’t requesting updated insights.
+	3.	The fetch is correct, but the UI fails to refresh.
+
+No functional changes. Logging only.
+
+⸻
+
+Required Diagnostic Changes
+
+1. Log Save Operation (in generate-system-insights)
+
+Right before saving:
+
+console.log(
+  "[DEBUG SAVE INIT] userId=",
+  userId,
+  "systemId=",
+  systemId,
+  "payloadToSave=",
+  JSON.stringify(insights).slice(0, 500)
+);
+
+Immediately after saving to ai_outputs_log (or equivalent):
+
+console.log(
+  "[DEBUG SAVE COMPLETE] userId=",
+  userId,
+  "systemId=",
+  systemId,
+  "savedRecordId=",
+  savedRecord?.id,
+  "table=ai_outputs_log"
+);
+
+
+⸻
+
+2. Add Logging in db.getLatestSystemInsights (or equivalent fetch function)
+
+Before executing the query:
+
+console.log(
+  "[DEBUG FETCH QUERY] userId=",
+  userId,
+  "systemId=",
+  systemId,
+  "query=",
+  query.toString ? query.toString() : "(non-SQL builder)"
+);
+
+(If using raw SQL, log the full SQL string.
+If using an ORM, log the builder string or parameters.)
+
+Immediately after the query runs:
+
+console.log(
+  "[DEBUG FETCH RESULT] userId=",
+  userId,
+  "systemId=",
+  systemId,
+  "dbResult=",
+  JSON.stringify(result).slice(0, 500)
+);
+
+
+⸻
+
+3. Compare Saved vs Fetched (back in generate-system-insights)
+
+Immediately after calling db.getLatestSystemInsights (post-save):
+
+const verify = await db.getLatestSystemInsights(userId, systemId);
+
+console.log(
+  "[COMPARE SAVE vs FETCH] userId=",
+  userId,
+  "systemId=",
+  systemId,
+  "\njustSavedPayload=",
+  JSON.stringify(insights).slice(0, 500),
+  "\nfetchedPayload=",
+  JSON.stringify(verify).slice(0, 500)
+);
+
+This confirms if the fetch query is returning the same record you just saved.
+
+⸻
+
+4. (Optional but Recommended) Log When Frontend Fetches Insights
+
+In the API route that the frontend calls to fetch insights (likely /api/insights/system/:systemId):
+
+console.log(
+  "[FRONTEND FETCH] userId=",
+  userId,
+  "systemId=",
+  systemId,
+  "returningInsights=",
+  JSON.stringify(result).slice(0, 500)
+);
+
+This shows what data is sent back to the UI.
+
+⸻
+
+Expected Diagnostic Outcomes
+	1.	If [COMPARE SAVE vs FETCH] shows a mismatch
+→ Bug is in DB fetch query (likely missing ORDER BY updated_at DESC).
+	2.	If [COMPARE SAVE vs FETCH] shows a match but [FRONTEND FETCH] does not appear
+→ Bug is in the frontend (not requesting updated data).
+	3.	If [FRONTEND FETCH] logs updated data but the UI still shows stale content
+→ Bug is in frontend state management (UI not refreshing).
+
+⸻
+
+Acceptance Criteria
+	•	Add only these logs.
+	•	Do not change business logic or GPT flow.
+	•	Logs must display:
+	1.	Payload written
+	2.	Record ID saved
+	3.	Fetch query used
+	4.	Data fetched from DB immediately after save
+	5.	(Optional) Data returned to frontend
+
+⸻
+
+Why This Is the Best Approach
+	•	Produces a complete end-to-end audit trail of the save → fetch → frontend pipeline.
+	•	Identifies exactly where the stale-data bug is coming from.
+	•	Includes query logging so no second diagnostic round will be needed.
+
+⸻
+
+Important
+
+This task is diagnostic logging only.
+Do not modify logic, caching, or GPT calls.
+
