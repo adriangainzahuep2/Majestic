@@ -21,7 +21,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm install && node server.js"
+args = "npm install && SKIP_GLOBAL_JOBS=true node server.js"
 waitForPort = 5000
 
 [[ports]]

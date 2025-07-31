@@ -1,0 +1,102 @@
+Prompt for Replit Agent – Add SKIP_GLOBAL_JOBS Flag to Disable Global Key Findings & Daily Plan
+
+⸻
+
+Context
+
+Currently, after per-system insights (e.g., Cardiovascular) are saved, the backend always queues global jobs for:
+	•	Key Findings
+	•	Daily Plan
+
+Because these features are not yet implemented, this triggers errors like:
+
+Error generating key findings: TypeError: openaiService.generateKeyFindings is not a function
+
+This makes logs noisy and debugging confusing, even though per-system insights already work correctly.
+
+⸻
+
+Required Change
+
+Goal:
+Introduce a feature flag SKIP_GLOBAL_JOBS.
+When SKIP_GLOBAL_JOBS="true":
+	1.	Do not queue or run global jobs.
+	2.	Add clear logging confirming that global jobs were skipped.
+	3.	Allow per-system insights to work as usual.
+
+⸻
+
+Implementation Instructions
+
+1. Add a startup log
+
+In your server startup file (e.g., server.js):
+
+if (process.env.SKIP_GLOBAL_JOBS === "true") {
+  console.log("[CONFIG] SKIP_GLOBAL_JOBS is ENABLED – Key Findings and Daily Plan will NOT run.");
+} else {
+  console.log("[CONFIG] SKIP_GLOBAL_JOBS is DISABLED – Global jobs will run normally.");
+}
+
+
+⸻
+
+2. Update global job queuing
+
+In /services/insightsRefresh.js or /services/queue.js, find the section that queues global jobs right after system insights are saved:
+
+Current (example):
+
+console.log("[QUEUING GLOBAL JOBS] userId=", userId, "keyFindings=true dailyPlan=true");
+this.queueService.addJob(userId, { keyFindings: true, dailyPlan: true });
+
+Replace it with:
+
+if (process.env.SKIP_GLOBAL_JOBS === "true") {
+  console.log("[GLOBAL JOBS SKIPPED] userId=", userId, 
+              " – Key Findings and Daily Plan recomputation skipped due to SKIP_GLOBAL_JOBS flag.");
+  console.log("[RECOMPUTE COMPLETE] System insights saved successfully – global jobs skipped.");
+} else {
+  console.log("[QUEUING GLOBAL JOBS] userId=", userId, "keyFindings=true dailyPlan=true");
+  this.queueService.addJob(userId, { keyFindings: true, dailyPlan: true });
+}
+
+
+⸻
+
+Behavior After Change
+	•	When SKIP_GLOBAL_JOBS=true:
+	•	Per-system insights (e.g., Cardiovascular) recompute and save as normal.
+	•	Global jobs (Key Findings / Daily Plan) are not queued or processed.
+	•	Logs:
+
+[GLOBAL JOBS SKIPPED] userId=1 – Key Findings and Daily Plan recomputation skipped due to SKIP_GLOBAL_JOBS flag.
+[RECOMPUTE COMPLETE] System insights saved successfully – global jobs skipped.
+
+
+	•	When SKIP_GLOBAL_JOBS=false or not set:
+	•	Existing behavior continues: global jobs are queued and run.
+
+⸻
+
+Acceptance Criteria
+	1.	Editing a metric:
+	•	Per-system AI insights update in real-time.
+	•	No global job errors appear in logs.
+	2.	Logs clearly show when global jobs are skipped.
+	3.	Reversibility:
+	•	Remove or set SKIP_GLOBAL_JOBS=false to restore normal behavior.
+
+⸻
+
+Important Notes
+	•	Do not remove generate-system-insights.
+	•	This change only affects the queuing and execution of global Key Findings and Daily Plan.
+
+⸻
+
+Why This Fix Matters
+	•	This isolates and stabilizes per-system AI insights so you can use and debug them now.
+	•	Global jobs can be re-enabled instantly later (just toggle the flag).
+

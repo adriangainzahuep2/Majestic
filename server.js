@@ -139,6 +139,13 @@ async function startServer() {
     console.log('Initializing queue service...');
     queueService.init();
     
+    // Configuration logging
+    if (process.env.SKIP_GLOBAL_JOBS === "true") {
+      console.log("[CONFIG] SKIP_GLOBAL_JOBS is ENABLED – Key Findings and Daily Plan will NOT run.");
+    } else {
+      console.log("[CONFIG] SKIP_GLOBAL_JOBS is DISABLED – Global jobs will run normally.");
+    }
+    
     // Start the server
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);

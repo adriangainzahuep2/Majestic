@@ -90,16 +90,21 @@ class InsightsRefreshService {
 
             // Queue global refresh jobs if needed
             if (pending.needsGlobal) {
-                console.log(`[QUEUING GLOBAL JOBS] userId=${userId} keyFindings=true dailyPlan=true`);
-                await queueService.addJob('generate-key-findings', {
-                    userId,
-                    priority: 'high'
-                });
+                if (process.env.SKIP_GLOBAL_JOBS === "true") {
+                    console.log(`[GLOBAL JOBS SKIPPED] userId=${userId} – Key Findings and Daily Plan recomputation skipped due to SKIP_GLOBAL_JOBS flag.`);
+                    console.log(`[RECOMPUTE COMPLETE] System insights saved successfully – global jobs skipped.`);
+                } else {
+                    console.log(`[QUEUING GLOBAL JOBS] userId=${userId} keyFindings=true dailyPlan=true`);
+                    await queueService.addJob('generate-key-findings', {
+                        userId,
+                        priority: 'high'
+                    });
 
-                await queueService.addJob('generate-daily-plan', {
-                    userId,
-                    priority: 'high'
-                });
+                    await queueService.addJob('generate-daily-plan', {
+                        userId,
+                        priority: 'high'
+                    });
+                }
             }
 
             console.log(`[REFRESH JOBS QUEUED] userId=${userId} totalSystems=${pending.systems.size} globalJobs=${pending.needsGlobal}`);
