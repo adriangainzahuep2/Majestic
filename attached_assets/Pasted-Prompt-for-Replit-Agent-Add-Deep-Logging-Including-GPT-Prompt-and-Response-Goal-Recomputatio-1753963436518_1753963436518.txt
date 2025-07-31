@@ -1,0 +1,78 @@
+Prompt for Replit Agent – Add Deep Logging (Including GPT Prompt and Response)
+
+⸻
+
+Goal
+Recomputation triggers and cache invalidation are confirmed (we see [REFRESH JOBS QUEUED] in logs).
+However, there are no logs afterward, and AI insights are not updating.
+We need full diagnostic logging inside generate-system-insights to confirm:
+	1.	The data being fetched,
+	2.	The exact GPT prompt sent,
+	3.	The GPT output received,
+	4.	Whether the output is saved correctly.
+
+⸻
+
+Requirements
+
+In the generate-system-insights function:
+	1.	Start of function
+
+[GEN-INSIGHTS START] userId=<userId> systemId=<systemId>
+
+	2.	After fetching metrics from DB
+
+[AI INPUT METRICS] userId=<userId> systemId=<systemId> count=<count>
+metrics=<JSON array of metrics with metric name, value, normalMin, normalMax>
+
+	3.	Right before calling GPT
+Log the full prompt string and the number of metrics:
+
+[GPT CALL INITIATED] userId=<userId> systemId=<systemId> metricsCount=<count>
+PROMPT=<full prompt string sent to GPT>
+
+	4.	After GPT returns successfully
+Log both the length and the raw response text:
+
+[GPT OUTPUT RECEIVED] userId=<userId> systemId=<systemId> responseLength=<len>
+RESPONSE=<raw GPT output>
+
+	5.	After saving GPT output
+
+[GPT OUTPUT SAVED] userId=<userId> systemId=<systemId>
+
+	6.	If any error occurs
+
+[GEN-INSIGHTS ERROR] userId=<userId> systemId=<systemId> error=<error message>
+
+Then rethrow the error.
+
+⸻
+
+Key Notes
+	•	Do not alter any existing business logic.
+	•	These logs are for diagnostics only and will confirm:
+	•	The number of metrics being passed in,
+	•	The exact text GPT sees,
+	•	Whether GPT is returning a valid response,
+	•	Whether the response is saved.
+
+⸻
+
+Expected Outcome
+	•	When recomputation runs, logs will now show:
+	1.	The metrics retrieved from DB.
+	2.	The exact prompt passed to GPT.
+	3.	GPT’s raw response.
+	4.	Confirmation of saving.
+
+This will make it 100% clear whether the problem lies in:
+	•	Dataset not being fetched,
+	•	Wrong/incomplete prompt,
+	•	GPT not returning correct output,
+	•	Or saving/displaying results.
+
+⸻
+
+Important:
+Because this logs full GPT prompts and outputs, ensure logs are only visible in the development console (not sent to clients).

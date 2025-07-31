@@ -537,6 +537,10 @@ class QueueService {
         return await this.processUploadDirectly(data);
       } else if (jobType === 'generate-daily-plan') {
         return await this.processDailyPlanDirectly(data);
+      } else if (jobType === 'generate-system-insights') {
+        return await this.processSystemInsightsDirectly(data);
+      } else if (jobType === 'generate-key-findings') {
+        return await this.processKeyFindingsDirectly(data);
       }
     } catch (error) {
       console.error(`Direct processing error for ${jobType}:`, error);
@@ -668,6 +672,126 @@ class QueueService {
 
     } catch (error) {
       console.error(`Error generating daily plan for user ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  async processSystemInsightsDirectly(data) {
+    const { userId, systemId } = data;
+    
+    try {
+      console.log(`[GEN-INSIGHTS START] userId=${userId} systemId=${systemId}`);
+      
+      const openaiService = require('./openai');
+      
+      // Get system name
+      const systemResult = await pool.query(`
+        SELECT name FROM health_systems WHERE id = $1
+      `, [systemId]);
+      
+      if (systemResult.rows.length === 0) {
+        console.error(`[GEN-INSIGHTS ERROR] userId=${userId} systemId=${systemId} error=System not found`);
+        return;
+      }
+      
+      const systemName = systemResult.rows[0].name;
+      console.log(`[SYSTEM NAME RESOLVED] userId=${userId} systemId=${systemId} systemName=${systemName}`);
+      
+      // Get ALL current metrics for this system - NO LIMIT
+      const metricsResult = await pool.query(`
+        SELECT * FROM metrics 
+        WHERE user_id = $1 AND system_id = $2 
+        ORDER BY test_date DESC
+      `, [userId, systemId]);
+      
+      // 2. DATA FETCHED FOR AI LOGGING
+      console.log(`[AI INPUT METRICS] userId=${userId} systemId=${systemId} count=${metricsResult.rows.length}`);
+      const detailedMetrics = metricsResult.rows.map(m => {
+        const range = m.reference_range || '';
+        const [min, max] = range.split('-').map(v => parseFloat(v?.trim()) || null);
+        return {
+          metric: m.metric_name,
+          value: m.metric_value,
+          normalMin: min,
+          normalMax: max,
+          range: range,
+          outOfRange: (min !== null && m.metric_value < min) || (max !== null && m.metric_value > max)
+        };
+      });
+      console.log(`metrics=${JSON.stringify(detailedMetrics, null, 2)}`);
+      
+      if (metricsResult.rows.length > 0) {
+        // 3. GPT CALL LOGGING
+        console.log(`[GPT CALL INITIATED] userId=${userId} systemId=${systemId} metricsCount=${metricsResult.rows.length}`);
+        
+        // Pass ALL metrics to AI analysis
+        const insights = await openaiService.generateSystemInsights(
+          systemName, 
+          metricsResult.rows,
+          []
+        );
+        
+        // 4. GPT OUTPUT AND SAVE LOGGING
+        console.log(`[GPT OUTPUT RECEIVED] userId=${userId} systemId=${systemId} responseLength=${JSON.stringify(insights).length}`);
+        console.log(`RESPONSE=${JSON.stringify(insights, null, 2)}`);
+        
+        // Save insights
+        await openaiService.logAIOutput(
+          userId,
+          'system_insights',
+          `system_id:${systemId}`,
+          insights,
+          0
+        );
+        
+        console.log(`[GPT OUTPUT SAVED] userId=${userId} systemId=${systemId}`);
+      } else {
+        console.log(`[GEN-INSIGHTS ERROR] userId=${userId} systemId=${systemId} error=No metrics found`);
+      }
+      
+      console.log(`Generated system insights for user ${userId}, system ${systemName} (direct processing)`);
+      return { success: true, data: insights };
+      
+    } catch (error) {
+      console.error(`[GEN-INSIGHTS ERROR] userId=${userId} systemId=${systemId} error=${error.message}`);
+      throw error;
+    }
+  }
+
+  async processKeyFindingsDirectly(data) {
+    const { userId } = data;
+    
+    try {
+      const openaiService = require('./openai');
+      
+      // Get ALL user metrics - NO TIME LIMIT for comprehensive analysis
+      const metricsResult = await pool.query(`
+        SELECT m.*, hs.name as system_name 
+        FROM metrics m
+        JOIN health_systems hs ON m.system_id = hs.id
+        WHERE m.user_id = $1 
+        ORDER BY m.test_date DESC
+      `, [userId]);
+      
+      const userMetrics = this.organizeMetricsBySystem(metricsResult.rows);
+      
+      // Generate key findings
+      const keyFindings = await openaiService.generateKeyFindings(userMetrics);
+      
+      // Save to database
+      await openaiService.logAIOutput(
+        userId, 
+        'key_findings', 
+        'Generate key health findings', 
+        keyFindings, 
+        0
+      );
+      
+      console.log(`Generated key findings for user ${userId} (direct processing)`);
+      return { success: true, data: keyFindings };
+      
+    } catch (error) {
+      console.error(`Error generating key findings for user ${userId} (direct):`, error);
       throw error;
     }
   }

@@ -362,7 +362,8 @@ Return JSON in this exact format:
   ]
 }`;
 
-      console.log(`[SENDING TO GPT] system=${systemName} model=gpt-4o promptLength=${prompt.length}`);
+      console.log(`[GPT CALL INITIATED] system=${systemName} metricsCount=${formattedMetrics.length}`);
+      console.log(`PROMPT=${prompt}`);
       
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -381,8 +382,8 @@ Return JSON in this exact format:
       });
 
       const result = JSON.parse(response.choices[0].message.content);
-      console.log(`[GPT RESPONSE RECEIVED] system=${systemName} responseLength=${response.choices[0].message.content.length}`);
-      console.log(`[GPT RESPONSE CONTENT]`, JSON.stringify(result, null, 2));
+      console.log(`[GPT OUTPUT RECEIVED] system=${systemName} responseLength=${response.choices[0].message.content.length}`);
+      console.log(`RESPONSE=${response.choices[0].message.content}`);
       
       return result;
     } catch (error) {
