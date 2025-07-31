@@ -353,21 +353,39 @@ class QueueService {
           ORDER BY test_date DESC
         `, [userId, systemId]);
         
-        // DIAGNOSTIC LOGGING - Required for debugging
-        console.log(`=== AI INSIGHTS DEBUG ===`);
-        console.log(`System: ${systemName} (ID: ${systemId})`);
-        console.log(`Total metrics fetched from DB: ${metricsResult.rows.length}`);
-        console.log(`Metric names: [${metricsResult.rows.map(m => m.metric_name).join(', ')}]`);
-        console.log(`Metric IDs: [${metricsResult.rows.map(m => m.id).join(', ')}]`);
-        console.log(`========================`);
+        // 2. DATA FETCHED FOR AI LOGGING
+        console.log(`[AI INPUT METRICS] userId=${userId} system=${systemName} count=${metricsResult.rows.length}`);
+        
+        // Log each metric with value and range for comparison
+        const detailedMetrics = metricsResult.rows.map(m => {
+          const range = m.reference_range || '';
+          const [min, max] = range.split('-').map(v => parseFloat(v?.trim()) || null);
+          return {
+            metric: m.metric_name,
+            value: m.metric_value,
+            normalMin: min,
+            normalMax: max,
+            range: range,
+            outOfRange: (min !== null && m.metric_value < min) || (max !== null && m.metric_value > max)
+          };
+        });
+        
+        console.log(`[DETAILED METRICS]`, JSON.stringify(detailedMetrics, null, 2));
         
         if (metricsResult.rows.length > 0) {
+          // 3. GPT CALL LOGGING
+          console.log(`[GPT CALL PAYLOAD] userId=${userId} system=${systemName} metricsCount=${metricsResult.rows.length}`);
+          
           // Pass ALL metrics to AI analysis - not just recent ones
           const insights = await openaiService.generateSystemInsights(
             systemName, 
             metricsResult.rows, // ALL metrics for this system
             [] // No separate historical data needed
           );
+          
+          // 4. GPT OUTPUT AND SAVE LOGGING
+          console.log(`[GPT OUTPUT RECEIVED] userId=${userId} system=${systemName} insightsGenerated=true`);
+          console.log(`[GPT OUTPUT CONTENT]`, JSON.stringify(insights, null, 2));
           
           // Save insights
           await openaiService.logAIOutput(
@@ -377,6 +395,10 @@ class QueueService {
             insights,
             0
           );
+          
+          console.log(`[GPT OUTPUT SAVED] userId=${userId} system=${systemName} outputType=system_insights`);
+        } else {
+          console.log(`[NO METRICS FOUND] userId=${userId} system=${systemName} skipping AI generation`);
         }
         
         console.log(`Generated system insights for user ${userId}, system ${systemName}`);

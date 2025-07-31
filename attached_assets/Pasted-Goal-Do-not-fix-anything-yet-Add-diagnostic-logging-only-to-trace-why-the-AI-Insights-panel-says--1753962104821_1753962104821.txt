@@ -1,0 +1,93 @@
+Goal:
+Do not fix anything yet.
+Add diagnostic logging only to trace why the AI Insights panel says
+“all metrics are within normal ranges” despite multiple out‑of‑range metrics in the Cardiovascular drill‑down.
+
+⸻
+
+Observed Problem
+	•	Drill‑down tables (Key Metrics and Additional Metrics) correctly display several HIGH out‑of‑range values.
+	•	AI Insights still says:
+“All current cardiovascular blood metrics are within normal reference ranges.”
+	•	This persists after metric edits and recomputation.
+
+⸻
+
+What to Diagnose (Log at Every Recompute)
+
+For every recomputation event (manual edit or lab upload):
+
+1. Trigger Confirmation
+
+Log:
+
+[RECOMPUTE TRIGGERED] userId=<id> system=<systemName>
+
+2. Data Fetched for AI
+
+Before calling generate_system_insights, generate_key_findings, or generate_daily_plan, log:
+	•	Total number of metrics fetched from the database for that user/system
+	•	The list of metrics with:
+	•	metric, value, normalMin, normalMax
+
+Example:
+
+[AI INPUT METRICS] count=12 system=Cardiovascular
+[
+  { metric: "LDL SMALL", value: 333, normalMax: 100 },
+  { metric: "LDL PARTICLE SIZE", value: 224.2, normalMax: 100 },
+  ...
+]
+
+3. Prompt Sent to GPT
+
+Log:
+
+[GPT CALL PAYLOAD] metricsCount=12
+
+(or log the actual payload if safe).
+
+4. GPT Output and Save
+
+After GPT finishes and results are stored:
+
+[GPT OUTPUT SAVED] system=Cardiovascular
+
+5. Frontend Notification
+
+Log when a frontend refresh event/notification is emitted.
+
+⸻
+
+Key Diagnostic Question
+
+Are we passing all current metrics from the DB into GPT during recomputation,
+or just the latest upload / cached payload?
+
+⸻
+
+Instructions
+	•	Do not fix bugs or change functionality.
+	•	Add logs only to answer:
+	1.	Does recomputation trigger correctly after edits?
+	2.	How many metrics are passed to GPT?
+	3.	Does that count match the drill‑down table?
+	4.	Is GPT output being generated and saved successfully?
+
+⸻
+
+Expected Outcome
+
+After these diagnostics:
+	•	The logs will clearly show:
+	•	Whether recomputation runs on edits
+	•	Whether a full or partial dataset is used
+	•	Whether GPT output is stored but not reflected in the UI
+
+Only after confirming this data flow should fixes be made.
+
+⸻
+
+This version ensures the Replit Agent will add instrumentation without altering behavior.
+
+⸻

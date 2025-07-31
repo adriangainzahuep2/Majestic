@@ -28,6 +28,9 @@ class InsightsRefreshService {
             return;
         }
 
+        // 1. TRIGGER CONFIRMATION LOGGING
+        console.log(`[RECOMPUTE TRIGGERED] userId=${userId} systemId=${systemId} metric=${metricName} changeType=${changeType}`);
+
         const isKey = this.isKeyMetric(systemId, metricName);
         
         // Get or create pending refresh for this user
@@ -58,7 +61,7 @@ class InsightsRefreshService {
             this.executeRefresh(userId);
         }, this.batchTimeout);
 
-        console.log(`Queued refresh for user ${userId}, system ${systemId}, metric: ${metricName}, type: ${changeType}, isKey: ${isKey}`);
+        console.log(`[REFRESH QUEUED] userId=${userId} systemId=${systemId} metric=${metricName} changeType=${changeType} isKey=${isKey} batchTimeout=${this.batchTimeout}ms`);
     }
 
     /**
@@ -72,11 +75,12 @@ class InsightsRefreshService {
         // Remove from pending map
         this.pendingRefreshes.delete(userId);
 
-        console.log(`Executing refresh for user ${userId}: systems [${Array.from(pending.systems)}], global: ${pending.needsGlobal}`);
+        console.log(`[BATCH REFRESH EXECUTING] userId=${userId} systems=[${Array.from(pending.systems)}] global=${pending.needsGlobal}`);
 
         try {
             // Queue system-specific insight jobs
             for (const systemId of pending.systems) {
+                console.log(`[QUEUING SYSTEM INSIGHTS JOB] userId=${userId} systemId=${systemId}`);
                 await queueService.addJob('generate-system-insights', {
                     userId,
                     systemId,
@@ -86,6 +90,7 @@ class InsightsRefreshService {
 
             // Queue global refresh jobs if needed
             if (pending.needsGlobal) {
+                console.log(`[QUEUING GLOBAL JOBS] userId=${userId} keyFindings=true dailyPlan=true`);
                 await queueService.addJob('generate-key-findings', {
                     userId,
                     priority: 'high'
@@ -97,10 +102,10 @@ class InsightsRefreshService {
                 });
             }
 
-            console.log(`Refresh jobs queued successfully for user ${userId}`);
+            console.log(`[REFRESH JOBS QUEUED] userId=${userId} totalSystems=${pending.systems.size} globalJobs=${pending.needsGlobal}`);
 
         } catch (error) {
-            console.error('Error executing refresh:', error);
+            console.error('[REFRESH ERROR]', error);
         }
     }
 
@@ -178,17 +183,19 @@ class InsightsRefreshService {
     async processEditRefresh(db, userId, systemId, metricName) {
         try {
             const isKey = this.isKeyMetric(systemId, metricName);
+            console.log(`[PROCESS EDIT REFRESH] userId=${userId} systemId=${systemId} metricName=${metricName} isKey=${isKey}`);
             
             // Invalidate cache
             await this.invalidateCache(db, userId, systemId, isKey);
+            console.log(`[CACHE INVALIDATED] userId=${userId} systemId=${systemId} isKey=${isKey}`);
             
             // Queue refresh
             await this.queueRefresh(userId, systemId, metricName, 'edit');
             
-            console.log(`Edit refresh triggered for user ${userId}, system ${systemId}, metric: ${metricName}, isKey: ${isKey}`);
+            console.log(`[EDIT REFRESH COMPLETE] userId=${userId} systemId=${systemId} metricName=${metricName} isKey=${isKey}`);
             
         } catch (error) {
-            console.error('Error processing edit refresh:', error);
+            console.error('[EDIT REFRESH ERROR]', error);
         }
     }
 
@@ -201,6 +208,8 @@ class InsightsRefreshService {
      */
     async processMetricEdit(db, userId, metricId, metricData) {
         try {
+            console.log(`[PROCESS METRIC EDIT] userId=${userId} metricId=${metricId} metricName=${metricData.metric_name} value=${metricData.metric_value}`);
+            
             // Get system information for the metric
             const systemResult = await db.query(`
                 SELECT m.system_id, hs.name as system_name
@@ -210,11 +219,12 @@ class InsightsRefreshService {
             `, [metricId, userId]);
 
             if (systemResult.rows.length === 0) {
-                console.warn(`Metric ${metricId} not found for user ${userId}`);
+                console.warn(`[METRIC NOT FOUND] metricId=${metricId} userId=${userId}`);
                 return;
             }
 
             const { system_id: systemId, system_name: systemName } = systemResult.rows[0];
+            console.log(`[METRIC SYSTEM IDENTIFIED] metricId=${metricId} systemId=${systemId} systemName=${systemName}`);
             
             // Process the refresh
             await this.processEditRefresh(db, userId, systemId, metricData.metric_name);

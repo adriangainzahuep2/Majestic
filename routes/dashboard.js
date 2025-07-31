@@ -183,16 +183,20 @@ router.get('/insights/:systemId', async (req, res) => {
     const userId = req.user.userId;
     const systemId = req.params.systemId;
 
+    console.log(`[FRONTEND INSIGHTS REQUEST] userId=${userId} systemId=${systemId}`);
+
     // Get system name
     const systemResult = await req.db.query(`
       SELECT name FROM health_systems WHERE id = $1
     `, [systemId]);
 
     if (systemResult.rows.length === 0) {
+      console.log(`[SYSTEM NOT FOUND] systemId=${systemId}`);
       return res.status(404).json({ error: 'System not found' });
     }
 
     const systemName = systemResult.rows[0].name;
+    console.log(`[SYSTEM IDENTIFIED] systemId=${systemId} systemName=${systemName}`);
 
     // Get cached insights
     const insightsResult = await req.db.query(`
@@ -203,7 +207,10 @@ router.get('/insights/:systemId', async (req, res) => {
       LIMIT 1
     `, [userId, `system_insights_${systemName.toLowerCase()}`]);
 
+    console.log(`[INSIGHTS QUERY RESULT] userId=${userId} system=${systemName} cachedInsightsFound=${insightsResult.rows.length > 0}`);
+
     if (insightsResult.rows.length === 0) {
+      console.log(`[NO INSIGHTS CACHED] userId=${userId} system=${systemName}`);
       return res.json({
         insights: null,
         message: 'No insights available yet. Upload health data related to this system.'
@@ -212,6 +219,9 @@ router.get('/insights/:systemId', async (req, res) => {
 
     try {
       const insights = JSON.parse(insightsResult.rows[0].response);
+      console.log(`[INSIGHTS FOUND] userId=${userId} system=${systemName} generatedAt=${insightsResult.rows[0].created_at}`);
+      console.log(`[INSIGHTS CONTENT]`, JSON.stringify(insights, null, 2));
+      
       res.json({
         insights: {
           ...insights,
@@ -219,7 +229,7 @@ router.get('/insights/:systemId', async (req, res) => {
         }
       });
     } catch (parseError) {
-      console.error('Error parsing insights:', parseError);
+      console.error('[INSIGHTS PARSE ERROR]', parseError);
       res.status(500).json({ 
         error: 'Error loading insights',
         message: 'Insights data is corrupted' 

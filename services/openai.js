@@ -314,6 +314,8 @@ Return JSON in this format:
   // Generate per-system insights
   async generateSystemInsights(systemName, systemMetrics, historicalData) {
     try {
+      console.log(`[OPENAI SERVICE CALLED] function=generateSystemInsights system=${systemName} metricsCount=${systemMetrics.length}`);
+      
       // Format metrics for the new prompt structure
       const formattedMetrics = systemMetrics.map(metric => ({
         metric: metric.metric_name,
@@ -323,6 +325,8 @@ Return JSON in this format:
         value: metric.metric_value,
         units: metric.metric_unit || metric.units
       }));
+
+      console.log(`[FORMATTED METRICS FOR GPT]`, JSON.stringify(formattedMetrics, null, 2));
 
       const prompt = `You are a medical AI system analyzing one biological system (${systemName}) using lab metrics.
 
@@ -358,6 +362,8 @@ Return JSON in this exact format:
   ]
 }`;
 
+      console.log(`[SENDING TO GPT] system=${systemName} model=gpt-4o promptLength=${prompt.length}`);
+      
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
@@ -374,7 +380,11 @@ Return JSON in this exact format:
         max_tokens: 1500
       });
 
-      return JSON.parse(response.choices[0].message.content);
+      const result = JSON.parse(response.choices[0].message.content);
+      console.log(`[GPT RESPONSE RECEIVED] system=${systemName} responseLength=${response.choices[0].message.content.length}`);
+      console.log(`[GPT RESPONSE CONTENT]`, JSON.stringify(result, null, 2));
+      
+      return result;
     } catch (error) {
       console.error('System insights generation error:', error);
       throw new Error(`Failed to generate system insights: ${error.message}`);

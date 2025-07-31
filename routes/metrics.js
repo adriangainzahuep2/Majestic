@@ -279,6 +279,7 @@ router.put('/:id', async (req, res) => {
     const result = await req.db.query(query, values);
 
     // Trigger insights refresh for the updated metric
+    console.log(`[METRIC EDIT COMPLETED] userId=${userId} metricId=${metricId} metricName=${result.rows[0].metric_name} newValue=${result.rows[0].metric_value}`);
     const insightsRefreshService = require('../services/insightsRefresh');
     await insightsRefreshService.processMetricEdit(req.db, userId, metricId, result.rows[0]);
 
