@@ -1,0 +1,128 @@
+INSTRUCTION: DO NOT IMPLEMENT.
+Review this updated plan for correctness and completeness only.
+This version resolves schema conflicts noted in your previous review and aligns with the clarified admin workflow.
+
+⸻
+
+==================================================
+
+MANDATORY CHANGES (TEXT-BASED METRIC NAMES)
+
+==================================================
+
+Key Principle
+	•	metrics.metric_name remains a TEXT field (no foreign keys).
+	•	Custom metric types (from user_custom_metrics) expand the allowed values but do not change the schema.
+
+⸻
+
+1. EDIT VS ADD BEHAVIOR
+	•	When a user EDITS an existing metric row (from the metrics table):
+• If the user selects a new metric type from the dropdown:
+- Send PUT /metrics/:id to update metric_name (string), metric_unit, etc.
+- No new metric row is created.
+• If the metric type is not in the dropdown and the user clicks ”+ Add Metric”:
+- Create a new entry in user_custom_metrics (source_type=user, review_status=pending).
+- Immediately update metrics.metric_name with the new string value.
+- Do NOT create a duplicate metric row.
+
+⸻
+
+2. INLINE “+ ADD METRIC” IN DROPDOWN
+	•	Dropdown uses a merged list of metric names:
+	•	All official metric names from reference data
+	•	All approved custom metric names (source_type=official)
+	•	The current user’s own pending metric names
+	•	If no match is found:
+• Show ”+ Add ”
+• Clicking opens a modal to define details (units, normal ranges, gender).
+• On Save:
+- Save the new metric type to user_custom_metrics (pending approval)
+- Update the metrics.metric_name text field to this new name (PUT /metrics/:id)
+	•	UI FIX: Ensure all text in the modal has a visible contrasting color.
+
+⸻
+
+3. DROPDOWN POPULATION (NEW ENDPOINT)
+
+Add a new endpoint:
+GET /metrics/types?systemId=X
+
+Returns:
+
+{
+  officialMetricNames: [...],
+  approvedCustomMetricNames: [...],
+  userPendingMetricNames: [...]
+}
+
+
+⸻
+
+4. VALIDATION LOGIC
+
+Update validation in routes/metrics.js:
+	•	Official metrics: validate against reference data.
+	•	Approved custom metrics: validate against user_custom_metrics where source_type=official.
+	•	Pending custom metrics: allow only for the user who created them.
+	•	If a metric name matches none of these, reject.
+
+⸻
+
+5. ADMIN REVIEW WORKFLOW (UPDATED)
+	•	Admin approves user_custom_metrics via CSV.
+• If approved: source_type=official → name becomes valid globally.
+• If not approved: The admin simply deletes that row from the CSV.
+
+⸻
+
+6. DATA INTEGRITY WHEN ADMIN DELETES A METRIC TYPE
+	•	If a custom metric type is deleted during admin review:
+• Any existing metrics.metric_name values that already use that text remain unchanged (historical data).
+• The deleted type will no longer appear in dropdowns for future edits.
+• Users can re-edit those metrics and reassign them to a valid type later.
+
+No “rejected” status is used. Only pending and official states exist.
+
+⸻
+
+7. SEPARATE FLOWS
+	•	Edit flow:
+Always PUT /metrics/:id (string-based update).
+	•	Add flow:
+Remove manual “Add Metric” button from the Additional Metrics table.
+Users cannot create metrics outside of editing.
+
+⸻
+
+8. FRONTEND UI
+	•	Remove the standalone “+ Add Metric” button in Additional Metrics header.
+	•	Dropdown list must be sourced from GET /metrics/types?systemId=X.
+	•	When editing, the only way to add a new metric type is via the inline modal.
+
+⸻
+
+==================================================
+
+IMPORTANT NOTES
+
+==================================================
+	•	metrics.metric_name remains TEXT (no foreign keys).
+	•	user_custom_metrics table holds additional metadata for new metric names.
+	•	No schema changes; only new validation, dropdown endpoint, and UI flow.
+	•	Ensure backward compatibility: existing metric rows continue to work as plain text.
+
+⸻
+
+==================================================
+
+RESOLVED CONFLICTS
+
+==================================================
+	•	Removed assumption of foreign key relationships between metrics and user_custom_metrics.
+	•	Introduced GET /metrics/types for dropdown population.
+	•	Updated validation logic to handle text-based names including approved/pending custom metrics.
+	•	Removed any “rejected” status.
+Unwanted custom metrics are deleted by admin during CSV review.
+
+⸻
