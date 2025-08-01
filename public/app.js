@@ -801,13 +801,13 @@ class HealthDashboard {
 
             this.showToast('success', 'Custom Metric Type', 'New metric type created and metric updated successfully');
             
-            // Refresh the drill-down to show updated metric
-            setTimeout(() => {
-                const currentSystemId = document.querySelector('.drill-down-content')?.dataset.systemId;
-                if (currentSystemId) {
-                    this.showSystemDrillDown(currentSystemId);
-                }
-            }, 500);
+            // Cancel edit mode first, then refresh
+            this.cancelMetricEdit(metricId);
+            
+            // Refresh the system details to show updated data
+            if (this.currentSystemData && this.currentSystemData.system) {
+                this.showSystemDetails(this.currentSystemData.system.id);
+            }
 
         } catch (error) {
             console.error('Failed to create inline custom metric:', error);
@@ -819,7 +819,7 @@ class HealthDashboard {
 
     generateUnitsOptions() {
         const units = [
-            'g', 'mg', 'µg', 'ng', 'pg', 'mol/L', 'mmol/L', 'µmol/L',
+            'g', 'mg', 'µg', 'ng', 'pg', 'mol/L', 'mmol/L', 'µmol/L', 'nmol/L',
             'mg/dL', 'g/dL', 'µg/dL', 'ng/dL', 'mg/L', 'µg/L', 'ng/mL',
             'L', 'mL', 'µL', 'mmHg', 'bpm', 'breaths/min', '°C', '°F',
             '×10⁹/L', '×10¹²/L', '#/µL', '%', 'ratio', 'sec', 'min', 'hr',
@@ -1164,9 +1164,12 @@ class HealthDashboard {
     cancelMetricEdit(metricId) {
         const editRow = document.getElementById(`edit-row-${metricId}`);
         const editForm = document.getElementById(`edit-form-${metricId}`);
+        const displayRow = document.getElementById(`metric-row-${metricId}`);
         
-        editRow.classList.add('d-none');
-        editForm.classList.add('d-none');
+        // Hide edit form and show display row
+        if (editRow) editRow.classList.add('d-none');
+        if (editForm) editForm.classList.add('d-none');
+        if (displayRow) displayRow.classList.remove('d-none');
     }
 
     async saveMetricEdit(metricId) {
