@@ -335,37 +335,73 @@ class HealthDashboard {
     }
 
     renderMetricRow(metric, systemData) {
-        // Pass custom metrics from systemData to find range data
-        const customMetrics = systemData.customMetrics || [];
-        const metricMatch = window.metricUtils ? 
-            window.metricUtils.findMetricMatch(metric.metric_name, systemData.system?.name || systemData.name, customMetrics) : null;
-        const needsReview = !metricMatch || metric.needs_review;
-        
+        // Check for custom reference range first (from database), then fall back to metricUtils
         let rangeBlock = '';
-        if (metricMatch) {
-            const status = window.metricUtils.calculateStatus(metric.metric_value, metricMatch.normalRangeMin, metricMatch.normalRangeMax);
-            const statusClass = status.toLowerCase().replace(' ', '-');
-            const rangeBar = window.metricUtils.generateMicroRangeBar(metric.metric_value, metricMatch.normalRangeMin, metricMatch.normalRangeMax);
-            
-            rangeBlock = `
-                <div class="metric-range-block">
-                    <div class="metric-status-chip ${statusClass}">${status}</div>
-                    ${rangeBar}
-                    <div class="normal-range-caption">
-                        Normal range: ${metricMatch.normalRangeMin}–${metricMatch.normalRangeMax}${metricMatch.units ? ` ${metricMatch.units}` : ''}
-                        <span class="info-icon" data-metric="${metric.metric_name}" data-bs-toggle="tooltip" 
-                              title="${this.generateTooltipTitle(metricMatch, metric.metric_name)}">i</span>
+        let metricMatch = null;
+        
+        if (metric.reference_range) {
+            // Use custom reference range from database metric
+            const rangeMatch = metric.reference_range.match(/(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\s*(.+)?/);
+            if (rangeMatch) {
+                const [, minVal, maxVal, units] = rangeMatch;
+                const normalRangeMin = parseFloat(minVal);
+                const normalRangeMax = parseFloat(maxVal);
+                const rangeUnits = units?.trim() || metric.metric_unit || '';
+                
+                const status = window.metricUtils ? 
+                    window.metricUtils.calculateStatus(metric.metric_value, normalRangeMin, normalRangeMax) : 
+                    (metric.metric_value >= normalRangeMin && metric.metric_value <= normalRangeMax ? 'Normal' : 'Out of Range');
+                const statusClass = status.toLowerCase().replace(' ', '-');
+                const rangeBar = window.metricUtils ? 
+                    window.metricUtils.generateMicroRangeBar(metric.metric_value, normalRangeMin, normalRangeMax) : '';
+                
+                rangeBlock = `
+                    <div class="metric-range-block">
+                        <div class="metric-status-chip ${statusClass}">${status}</div>
+                        ${rangeBar}
+                        <div class="normal-range-caption">
+                            Normal range: ${normalRangeMin}–${normalRangeMax} ${rangeUnits}
+                            <span class="info-icon" data-metric="${metric.metric_name}" data-bs-toggle="tooltip" 
+                                  title="Custom reference range">i</span>
+                        </div>
                     </div>
-                </div>
-            `;
-        } else {
-            rangeBlock = `
-                <div class="metric-range-block">
-                    <div class="metric-status-chip no-data">No data</div>
-                    <div style="color: #8E8E93; font-size: 11px; margin-top: 4px;">Reference range not available</div>
-                </div>
-            `;
+                `;
+            }
         }
+        
+        // Fall back to metricUtils if no custom reference range
+        if (!rangeBlock) {
+            const customMetrics = systemData.customMetrics || [];
+            metricMatch = window.metricUtils ? 
+                window.metricUtils.findMetricMatch(metric.metric_name, systemData.system?.name || systemData.name, customMetrics) : null;
+            
+            if (metricMatch) {
+                const status = window.metricUtils.calculateStatus(metric.metric_value, metricMatch.normalRangeMin, metricMatch.normalRangeMax);
+                const statusClass = status.toLowerCase().replace(' ', '-');
+                const rangeBar = window.metricUtils.generateMicroRangeBar(metric.metric_value, metricMatch.normalRangeMin, metricMatch.normalRangeMax);
+                
+                rangeBlock = `
+                    <div class="metric-range-block">
+                        <div class="metric-status-chip ${statusClass}">${status}</div>
+                        ${rangeBar}
+                        <div class="normal-range-caption">
+                            Normal range: ${metricMatch.normalRangeMin}–${metricMatch.normalRangeMax}${metricMatch.units ? ` ${metricMatch.units}` : ''}
+                            <span class="info-icon" data-metric="${metric.metric_name}" data-bs-toggle="tooltip" 
+                                  title="${this.generateTooltipTitle(metricMatch, metric.metric_name)}">i</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                rangeBlock = `
+                    <div class="metric-range-block">
+                        <div class="metric-status-chip no-data">No data</div>
+                        <div style="color: #8E8E93; font-size: 11px; margin-top: 4px;">Reference range not available</div>
+                    </div>
+                `;
+            }
+        }
+        
+        const needsReview = !metricMatch && !metric.reference_range || metric.needs_review;
 
         const editForm = `
             <div class="metric-edit-form d-none" id="edit-form-${metric.id}">
@@ -782,9 +818,10 @@ class HealthDashboard {
             selectElement.value = metricName;
             
             // Step 3: Update the metric with custom type and reference range
-            const referenceRange = rangeMin && rangeMax ? `${rangeMin}-${rangeMax} ${units}` : '';
+            const referenceRange = (rangeMin !== null || rangeMax !== null) ? 
+                `${rangeMin || 0}-${rangeMax || ''} ${units}`.trim() : '';
             
-            console.log('DEBUG updating metric:', { metricId, metricName, currentValue, units, referenceRange });
+            console.log('DEBUG updating metric:', { metricId, metricName, currentValue, units, referenceRange, rangeMin, rangeMax });
             
             await this.apiCall(`/metrics/${metricId}`, 'PUT', {
                 metric_name: metricName,
