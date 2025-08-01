@@ -33,6 +33,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Serve static files
 app.use(express.static('public'));
+app.use('/uploads', express.static('uploads'));
 
 // Make database available to routes
 app.use((req, res, next) => {
@@ -74,6 +75,15 @@ app.use('/api/uploads', authMiddleware, uploadRoutes);
 app.use('/api/metrics/custom', authMiddleware, require('./routes/customMetrics'));
 app.use('/api/metrics', authMiddleware, metricsRoutes);
 app.use('/api/dashboard', authMiddleware, dashboardRoutes);
+
+// Phase 1 Unified Ingestion Pipeline Routes
+app.use('/api/ingestFile', authMiddleware, require('./routes/ingestFile'));
+app.use('/api/imaging-studies', authMiddleware, require('./routes/imagingStudies'));
+app.use('/api/systems/:systemId/studies', authMiddleware, (req, res, next) => {
+  // Redirect to imaging studies with system filter
+  req.url = `/system/${req.params.systemId}`;
+  require('./routes/imagingStudies')(req, res, next);
+});
 
 // Email ingestion webhook (no auth required)
 app.post('/api/webhook/email', express.json(), async (req, res) => {

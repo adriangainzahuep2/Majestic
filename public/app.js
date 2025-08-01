@@ -44,9 +44,12 @@ class HealthDashboard {
         document.getElementById('refreshDashboard').addEventListener('click', () => this.loadDashboard());
         document.getElementById('regeneratePlan').addEventListener('click', () => this.regenerateDailyPlan());
         
-        // File upload
+        // Phase 1 Unified Ingestion Pipeline
         document.getElementById('fileUpload').addEventListener('change', (e) => this.handleFileSelect(e));
-        document.getElementById('uploadBtn').addEventListener('click', () => this.uploadFiles());
+        document.getElementById('uploadBtn').addEventListener('click', () => this.uploadFilesToUnifiedPipeline());
+
+        // Setup drag and drop
+        this.setupDragAndDrop();
     }
 
     // Authentication Methods
@@ -202,10 +205,21 @@ class HealthDashboard {
     async showSystemDetails(systemId) {
         this.showLoading(true);
         try {
-            const data = await this.apiCall(`/metrics/system/${systemId}`, 'GET');
+            // Fetch system metrics and visual studies in parallel
+            const [metricsData, studiesData] = await Promise.all([
+                this.apiCall(`/metrics/system/${systemId}`, 'GET'),
+                this.apiCall(`/imaging-studies/system/${systemId}`, 'GET').catch(() => ({ studies: [] }))
+            ]);
+            
+            // Combine data
+            const combinedData = {
+                ...metricsData,
+                studies: studiesData.studies || []
+            };
+            
             // Store current system data for range analysis
-            this.currentSystemData = data;
-            this.renderSystemModal(data);
+            this.currentSystemData = combinedData;
+            this.renderSystemModal(combinedData);
         } catch (error) {
             console.error('Failed to load system details:', error);
             this.showToast('error', 'System Details', 'Failed to load system details');
@@ -220,6 +234,9 @@ class HealthDashboard {
         const body = document.getElementById('systemModalBody');
 
         title.textContent = `${systemData.system.name} System`;
+
+        // Store studies data for rendering
+        systemData.studies = systemData.studies || [];
 
         const colorClass = {
             'green': 'success',
@@ -255,6 +272,18 @@ class HealthDashboard {
                         </div>
                         <div class="card-body">
                             ${this.renderCombinedAdditionalMetrics(systemData)}
+                        </div>
+                    </div>
+
+                    <!-- Studies & Imaging Section (Phase 1) -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0" style="color: #FFFFFF;">
+                                <i class="fas fa-images me-2"></i>Studies & Imaging
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            ${this.renderStudiesSection(systemData.studies || [])}
                         </div>
                     </div>
                 </div>
@@ -1087,6 +1116,268 @@ class HealthDashboard {
         }
     }
 
+    renderStudiesSection(studies) {
+        if (!studies || studies.length === 0) {
+            return `
+                <div class="text-center py-4">
+                    <i class="fas fa-images fa-3x text-muted mb-3"></i>
+                    <p style="color: #EBEBF5;">No visual studies available for this system yet.</p>
+                    <p style="color: #8E8E93; font-size: 13px;">Upload imaging studies like X-rays, MRIs, or eye scans to see them here.</p>
+                </div>
+            `;
+        }
+
+        const studiesList = studies.map(study => {
+            const testDate = study.test_date ? new Date(study.test_date).toLocaleDateString() : 'Unknown date';
+            const keyMetricsText = this.formatStudyKeyMetrics(study.metrics_json);
+            const trendText = study.comparison_summary || 'No previous studies to compare';
+            
+            return `
+                <div class="study-item mb-3 p-3" style="background: #2C2C2E; border-radius: 8px; border: 1px solid #3A3A3C;">
+                    <div class="row align-items-center">
+                        <div class="col-md-2">
+                            ${this.renderStudyThumbnail(study)}
+                        </div>
+                        <div class="col-md-10">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 style="color: #FFFFFF; margin-bottom: 8px;">
+                                        ${this.formatStudyType(study.study_type)}
+                                    </h6>
+                                    <p style="color: #8E8E93; font-size: 13px; margin-bottom: 4px;">
+                                        <i class="fas fa-calendar me-1"></i>${testDate}
+                                    </p>
+                                    ${keyMetricsText ? `
+                                        <p style="color: #EBEBF5; font-size: 13px; margin-bottom: 0;">
+                                            <i class="fas fa-chart-line me-1"></i>${keyMetricsText}
+                                        </p>
+                                    ` : ''}
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="trend-summary">
+                                        <p style="color: #8E8E93; font-size: 12px; margin-bottom: 4px;">Trend Analysis:</p>
+                                        <p style="color: #EBEBF5; font-size: 13px; margin-bottom: 8px;">${trendText}</p>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="app.showStudyDetails(${study.id})">
+                                            <i class="fas fa-eye me-1"></i>View Details
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div class="studies-list">
+                ${studiesList}
+                <div class="text-center mt-3">
+                    <p style="color: #8E8E93; font-size: 12px;">
+                        ${studies.length} visual ${studies.length === 1 ? 'study' : 'studies'} found for this system
+                    </p>
+                </div>
+            </div>
+        `;
+    }
+
+    renderStudyThumbnail(study) {
+        if (study.thumbnail_url) {
+            return `
+                <img src="${study.thumbnail_url}" 
+                     alt="Study thumbnail" 
+                     class="img-fluid rounded" 
+                     style="max-height: 80px; object-fit: cover;">
+            `;
+        } else {
+            // Placeholder based on study type
+            const icon = this.getStudyTypeIcon(study.study_type);
+            return `
+                <div class="study-placeholder d-flex align-items-center justify-content-center rounded" 
+                     style="height: 80px; background: #3A3A3C; color: #8E8E93;">
+                    <i class="${icon} fa-2x"></i>
+                </div>
+            `;
+        }
+    }
+
+    formatStudyType(studyType) {
+        const typeMap = {
+            'eye_topography': 'Eye Topography',
+            'oct': 'OCT Scan',
+            'fundus': 'Fundus Photography',
+            'mri': 'MRI Scan',
+            'ct': 'CT Scan',
+            'xray': 'X-Ray',
+            'dexa': 'DEXA Scan',
+            'ecg': 'ECG',
+            'eeg': 'EEG',
+            'unknown': 'Unknown Study'
+        };
+        return typeMap[studyType] || studyType.replace('_', ' ').toUpperCase();
+    }
+
+    getStudyTypeIcon(studyType) {
+        const iconMap = {
+            'eye_topography': 'fas fa-eye',
+            'oct': 'fas fa-eye',
+            'fundus': 'fas fa-eye',
+            'mri': 'fas fa-brain',
+            'ct': 'fas fa-brain',
+            'xray': 'fas fa-bone',
+            'dexa': 'fas fa-bone',
+            'ecg': 'fas fa-heartbeat',
+            'eeg': 'fas fa-brain',
+            'unknown': 'fas fa-file-medical'
+        };
+        return iconMap[studyType] || 'fas fa-file-medical';
+    }
+
+    formatStudyKeyMetrics(metricsJson) {
+        if (!metricsJson || !Array.isArray(metricsJson) || metricsJson.length === 0) {
+            return '';
+        }
+
+        // Show first 2-3 key metrics
+        const keyMetrics = metricsJson.slice(0, 3);
+        return keyMetrics.map(metric => 
+            `${metric.name}: ${metric.value}${metric.units ? ` ${metric.units}` : ''}`
+        ).join(', ');
+    }
+
+    async showStudyDetails(studyId) {
+        try {
+            this.showLoading(true);
+            const study = await this.apiCall(`/imaging-studies/${studyId}`, 'GET');
+            this.renderStudyDetailsModal(study);
+        } catch (error) {
+            console.error('Failed to load study details:', error);
+            this.showToast('error', 'Study Details', 'Failed to load study details');
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    renderStudyDetailsModal(study) {
+        // Create and show a modal with full study details
+        const modalHtml = `
+            <div class="modal fade" id="studyDetailsModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content" style="background: #1C1C1E; border: 1px solid #3A3A3C;">
+                        <div class="modal-header" style="border-bottom: 1px solid #3A3A3C;">
+                            <h5 class="modal-title" style="color: #FFFFFF;">
+                                ${this.formatStudyType(study.study_type)} - ${new Date(study.test_date).toLocaleDateString()}
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 style="color: #FFFFFF;">AI Summary</h6>
+                                    <p style="color: #EBEBF5; font-size: 14px;">${study.ai_summary || 'No summary available'}</p>
+                                    
+                                    ${study.comparison_summary ? `
+                                        <h6 style="color: #FFFFFF; margin-top: 20px;">Comparison Analysis</h6>
+                                        <p style="color: #EBEBF5; font-size: 14px;">${study.comparison_summary}</p>
+                                    ` : ''}
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 style="color: #FFFFFF;">Measurements</h6>
+                                    ${this.renderStudyMetricsTable(study.metrics_json)}
+                                    
+                                    ${study.metric_changes_json ? `
+                                        <h6 style="color: #FFFFFF; margin-top: 20px;">Metric Changes</h6>
+                                        ${this.renderMetricChangesTable(study.metric_changes_json)}
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer" style="border-top: 1px solid #3A3A3C;">
+                            ${study.file_url ? `
+                                <a href="${study.file_url}" target="_blank" class="btn btn-outline-primary">
+                                    <i class="fas fa-download me-1"></i>Download Original
+                                </a>
+                            ` : ''}
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Remove existing modal if present
+        const existingModal = document.getElementById('studyDetailsModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // Add modal to DOM and show
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        const modal = new bootstrap.Modal(document.getElementById('studyDetailsModal'));
+        modal.show();
+    }
+
+    renderStudyMetricsTable(metricsJson) {
+        if (!metricsJson || !Array.isArray(metricsJson) || metricsJson.length === 0) {
+            return '<p style="color: #8E8E93; font-size: 13px;">No measurements available</p>';
+        }
+
+        const rows = metricsJson.map(metric => `
+            <tr>
+                <td style="color: #EBEBF5; font-size: 13px;">${metric.name}</td>
+                <td style="color: #FFFFFF; font-size: 13px;">${metric.value} ${metric.units || ''}</td>
+            </tr>
+        `).join('');
+
+        return `
+            <table class="table table-sm" style="color: #EBEBF5;">
+                <tbody>
+                    ${rows}
+                </tbody>
+            </table>
+        `;
+    }
+
+    renderMetricChangesTable(metricChangesJson) {
+        if (!metricChangesJson || !Array.isArray(metricChangesJson) || metricChangesJson.length === 0) {
+            return '<p style="color: #8E8E93; font-size: 13px;">No changes to compare</p>';
+        }
+
+        const rows = metricChangesJson.map(change => {
+            const trendClass = {
+                'improved': 'text-success',
+                'stable': 'text-info',
+                'worsened': 'text-warning',
+                'new_finding': 'text-primary'
+            }[change.trend] || 'text-secondary';
+
+            return `
+                <tr>
+                    <td style="color: #EBEBF5; font-size: 12px;">${change.metric}</td>
+                    <td style="color: #8E8E93; font-size: 12px;">${change.previous.value} ${change.previous.units || ''}</td>
+                    <td style="color: #FFFFFF; font-size: 12px;">${change.current.value} ${change.current.units || ''}</td>
+                    <td class="${trendClass}" style="font-size: 12px;">${change.trend.replace('_', ' ')}</td>
+                </tr>
+            `;
+        }).join('');
+
+        return `
+            <table class="table table-sm">
+                <thead>
+                    <tr style="color: #8E8E93; font-size: 11px;">
+                        <th>Metric</th>
+                        <th>Previous</th>
+                        <th>Current</th>
+                        <th>Trend</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows}
+                </tbody>
+            </table>
+        `;
+    }
+
     refreshCurrentSystemView() {
         // Get current system from modal title
         const modalTitle = document.getElementById('systemModalTitle');
@@ -1450,57 +1741,195 @@ class HealthDashboard {
         }
     }
 
-    // Upload Methods
+    // Phase 1 Unified Pipeline Methods
     handleFileSelect(event) {
         const files = event.target.files;
         const uploadBtn = document.getElementById('uploadBtn');
+        const dropZone = document.getElementById('dropZone');
         
         if (files.length > 0) {
             uploadBtn.disabled = false;
-            uploadBtn.innerHTML = `<i class="fas fa-upload me-2"></i>Upload ${files.length} File(s)`;
+            uploadBtn.innerHTML = `<i class="fas fa-magic me-2"></i>Process ${files.length} File(s) with AI`;
+            dropZone.style.borderColor = '#007AFF';
+            dropZone.style.background = '#1a1a2e';
         } else {
             uploadBtn.disabled = true;
-            uploadBtn.innerHTML = '<i class="fas fa-upload me-2"></i>Upload Files';
+            uploadBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Process with AI';
+            dropZone.style.borderColor = '#3A3A3C';
+            dropZone.style.background = '#2C2C2E';
         }
     }
 
-    async uploadFiles() {
+    setupDragAndDrop() {
+        const dropZone = document.getElementById('dropZone');
+        if (!dropZone) return;
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#007AFF';
+            dropZone.style.background = '#1a1a2e';
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#3A3A3C';
+            dropZone.style.background = '#2C2C2E';
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#3A3A3C';
+            dropZone.style.background = '#2C2C2E';
+            
+            const files = e.dataTransfer.files;
+            const fileInput = document.getElementById('fileUpload');
+            fileInput.files = files;
+            
+            // Trigger change event
+            const event = new Event('change', { bubbles: true });
+            fileInput.dispatchEvent(event);
+        });
+
+        dropZone.addEventListener('click', () => {
+            document.getElementById('fileUpload').click();
+        });
+    }
+
+    async uploadFilesToUnifiedPipeline() {
         const fileInput = document.getElementById('fileUpload');
         const files = fileInput.files;
+        const testDateInput = document.getElementById('testDate');
         
         if (files.length === 0) return;
 
-        const formData = new FormData();
-        for (let i = 0; i < files.length; i++) {
-            formData.append('files', files[i]);
-        }
+        this.showUploadProgress(true);
+        const results = [];
 
-        this.showLoading(true);
         try {
-            const response = await fetch(`${this.apiBase}/uploads`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.token}`
-                },
-                body: formData
-            });
+            // Process files one by one through unified pipeline
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                console.log(`[UPLOAD] Processing file ${i + 1}/${files.length}: ${file.name}`);
+                
+                // Update progress
+                const progress = ((i / files.length) * 100).toFixed(0);
+                document.querySelector('#uploadProgress .progress-bar').style.width = `${progress}%`;
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                if (testDateInput.value) {
+                    formData.append('testDate', testDateInput.value);
+                }
 
-            const data = await response.json();
-            
-            if (data.success) {
-                this.showToast('success', 'Upload Complete', `${data.uploads.length} file(s) uploaded successfully`);
-                fileInput.value = '';
-                document.getElementById('uploadBtn').disabled = true;
-                this.loadUploads();
-            } else {
-                throw new Error(data.message || 'Upload failed');
+                const response = await fetch(`${this.apiBase}/ingestFile`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${this.token}`
+                    },
+                    body: formData
+                });
+
+                const result = await response.json();
+                results.push({ fileName: file.name, result });
+                
+                if (!response.ok) {
+                    throw new Error(result.message || `Failed to process ${file.name}`);
+                }
             }
+
+            // Complete progress
+            document.querySelector('#uploadProgress .progress-bar').style.width = '100%';
+            
+            // Show results
+            this.showUploadResults(results);
+            
+            // Clean up
+            fileInput.value = '';
+            testDateInput.value = '';
+            document.getElementById('uploadBtn').disabled = true;
+            
+            // Refresh dashboard to show new data
+            setTimeout(() => {
+                this.loadDashboard();
+            }, 2000);
+
         } catch (error) {
-            console.error('Upload error:', error);
-            this.showToast('error', 'Upload Failed', error.message);
+            console.error('Upload pipeline error:', error);
+            this.showUploadError(error.message);
         } finally {
-            this.showLoading(false);
+            this.showUploadProgress(false);
         }
+    }
+
+    showUploadProgress(show) {
+        const progressDiv = document.getElementById('uploadProgress');
+        if (show) {
+            progressDiv.style.display = 'block';
+            document.querySelector('#uploadProgress .progress-bar').style.width = '0%';
+        } else {
+            setTimeout(() => {
+                progressDiv.style.display = 'none';
+            }, 3000);
+        }
+    }
+
+    showUploadResults(results) {
+        const resultDiv = document.getElementById('uploadResult');
+        
+        const successCount = results.filter(r => r.result.success).length;
+        const totalCount = results.length;
+        
+        let html = `
+            <div class="alert alert-success" style="background: #1e3a3a; border: 1px solid #28a745; color: #FFFFFF;">
+                <h6><i class="fas fa-check-circle me-2"></i>Processing Complete</h6>
+                <p class="mb-2">${successCount}/${totalCount} files processed successfully</p>
+        `;
+
+        results.forEach(({ fileName, result }) => {
+            if (result.success) {
+                const dataType = result.dataType || 'unknown';
+                const icon = dataType === 'lab' ? 'fas fa-vials' : 
+                           dataType === 'visual' ? 'fas fa-images' : 
+                           'fas fa-file-medical';
+                
+                html += `
+                    <div class="mb-2 p-2" style="background: #2C2C2E; border-radius: 4px;">
+                        <strong><i class="${icon} me-1"></i>${fileName}</strong>
+                        <div style="font-size: 13px; color: #8E8E93;">
+                            Type: ${dataType} | ${result.message || 'Processed successfully'}
+                        </div>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="mb-2 p-2" style="background: #3a1e1e; border-radius: 4px;">
+                        <strong><i class="fas fa-exclamation-triangle me-1"></i>${fileName}</strong>
+                        <div style="font-size: 13px; color: #dc3545;">Error: ${result.error || 'Processing failed'}</div>
+                    </div>
+                `;
+            }
+        });
+
+        html += '</div>';
+        
+        resultDiv.innerHTML = html;
+        resultDiv.style.display = 'block';
+        
+        // Auto-hide after 10 seconds
+        setTimeout(() => {
+            resultDiv.style.display = 'none';
+        }, 10000);
+    }
+
+    showUploadError(message) {
+        const resultDiv = document.getElementById('uploadResult');
+        resultDiv.innerHTML = `
+            <div class="alert alert-danger" style="background: #3a1e1e; border: 1px solid #dc3545; color: #FFFFFF;">
+                <h6><i class="fas fa-exclamation-triangle me-2"></i>Processing Failed</h6>
+                <p>${message}</p>
+            </div>
+        `;
+        resultDiv.style.display = 'block';
     }
 
     async loadUploads() {

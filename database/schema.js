@@ -108,6 +108,26 @@ async function initializeDatabase() {
       );
     `);
 
+    // Create imaging_studies table for Phase 1 visual pipeline
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS imaging_studies (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        linked_system_id INTEGER REFERENCES health_systems(id),
+        study_type VARCHAR(100),
+        file_url TEXT,
+        thumbnail_url TEXT,
+        test_date DATE,
+        ai_summary TEXT,
+        metrics_json JSONB,
+        comparison_summary TEXT,
+        metric_changes_json JSONB,
+        status VARCHAR(50) DEFAULT 'pendingProcessing',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // Insert health systems
     for (const system of HEALTH_SYSTEMS) {
       await client.query(`
@@ -125,6 +145,8 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_metrics_test_date ON metrics(test_date);
       CREATE INDEX IF NOT EXISTS idx_uploads_user_status ON uploads(user_id, processing_status);
       CREATE INDEX IF NOT EXISTS idx_ai_outputs_user_type ON ai_outputs_log(user_id, output_type);
+      CREATE INDEX IF NOT EXISTS idx_imaging_studies_user_system ON imaging_studies(user_id, linked_system_id);
+      CREATE INDEX IF NOT EXISTS idx_imaging_studies_type_date ON imaging_studies(study_type, test_date);
     `);
 
     console.log('Database schema initialized successfully');

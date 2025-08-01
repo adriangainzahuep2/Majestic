@@ -177,21 +177,53 @@
                         </div>
                     </div>
 
-                    <!-- Upload Section -->
+                    <!-- Phase 1 Unified Ingestion Pipeline -->
                     <div class="row mb-4">
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-8 mb-3">
                             <div class="card card-hover">
-                                <div class="card-body">
-                                    <h5 class="card-title">
-                                        <i class="fas fa-cloud-arrow-up me-2"></i>Upload Files
+                                <div class="card-header" style="background: #007AFF; color: #FFFFFF;">
+                                    <h5 class="card-title mb-0" style="color: #FFFFFF;">
+                                        <i class="fas fa-cloud-upload-alt me-2"></i>Unified Ingestion Pipeline
                                     </h5>
-                                    <p class="card-subtitle">Upload PDFs, images, or CSV files</p>
-                                    <div class="mb-3">
-                                        <input type="file" class="form-control" id="fileUpload" multiple accept=".pdf,.png,.jpg,.jpeg,.csv">
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-subtitle">Upload lab reports, X-rays, MRIs, eye scans, or mixed medical documents</p>
+                                    
+                                    <!-- Drop Zone -->
+                                    <div id="dropZone" class="upload-drop-zone mb-3" style="background: #2C2C2E; border: 2px dashed #3A3A3C; border-radius: 8px; padding: 30px; text-align: center; cursor: pointer;">
+                                        <div class="upload-icon mb-3">
+                                            <i class="fas fa-cloud-upload-alt fa-3x" style="color: #007AFF;"></i>
+                                        </div>
+                                        <h6 style="color: #FFFFFF; margin-bottom: 10px;">Drop medical files here</h6>
+                                        <p style="color: #8E8E93; margin-bottom: 20px;">Supports PDF, JPEG, PNG, DICOM files</p>
+                                        <input type="file" class="form-control" id="fileUpload" multiple accept=".pdf,.png,.jpg,.jpeg,.dcm,.dicom" style="display: none;">
+                                        <button type="button" class="btn btn-primary" onclick="document.getElementById('fileUpload').click()">
+                                            Choose Files
+                                        </button>
                                     </div>
+
+                                    <!-- Test Date Input -->
+                                    <div class="mb-3">
+                                        <label for="testDate" class="form-label" style="color: #FFFFFF;">Test Date (optional)</label>
+                                        <input type="date" class="form-control" id="testDate" style="background: #2C2C2E; border: 1px solid #3A3A3C; color: #FFFFFF;">
+                                        <div class="form-text">Leave blank to use current date or date found in the document</div>
+                                    </div>
+
+                                    <!-- Upload Button -->
                                     <button id="uploadBtn" class="btn btn-primary" disabled>
-                                        <i class="fas fa-arrow-up me-2"></i>Upload
+                                        <i class="fas fa-magic me-2"></i>Process with AI
                                     </button>
+
+                                    <!-- Upload Progress -->
+                                    <div id="uploadProgress" class="mt-3" style="display: none;">
+                                        <div class="progress mb-2">
+                                            <div class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                        <p style="color: #8E8E93; text-align: center; font-size: 13px;">Processing your files...</p>
+                                    </div>
+
+                                    <!-- Upload Result -->
+                                    <div id="uploadResult" class="mt-3" style="display: none;"></div>
                                 </div>
                             </div>
                         </div>

@@ -34,6 +34,18 @@ The frontend is a **vanilla JavaScript SPA** served as static files:
 - **Structured JSON outputs** for consistent data handling
 
 ### Recent Changes (August 1, 2025)
+- **✓ PHASE 1 UNIFIED INGESTION PIPELINE** - Complete implementation of visual studies processing alongside lab reports
+- **✓ New imaging_studies database table** - Stores visual studies with AI analysis, metrics, and comparison data
+- **✓ Unified file classification** - AI automatically detects lab, visual, or mixed file types
+- **✓ Visual study processing** - Extracts metrics and findings from X-rays, MRIs, CT scans, eye studies using GPT-4o
+- **✓ Thumbnail generation** - Sharp library integration for image thumbnails and PDF placeholders
+- **✓ Study comparison system** - AI-powered trend analysis comparing current vs previous studies
+- **✓ System integration** - Visual studies automatically linked to appropriate body systems (1-13)
+- **✓ New API endpoints** - `/api/ingestFile` and `/api/imaging-studies` for unified pipeline access
+- **✓ Enhanced system drill-down** - Studies & Imaging section added to system detail modals
+- **✓ DICOM support** - Phase 1 stores DICOM files without processing (future phases will add analysis)
+- **✓ Multi-page/multi-image support** - Processes complex documents with multiple images
+- **✓ Frontend pipeline UI** - Drag-and-drop interface with real-time progress and detailed result feedback
 - **✓ Text-based custom metric names feature** - Implemented inline custom metric type creation during edit flow
 - **✓ Enhanced metric validation** - Three-tier validation (official → approved custom → user pending) for metric names
 - **✓ New API endpoint** - `GET /metrics/types?systemId=X` provides merged dropdown data for official and custom metrics
@@ -126,6 +138,7 @@ Each system has:
 - `metrics` - Individual health measurements with system associations
 - `uploads` - File processing tracking and metadata
 - `ai_outputs_log` - AI response logging for debugging and audit
+- `imaging_studies` - Visual studies with AI analysis, metrics, and comparison data (Phase 1)
 
 ## Data Flow
 

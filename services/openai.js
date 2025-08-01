@@ -6,6 +6,40 @@ const openai = new OpenAI({
 });
 
 class OpenAIService {
+  // General completion method for ingestion pipeline
+  async generateCompletion(prompt, base64Data = null, fileName = null) {
+    try {
+      const messages = [
+        {
+          role: 'user',
+          content: base64Data ? [
+            { type: 'text', text: prompt },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:image/jpeg;base64,${base64Data}`,
+                detail: 'high'
+              }
+            }
+          ] : prompt
+        }
+      ];
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages,
+        max_tokens: 2000,
+        temperature: 0.1
+      });
+
+      return response.choices[0].message.content;
+
+    } catch (error) {
+      console.error('OpenAI completion error:', error);
+      throw new Error(`AI processing failed: ${error.message}`);
+    }
+  }
+
   // OCR processing for lab reports - supports both images and PDFs
   async processLabReport(base64Data, fileName) {
     try {
