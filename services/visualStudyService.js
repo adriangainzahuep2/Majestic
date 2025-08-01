@@ -60,7 +60,16 @@ class VisualStudyService {
         temperature: 0.1
       });
 
-      const result = JSON.parse(response.choices[0].message.content);
+      // Clean the response and extract JSON
+      let cleanResponse = response.choices[0].message.content.trim();
+      if (cleanResponse.startsWith('```json')) {
+        cleanResponse = cleanResponse.replace(/```json\s*/, '').replace(/```$/, '');
+      }
+      if (cleanResponse.startsWith('```')) {
+        cleanResponse = cleanResponse.replace(/```\s*/, '').replace(/```$/, '');
+      }
+
+      const result = JSON.parse(cleanResponse);
       console.log(`[VISUAL_EXTRACTION] Extracted ${result.measurements?.length || 0} measurements`);
       
       return result;

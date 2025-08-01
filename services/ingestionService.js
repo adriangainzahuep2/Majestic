@@ -88,7 +88,16 @@ class IngestionService {
         file.originalname
       );
 
-      return JSON.parse(response);
+      // Clean the response and extract JSON
+      let cleanResponse = response.trim();
+      if (cleanResponse.startsWith('```json')) {
+        cleanResponse = cleanResponse.replace(/```json\s*/, '').replace(/```$/, '');
+      }
+      if (cleanResponse.startsWith('```')) {
+        cleanResponse = cleanResponse.replace(/```\s*/, '').replace(/```$/, '');
+      }
+
+      return JSON.parse(cleanResponse);
 
     } catch (error) {
       console.warn('[CLASSIFICATION] Failed, defaulting to lab processing:', error.message);
