@@ -1,0 +1,131 @@
+INSTRUCTION: DO NOT IMPLEMENT. 
+Your task is only to review the prompt inside [[ ]] and tell me if it is clear and complete.
+Do not write or modify any code.   [[
+
+Prompt for Replit Agent (Maximally Clear)
+
+You are building a feature for the Majestic app. 
+Follow the instructions exactly. 
+Work in THREE STAGES, one at a time:
+
+STAGE 1 = Database schema and migration
+STAGE 2 = Backend endpoints (CRUD + CSV import/export)
+STAGE 3 = Frontend UI (tables, modal, dropdown)
+
+Do not skip stages. Complete Stage 1 fully before coding Stage 2.
+
+==================================================
+FEATURE: USER-ADDED METRICS ON DRILL-DOWN PAGES
+==================================================
+
+GOAL:
+On each drill-down page (e.g., Cardiovascular), users can:
+1. See two tables of metrics (Key Metrics and Additional Metrics).
+2. Edit metrics from a dropdown of known metrics.
+3. Add new custom metrics (if not in the dropdown).
+4. New metrics are private to that user (source_type = user).
+5. Admin can export all metrics to CSV, review them, update source_type to official, and re-import.
+6. Once approved (source_type=official), a metric becomes visible to all users globally.
+
+==================================================
+STAGE 1 – DATABASE SCHEMA
+==================================================
+
+Create or extend a table called `metrics` with these columns:
+
+- id (primary key)
+- system_id (foreign key to the system, e.g., cardiovascular)
+- user_id (nullable; set for user-created metrics)
+- metric_name (text)
+- value (text OR numeric)
+- units (enum from controlled list below)
+- normal_range_min (numeric)
+- normal_range_max (numeric)
+- range_applicable_to (enum: 'F', 'M', 'Other', 'All')
+- source_type (enum: 'official', 'user')
+- created_at (timestamp)
+- review_status (enum: 'pending', 'approved', 'rejected')
+
+Controlled enum values for `units`:
+g, mg, µg, ng, pg, mol/L, mmol/L, µmol/L,
+mg/dL, g/dL, µg/dL, ng/dL, mg/L, µg/L, ng/mL,
+L, mL, µL, mmHg, bpm, breaths/min, °C, °F,
+×10⁹/L, ×10¹²/L, #/µL, %, ratio, sec, min, hr,
+IU/L, mEq/L, U/L, g/24h, Osm/kg, Osm/L,
+kg, cm, mmol/mol, Other
+
+==================================================
+STAGE 2 – BACKEND API
+==================================================
+
+Create REST endpoints:
+
+1. GET /metrics?systemId=
+   - Return all metrics for that system: 
+     official metrics + private metrics belonging to current user.
+
+2. POST /metrics
+   - Add a new metric.
+   - Assign source_type = 'user' and user_id = current user.
+
+3. PUT /metrics/:id
+   - Edit a metric (for the owner or for admin).
+
+4. GET /metrics/export
+   - Export ALL metrics (all users, all systems) as CSV.
+
+5. POST /metrics/import
+   - Admin uploads a CSV file to update metrics.
+   - If an admin changes source_type from 'user' to 'official', that metric becomes global.
+
+Rules:
+- User-created metrics remain private unless source_type = 'official'.
+
+==================================================
+STAGE 3 – FRONTEND UI
+==================================================
+
+On the system drill-down page:
+
+- Display TWO tables: Key Metrics and Additional Metrics.
+- Columns: Metric name, Value, Units, Date, Status (low/normal/high).
+
+Editing:
+- Each row has an Edit button.
+- Show a dropdown of known metrics.
+- If the desired metric is not in the list, include an option: "+ Add Metric".
+
+When "+ Add Metric" is selected:
+- Open a modal with these fields:
+  • Metric Name (free text)
+  • Value
+  • Units (dropdown from controlled list)
+  • Normal Range Min
+  • Normal Range Max
+  • Gender applicability (F, M, Other, All)
+- On Save:
+  • Send a POST request to /metrics with source_type=user.
+  • Show the metric immediately for that user only.
+
+Additional requirements:
+- Allow text values for qualitative metrics (e.g., "Positive/Negative").
+- Admin has a UI to download metrics as CSV and re-upload an updated CSV.
+
+==================================================
+DELIVERABLES
+==================================================
+
+1. Database migration and schema.
+2. Backend APIs.
+3. Frontend components and UI.
+4. Admin CSV export/import workflow.
+
+WORKFLOW:
+1. Complete STAGE 1 fully, confirm schema.
+2. Then complete STAGE 2, confirm endpoints.
+3. Finally, complete STAGE 3.
+
+
+⸻
+
+]]
