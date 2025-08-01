@@ -1,0 +1,58 @@
+INSTRUCTION: DO NOT IMPLEMENT. 
+Review this plan within [[ ]]for correctness and completeness only. Specifically make sure that it references the correct database fields, variables etc. 
+Do not modify code or schema yet.
+[[
+
+==================================================
+MANDATORY CHANGES
+==================================================
+
+1. EDIT VS ADD BEHAVIOR
+- When a user EDITS an existing metric row (from the metrics table):
+  • If the user selects a new metric type from the dropdown:
+      - Send PUT /metrics/:id to UPDATE the same row.
+      - Do NOT create a new metric row.
+  • If the metric type is not in the dropdown and the user clicks "+ Add Metric":
+      - Create the new metric type in user_custom_metrics (source_type=user).
+      - Immediately update the same row to use this new type (PUT /metrics/:id).
+      - Do NOT create a duplicate metric row.
+
+2. INLINE "+ ADD METRIC" IN DROPDOWN (INSIDE EDIT FLOW ONLY)
+- The Metric Name field in the edit modal must be a searchable dropdown.
+- If no match is found:
+  • Show an option at the bottom: "+ Add <typed text>"
+  • When clicked:
+      - Open a small inline modal (dialog).
+      - Pre-fill with the typed metric name.
+      - Collect these fields: Units, Normal Range Min, Normal Range Max, Gender applicability.
+      - On Save:
+          1. Save new metric type in user_custom_metrics for admin review.
+          2. Update the current metric row to use this new type (PUT /metrics/:id).
+      - Do NOT create a new metric row.
+
+- **UI FIX:** Ensure all text inside the Add Metric modal uses a contrasting color (fix current issue where text is black on black).
+
+3. SEPARATE FLOWS
+- Edit flow:
+    • Always use PUT /metrics/:id to update the same row.
+- Add flow (outside of editing):
+    • REMOVE this capability completely. There is no way to manually add metrics outside of editing.
+    • Users CANNOT create new metrics from the Additional Metrics table.
+
+4. FRONTEND UI RULES
+- All user-added metrics must always display ONLY in the Additional Metrics table.
+- REMOVE the standalone “+ Add Metric” button from the top bar of the Additional Metrics table.
+- The ONLY way to create a new metric is via the inline modal shown when editing an existing metric (as described above).
+
+==================================================
+IMPORTANT NOTES
+==================================================
+
+• Do NOT change the existing metrics table structure.
+• user_custom_metrics already exists (or must be created if not).
+• Only modify backend and frontend logic as specified.
+• Verify that PUT vs POST behavior matches the flows described above.
+
+
+⸻
+]]
