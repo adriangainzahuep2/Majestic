@@ -71,6 +71,7 @@ app.get('/api/metrics/reference', (req, res) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/uploads', authMiddleware, uploadRoutes);
+app.use('/api/metrics/custom', authMiddleware, require('./routes/customMetrics'));
 app.use('/api/metrics', authMiddleware, metricsRoutes);
 app.use('/api/dashboard', authMiddleware, dashboardRoutes);
 

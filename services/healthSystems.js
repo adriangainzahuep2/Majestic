@@ -303,7 +303,7 @@ class HealthSystemsService {
         throw new Error('System not found');
       }
 
-      // Get metrics for this system
+      // Get official metrics for this system
       const metricsResult = await pool.query(`
         SELECT m.*, u.filename, u.created_at as upload_date
         FROM metrics m
@@ -311,6 +311,27 @@ class HealthSystemsService {
         WHERE m.user_id = $1 AND m.system_id = $2
         ORDER BY m.test_date DESC, m.is_key_metric DESC
       `, [userId, systemId]);
+
+      // Get custom metrics for this system (user's private + approved global)
+      const customMetricsResult = await pool.query(`
+        SELECT 
+          id,
+          metric_name,
+          value,
+          units,
+          normal_range_min,
+          normal_range_max,
+          range_applicable_to,
+          source_type,
+          review_status,
+          created_at,
+          false as is_key_metric,
+          'custom' as metric_type
+        FROM user_custom_metrics 
+        WHERE system_id = $1 
+          AND (user_id = $2 OR (source_type = 'official' AND review_status = 'approved'))
+        ORDER BY created_at DESC
+      `, [systemId, userId]);
 
       // Get cached insights using system_id (with fallback to prompt parsing)
       let insightsResult = await pool.query(`
@@ -336,14 +357,18 @@ class HealthSystemsService {
       const insights = insightsResult.rows.length > 0 ? 
         JSON.parse(insightsResult.rows[0].response) : null;
 
-      // Separate key and non-key metrics
+      // Separate key and non-key metrics (only official metrics can be key metrics)
       const keyMetrics = metricsResult.rows.filter(m => m.is_key_metric);
       const nonKeyMetrics = metricsResult.rows.filter(m => !m.is_key_metric);
+      
+      // All custom metrics go to Additional Metrics table
+      const customMetrics = customMetricsResult.rows;
 
       return {
         system,
         keyMetrics,
         nonKeyMetrics,
+        customMetrics,
         insights,
         color: this.calculateTileColor(systemId, metricsResult.rows)
       };

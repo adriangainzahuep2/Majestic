@@ -1,0 +1,126 @@
+==================================================
+FEATURE: USER-ADDED METRICS ON DRILL-DOWN PAGES
+==================================================
+
+GOAL:
+Allow users to add custom metrics on drill-down pages.
+User-added metrics are private until approved by an admin.
+Admins can export/import these metrics as CSV, approve them, and make them global.
+
+==================================================
+EXISTING DATABASE STRUCTURE (REFERENCE ONLY)
+==================================================
+
+From the current schema:
+
+**metrics table columns**  
+id, user_id, upload_id, system_id, metric_name, metric_value, metric_unit, reference_range, is_key_metric, is_outlier, test_date, created_at
+
+Normal ranges for these official lab metrics are stored as free-text in `reference_range`.  
+Do not alter this structure or migrate this data.  
+
+Other tables:
+- users
+- health_systems
+- uploads
+- questionnaire_responses
+- ai_outputs_log
+
+Indexes on metrics:
+- idx_metrics_user_system (user_id, system_id)
+- idx_metrics_test_date (test_date)
+
+==================================================
+STAGE 1 – DATABASE DESIGN (COMPATIBILITY REQUIRED)
+==================================================
+
+**Do not modify or extend the existing `metrics` table.**
+
+Create a **new table** called `user_custom_metrics` with these columns:
+
+- id (PK)
+- system_id (FK)
+- user_id (FK)
+- metric_name (text)
+- value (text OR numeric)
+- units (enum from controlled list below)
+- normal_range_min (numeric)   ← structured for new metrics
+- normal_range_max (numeric)   ← structured for new metrics
+- range_applicable_to (enum: 'F', 'M', 'Other', 'All')
+- source_type (enum: 'user', 'official')
+- review_status (enum: 'pending', 'approved', 'rejected')
+- created_at (timestamp)
+
+**Indexes:**  
+- Create a composite index on `(system_id, user_id)`.
+
+**Important:**  
+- `reference_range` remains untouched in `metrics`.  
+- `normal_range_min` / `normal_range_max` exist **only** in `user_custom_metrics`.  
+- No migration, no data loss.  
+
+==================================================
+CONTROLLED UNITS ENUM
+==================================================
+g, mg, µg, ng, pg, mol/L, mmol/L, µmol/L,
+mg/dL, g/dL, µg/dL, ng/dL, mg/L, µg/L, ng/mL,
+L, mL, µL, mmHg, bpm, breaths/min, °C, °F,
+×10⁹/L, ×10¹²/L, #/µL, %, ratio, sec, min, hr,
+IU/L, mEq/L, U/L, g/24h, Osm/kg, Osm/L,
+kg, cm, mmol/mol, Other
+
+==================================================
+STAGE 2 – BACKEND API
+==================================================
+
+Implement REST endpoints for **user-custom metrics only**:
+
+1. GET /metrics/custom?systemId=
+   - Returns:
+     • Official metrics from `metrics`
+     • Private user-created metrics from `user_custom_metrics`.
+
+2. POST /metrics/custom
+   - Add a new custom metric.
+   - Set source_type = 'user' and review_status = 'pending'.
+
+3. PUT /metrics/custom/:id
+   - Edit a user-created metric (only owner or admin).
+
+4. GET /metrics/custom/export
+   - Export **only user_custom_metrics** as CSV.
+
+5. POST /metrics/custom/import
+   - Admin uploads CSV to approve or reject metrics.
+   - Approved metrics have source_type='official'.
+
+Rules:
+- Existing metrics from lab uploads remain in `metrics`.
+- User-created metrics live in `user_custom_metrics`.
+- Backend merges official + user metrics when returning results.
+
+==================================================
+STAGE 3 – FRONTEND UI
+==================================================
+
+On system drill-down pages:
+- Show two UI tables: Key Metrics and Additional Metrics.
+- Official metrics populate these as they currently do.
+- **All user-added metrics always appear in the Additional Metrics table** (never in Key Metrics).
+- Allow editing: dropdown of known metrics. If not found, show "+ Add Metric".
+- Add Metric modal fields:
+  Metric Name, Value, Units (dropdown), Normal Range Min, Normal Range Max, Gender applicability.
+- On save: send to POST /metrics/custom.
+- User sees their custom metric immediately (private).
+
+Admin UI:
+- Export user_custom_metrics to CSV.
+- Re-upload CSV after review to approve metrics globally.
+
+==================================================
+DELIVERABLES
+==================================================
+1. Backward-compatible schema (new table, no changes to metrics).
+2. APIs for user-custom metrics.
+3. Frontend components.
+4. Admin CSV workflow.

@@ -244,18 +244,18 @@ class HealthDashboard {
                         </div>
                     </div>
 
-                    <!-- Non-Key Metrics -->
+                    <!-- Additional Metrics (Non-Key + Custom) -->
                     <div class="card mb-4">
-                        <div class="card-header">
+                        <div class="card-header d-flex justify-content-between align-items-center">
                             <h6 class="mb-0" style="color: #FFFFFF;">
                                 <i class="fas fa-list me-2"></i>Additional Metrics
                             </h6>
+                            <button class="btn btn-outline-primary btn-sm" onclick="app.showAddCustomMetricModal(${systemData.system.id})">
+                                <i class="fas fa-plus me-1"></i>Add Metric
+                            </button>
                         </div>
                         <div class="card-body">
-                            ${systemData.nonKeyMetrics.length > 0 ? 
-                                this.renderMetricsTable(systemData.nonKeyMetrics, systemData.system) :
-                                '<p style="color: #EBEBF5;">No additional metrics available</p>'
-                            }
+                            ${this.renderCombinedAdditionalMetrics(systemData)}
                         </div>
                     </div>
                 </div>
@@ -425,6 +425,111 @@ class HealthDashboard {
         `;
     }
 
+    renderCombinedAdditionalMetrics(systemData) {
+        const nonKeyMetrics = systemData.nonKeyMetrics || [];
+        const customMetrics = systemData.customMetrics || [];
+        
+        if (nonKeyMetrics.length === 0 && customMetrics.length === 0) {
+            return '<p style="color: #EBEBF5;">No additional metrics available</p>';
+        }
+        
+        let html = '';
+        
+        // Render non-key official metrics
+        if (nonKeyMetrics.length > 0) {
+            html += this.renderMetricsTable(nonKeyMetrics, systemData.system);
+        }
+        
+        // Render custom metrics
+        if (customMetrics.length > 0) {
+            if (nonKeyMetrics.length > 0) {
+                html += '<hr style="border-color: #48484A; margin: 20px 0;">';
+                html += '<h6 style="color: #FFFFFF; margin-bottom: 15px;"><i class="fas fa-user-plus me-2"></i>Custom Metrics</h6>';
+            }
+            html += this.renderCustomMetricsTable(customMetrics, systemData.system);
+        }
+        
+        return html;
+    }
+
+    renderCustomMetricsTable(customMetrics, systemData) {
+        return `
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th style="color: #FFFFFF; background-color: #2C2C2E;">Metric</th>
+                            <th style="color: #FFFFFF; background-color: #2C2C2E;">Value</th>
+                            <th style="color: #FFFFFF; background-color: #2C2C2E;">Unit</th>
+                            <th style="color: #FFFFFF; background-color: #2C2C2E;">Date</th>
+                            <th style="color: #FFFFFF; background-color: #2C2C2E;">Status</th>
+                            <th style="color: #FFFFFF; background-color: #2C2C2E;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${customMetrics.map(metric => this.renderCustomMetricRow(metric, systemData)).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    renderCustomMetricRow(metric, systemData) {
+        const isInRange = this.isCustomMetricInRange(metric);
+        const statusBadge = this.getCustomMetricStatusBadge(metric, isInRange);
+        const sourceIcon = metric.source_type === 'official' ? 
+            '<i class="fas fa-globe text-success" title="Global metric"></i>' : 
+            '<i class="fas fa-user text-info" title="Personal metric"></i>';
+        
+        return `
+            <tr>
+                <td style="color: #FFFFFF; font-weight: 600;">
+                    ${sourceIcon} ${metric.metric_name}
+                </td>
+                <td style="color: #FFFFFF;">${metric.value}</td>
+                <td style="color: #EBEBF5;">${metric.units}</td>
+                <td style="color: #EBEBF5;">${new Date(metric.created_at).toLocaleDateString()}</td>
+                <td>${statusBadge}</td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary btn-sm" onclick="app.editCustomMetric(${metric.id})" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="app.deleteCustomMetric(${metric.id})" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+
+    isCustomMetricInRange(metric) {
+        if (!metric.normal_range_min || !metric.normal_range_max) return null;
+        
+        const value = parseFloat(metric.value);
+        if (isNaN(value)) return null;
+        
+        return value >= metric.normal_range_min && value <= metric.normal_range_max;
+    }
+
+    getCustomMetricStatusBadge(metric, isInRange) {
+        if (isInRange === null) {
+            return '<span class="badge bg-secondary">-</span>';
+        }
+        
+        if (isInRange) {
+            return '<span class="badge bg-success">Normal</span>';
+        } else {
+            const value = parseFloat(metric.value);
+            if (value < metric.normal_range_min) {
+                return '<span class="badge bg-warning">Low</span>';
+            } else {
+                return '<span class="badge bg-danger">High</span>';
+            }
+        }
+    }
+
     generateTooltipTitle(metricData, metricName) {
         let tooltip = metricName;
         if (metricData.description) {
@@ -471,6 +576,158 @@ class HealthDashboard {
         // Remove refreshing indicators
         const refreshingDivs = document.querySelectorAll('.insights-refreshing');
         refreshingDivs.forEach(div => div.remove());
+    }
+
+    // Custom Metrics Methods
+    showAddCustomMetricModal(systemId) {
+        const modal = document.createElement('div');
+        modal.className = 'modal fade';
+        modal.id = 'addCustomMetricModal';
+        modal.innerHTML = `
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" style="color: #FFFFFF;">Add Custom Metric</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="addCustomMetricForm">
+                            <div class="mb-3">
+                                <label class="form-label" style="color: #FFFFFF;">Metric Name</label>
+                                <input type="text" class="form-control" id="customMetricName" required>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label" style="color: #FFFFFF;">Value</label>
+                                        <input type="text" class="form-control" id="customMetricValue" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label" style="color: #FFFFFF;">Units</label>
+                                        <select class="form-select" id="customMetricUnits" required>
+                                            ${this.generateUnitsOptions()}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label" style="color: #FFFFFF;">Normal Range Min</label>
+                                        <input type="number" class="form-control" id="customMetricRangeMin" step="0.01">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label" style="color: #FFFFFF;">Normal Range Max</label>
+                                        <input type="number" class="form-control" id="customMetricRangeMax" step="0.01">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" style="color: #FFFFFF;">Gender Applicability</label>
+                                <select class="form-select" id="customMetricGender">
+                                    <option value="All">All</option>
+                                    <option value="F">Female</option>
+                                    <option value="M">Male</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="app.saveCustomMetric(${systemId})">Save Metric</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        const modalInstance = new bootstrap.Modal(modal);
+        modalInstance.show();
+        
+        // Clean up modal after hiding
+        modal.addEventListener('hidden.bs.modal', () => {
+            document.body.removeChild(modal);
+        });
+    }
+
+    generateUnitsOptions() {
+        const units = [
+            'g', 'mg', 'µg', 'ng', 'pg', 'mol/L', 'mmol/L', 'µmol/L',
+            'mg/dL', 'g/dL', 'µg/dL', 'ng/dL', 'mg/L', 'µg/L', 'ng/mL',
+            'L', 'mL', 'µL', 'mmHg', 'bpm', 'breaths/min', '°C', '°F',
+            '×10⁹/L', '×10¹²/L', '#/µL', '%', 'ratio', 'sec', 'min', 'hr',
+            'IU/L', 'mEq/L', 'U/L', 'g/24h', 'Osm/kg', 'Osm/L',
+            'kg', 'cm', 'mmol/mol', 'Other'
+        ];
+        
+        return units.map(unit => `<option value="${unit}">${unit}</option>`).join('');
+    }
+
+    async saveCustomMetric(systemId) {
+        try {
+            const formData = {
+                systemId: systemId,
+                metricName: document.getElementById('customMetricName').value,
+                value: document.getElementById('customMetricValue').value,
+                units: document.getElementById('customMetricUnits').value,
+                normalRangeMin: parseFloat(document.getElementById('customMetricRangeMin').value) || null,
+                normalRangeMax: parseFloat(document.getElementById('customMetricRangeMax').value) || null,
+                rangeApplicableTo: document.getElementById('customMetricGender').value
+            };
+
+            // Validate required fields
+            if (!formData.metricName || !formData.value || !formData.units) {
+                this.showToast('error', 'Validation Error', 'Please fill in all required fields');
+                return;
+            }
+
+            this.showLoading(true);
+            await this.apiCall('/metrics/custom', 'POST', formData);
+            
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('addCustomMetricModal')).hide();
+            
+            // Refresh system details
+            this.showSystemDetails(systemId);
+            
+            this.showToast('success', 'Custom Metric', 'Custom metric added successfully');
+            
+        } catch (error) {
+            console.error('Failed to save custom metric:', error);
+            this.showToast('error', 'Save Failed', error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    async editCustomMetric(metricId) {
+        // Implementation for editing custom metrics
+        this.showToast('info', 'Edit Metric', 'Edit functionality will be implemented');
+    }
+
+    async deleteCustomMetric(metricId) {
+        if (!confirm('Are you sure you want to delete this custom metric?')) return;
+        
+        try {
+            this.showLoading(true);
+            await this.apiCall(`/metrics/custom/${metricId}`, 'DELETE');
+            
+            // Refresh current system view
+            this.refreshCurrentSystemView();
+            
+            this.showToast('success', 'Custom Metric', 'Custom metric deleted successfully');
+            
+        } catch (error) {
+            console.error('Failed to delete custom metric:', error);
+            this.showToast('error', 'Delete Failed', error.message);
+        } finally {
+            this.showLoading(false);
+        }
     }
 
     // Start polling for updated insights after metric changes

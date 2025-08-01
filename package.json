@@ -12,6 +12,7 @@
   "dependencies": {
     "bull": "^4.16.5",
     "cors": "^2.8.5",
+    "csv-parser": "^3.2.0",
     "express": "^5.1.0",
     "google-auth-library": "^10.2.0",
     "jsonwebtoken": "^9.0.2",
