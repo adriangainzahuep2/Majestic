@@ -663,6 +663,12 @@ class HealthDashboard {
 
     // NEW: Inline custom metric modal during edit flow
     showInlineCustomMetricModal(systemId, metricId) {
+        // Get current metric name and units for pre-population
+        const currentMetricSelect = document.getElementById(`edit-metric-${metricId}`);
+        const currentMetricName = currentMetricSelect.options[0].text; // First option is current metric
+        const currentUnitsElement = document.getElementById(`edit-unit-${metricId}`);
+        const currentUnits = currentUnitsElement ? currentUnitsElement.value : '';
+        
         const modal = document.createElement('div');
         modal.className = 'modal fade';
         modal.id = 'inlineCustomMetricModal';
@@ -678,6 +684,7 @@ class HealthDashboard {
                             <div class="mb-3">
                                 <label class="form-label" style="color: #FFFFFF;">Metric Name</label>
                                 <input type="text" class="form-control" id="inlineMetricName" required 
+                                       value="${currentMetricName}"
                                        style="background-color: #2C2C2E; border-color: #48484A; color: #FFFFFF;">
                             </div>
                             <div class="mb-3">
@@ -685,20 +692,7 @@ class HealthDashboard {
                                 <select class="form-select" id="inlineMetricUnits" required 
                                         style="background-color: #2C2C2E; border-color: #48484A; color: #FFFFFF;">
                                     <option value="">Select units</option>
-                                    <option value="mg/dL">mg/dL</option>
-                                    <option value="mmHg">mmHg</option>
-                                    <option value="g/dL">g/dL</option>
-                                    <option value="%">%</option>
-                                    <option value="U/L">U/L</option>
-                                    <option value="ng/mL">ng/mL</option>
-                                    <option value="pg/mL">pg/mL</option>
-                                    <option value="μg/L">μg/L</option>
-                                    <option value="IU/mL">IU/mL</option>
-                                    <option value="beats/min">beats/min</option>
-                                    <option value="L/min">L/min</option>
-                                    <option value="mg/L">mg/L</option>
-                                    <option value="μmol/L">μmol/L</option>
-                                    <option value="nmol/L">nmol/L</option>
+                                    ${this.generateUnitsOptionsWithSelected(currentUnits)}
                                 </select>
                             </div>
                             <div class="row">
@@ -759,7 +753,10 @@ class HealthDashboard {
             const rangeMax = parseFloat(document.getElementById('inlineRangeMax').value) || null;
             const gender = document.getElementById('inlineGender').value;
 
+            console.log('DEBUG saveInlineCustomMetric:', { metricName, units, rangeMin, rangeMax, gender });
+
             if (!metricName || !units) {
+                console.error('Validation failed:', { metricName, units });
                 this.showToast('error', 'Validation Error', 'Metric name and units are required');
                 return;
             }
@@ -828,6 +825,22 @@ class HealthDashboard {
         ];
         
         return units.map(unit => `<option value="${unit}">${unit}</option>`).join('');
+    }
+
+    generateUnitsOptionsWithSelected(selectedUnit) {
+        const units = [
+            'g', 'mg', 'µg', 'ng', 'pg', 'mol/L', 'mmol/L', 'µmol/L', 'nmol/L',
+            'mg/dL', 'g/dL', 'µg/dL', 'ng/dL', 'mg/L', 'µg/L', 'ng/mL',
+            'L', 'mL', 'µL', 'mmHg', 'bpm', 'breaths/min', '°C', '°F',
+            '×10⁹/L', '×10¹²/L', '#/µL', '%', 'ratio', 'sec', 'min', 'hr',
+            'IU/L', 'mEq/L', 'U/L', 'g/24h', 'Osm/kg', 'Osm/L',
+            'kg', 'cm', 'mmol/mol', 'Other'
+        ];
+        
+        return units.map(unit => {
+            const selected = unit === selectedUnit ? 'selected' : '';
+            return `<option value="${unit}" ${selected}>${unit}</option>`;
+        }).join('');
     }
 
     async saveCustomMetric(systemId) {
