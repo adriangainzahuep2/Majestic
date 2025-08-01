@@ -86,6 +86,71 @@ router.get('/system/:systemId', async (req, res) => {
   }
 });
 
+// GET /metrics/types - Get available metric types for dropdown (NEW ENDPOINT)
+router.get('/types', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const systemId = req.query.systemId;
+
+    if (!systemId) {
+      return res.status(400).json({ error: 'systemId parameter is required' });
+    }
+
+    // 1. Get official metric names from reference data
+    const fs = require('fs');
+    const path = require('path');
+    
+    let officialMetricNames = [];
+    try {
+      const metricsPath = path.join(__dirname, '../src/data/metrics.json');
+      if (fs.existsSync(metricsPath)) {
+        const metricsData = JSON.parse(fs.readFileSync(metricsPath, 'utf8'));
+        // Filter by system name
+        const systemResult = await req.db.query('SELECT name FROM health_systems WHERE id = $1', [systemId]);
+        if (systemResult.rows.length > 0) {
+          const systemName = systemResult.rows[0].name;
+          officialMetricNames = metricsData
+            .filter(m => m.system === systemName)
+            .map(m => m.metric);
+        }
+      }
+    } catch (error) {
+      console.warn('Could not load reference metrics:', error.message);
+    }
+
+    // 2. Get approved custom metric names (source_type='official')
+    const approvedCustomResult = await req.db.query(`
+      SELECT DISTINCT metric_name 
+      FROM user_custom_metrics 
+      WHERE system_id = $1 AND source_type = 'official' AND review_status = 'approved'
+      ORDER BY metric_name
+    `, [systemId]);
+    const approvedCustomMetricNames = approvedCustomResult.rows.map(row => row.metric_name);
+
+    // 3. Get current user's own pending metric names
+    const userPendingResult = await req.db.query(`
+      SELECT DISTINCT metric_name 
+      FROM user_custom_metrics 
+      WHERE system_id = $1 AND user_id = $2 AND source_type = 'user' AND review_status = 'pending'
+      ORDER BY metric_name
+    `, [systemId, userId]);
+    const userPendingMetricNames = userPendingResult.rows.map(row => row.metric_name);
+
+    res.json({
+      officialMetricNames,
+      approvedCustomMetricNames,
+      userPendingMetricNames
+    });
+
+  } catch (error) {
+    console.error('Get metric types error:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch metric types',
+      message: error.message 
+    });
+  }
+});
+
 // Get trend data for specific metrics
 router.get('/trends', async (req, res) => {
   try {
@@ -235,20 +300,33 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Update metric
+// Update metric (ENHANCED WITH CUSTOM METRIC VALIDATION)
 router.put('/:id', async (req, res) => {
   try {
     const userId = req.user.userId;
     const metricId = req.params.id;
     const updates = req.body;
 
-    // Check if metric belongs to user
+    // Check if metric belongs to user and get current system_id
     const checkResult = await req.db.query(`
-      SELECT id FROM metrics WHERE id = $1 AND user_id = $2
+      SELECT id, system_id FROM metrics WHERE id = $1 AND user_id = $2
     `, [metricId, userId]);
 
     if (checkResult.rows.length === 0) {
       return res.status(404).json({ error: 'Metric not found' });
+    }
+
+    const systemId = checkResult.rows[0].system_id;
+
+    // ENHANCED VALIDATION: If metric_name is being updated, validate it
+    if (updates.metric_name) {
+      const isValidMetricName = await validateMetricName(updates.metric_name, systemId, userId, req.db);
+      if (!isValidMetricName) {
+        return res.status(400).json({ 
+          error: 'Invalid metric name',
+          message: 'Metric name must be an official metric, approved custom metric, or your own pending custom metric'
+        });
+      }
     }
 
     const allowedUpdates = ['metric_name', 'metric_value', 'metric_unit', 'reference_range', 'test_date'];
@@ -500,6 +578,116 @@ router.put('/:metricId', async (req, res) => {
       message: 'Failed to update metric',
       error: error.message
     });
+  }
+});
+
+// Helper function to validate metric names (NEW VALIDATION LOGIC)
+async function validateMetricName(metricName, systemId, userId, db) {
+  try {
+    // 1. Check if it's an official metric from reference data
+    const fs = require('fs');
+    const path = require('path');
+    
+    try {
+      const metricsPath = path.join(__dirname, '../src/data/metrics.json');
+      if (fs.existsSync(metricsPath)) {
+        const metricsData = JSON.parse(fs.readFileSync(metricsPath, 'utf8'));
+        const systemResult = await db.query('SELECT name FROM health_systems WHERE id = $1', [systemId]);
+        if (systemResult.rows.length > 0) {
+          const systemName = systemResult.rows[0].name;
+          const isOfficialMetric = metricsData.some(m => 
+            m.system === systemName && m.metric === metricName
+          );
+          if (isOfficialMetric) return true;
+        }
+      }
+    } catch (error) {
+      console.warn('Could not load reference metrics for validation:', error.message);
+    }
+
+    // 2. Check if it's an approved custom metric (source_type='official')
+    const approvedCustomResult = await db.query(`
+      SELECT id FROM user_custom_metrics 
+      WHERE system_id = $1 AND metric_name = $2 AND source_type = 'official' AND review_status = 'approved'
+    `, [systemId, metricName]);
+    
+    if (approvedCustomResult.rows.length > 0) return true;
+
+    // 3. Check if it's the current user's own pending custom metric
+    const userPendingResult = await db.query(`
+      SELECT id FROM user_custom_metrics 
+      WHERE system_id = $1 AND metric_name = $2 AND user_id = $3 AND source_type = 'user' AND review_status = 'pending'
+    `, [systemId, metricName, userId]);
+    
+    if (userPendingResult.rows.length > 0) return true;
+
+    // If none of the above, it's invalid
+    return false;
+  } catch (error) {
+    console.error('Error validating metric name:', error);
+    return false;
+  }
+}
+
+// POST endpoint to create custom metric type during edit flow (NEW ENDPOINT)
+router.post('/create-custom-type', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const {
+      systemId,
+      metricName,
+      units,
+      normalRangeMin,
+      normalRangeMax,
+      rangeApplicableTo = 'All'
+    } = req.body;
+
+    // Validate required fields
+    if (!systemId || !metricName || !units) {
+      return res.status(400).json({ 
+        error: 'systemId, metricName, and units are required' 
+      });
+    }
+
+    // Check if metric name already exists (avoid duplicates)
+    const existingResult = await req.db.query(`
+      SELECT id FROM user_custom_metrics 
+      WHERE system_id = $1 AND metric_name = $2
+    `, [systemId, metricName]);
+
+    if (existingResult.rows.length > 0) {
+      return res.status(400).json({ 
+        error: 'Metric name already exists',
+        message: 'This metric name is already defined. Please choose a different name.'
+      });
+    }
+
+    // Create new custom metric type
+    const result = await req.db.query(`
+      INSERT INTO user_custom_metrics 
+      (system_id, user_id, metric_name, value, units, normal_range_min, normal_range_max, range_applicable_to, source_type, review_status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'user', 'pending')
+      RETURNING *
+    `, [systemId, userId, metricName, '0', units, normalRangeMin, normalRangeMax, rangeApplicableTo]);
+
+    console.log(`[CUSTOM METRIC TYPE CREATED] userId=${userId} systemId=${systemId} metricName=${metricName} status=pending`);
+
+    res.status(201).json({
+      success: true,
+      customMetricType: result.rows[0],
+      message: 'Custom metric type created and pending admin review'
+    });
+
+  } catch (error) {
+    console.error('Error creating custom metric type:', error);
+    
+    if (error.code === '23514') { // CHECK constraint violation
+      return res.status(400).json({ 
+        error: 'Invalid value for units or range_applicable_to field' 
+      });
+    }
+    
+    res.status(500).json({ error: 'Failed to create custom metric type' });
   }
 });
 

@@ -33,7 +33,17 @@ The frontend is a **vanilla JavaScript SPA** served as static files:
 - **Daily plan generation** with personalized health recommendations
 - **Structured JSON outputs** for consistent data handling
 
-### Recent Changes (July 30, 2025)
+### Recent Changes (August 1, 2025)
+- **✓ Text-based custom metric names feature** - Implemented inline custom metric type creation during edit flow
+- **✓ Enhanced metric validation** - Three-tier validation (official → approved custom → user pending) for metric names
+- **✓ New API endpoint** - `GET /metrics/types?systemId=X` provides merged dropdown data for official and custom metrics
+- **✓ Inline custom metric modal** - Create new metric types directly within edit flow with proper UI contrast fixes
+- **✓ Admin review workflow** - CSV export/import system for approving user-created custom metric types
+- **✓ Removed standalone Add Metric** - Users can only create custom metrics through edit flow, preventing duplicate entries
+- **✓ Database integrity preserved** - No schema changes, text-based approach maintains backward compatibility
+- **✓ User permission system** - Custom metrics visible to creator until admin approval makes them globally available
+
+### Previous Changes (July 30, 2025)
 - **✓ Enhanced AI insights system** - Updated OpenAI prompts with structured medical analysis format for better clinical assessments
 - **✓ Fixed database schema** - Added missing 'updated_at' column to ai_outputs_log table for proper cache management
 - **✓ Improved drill-down UX** - Fixed multiple spinner stacking and "Needs Review" badge clearing after edits

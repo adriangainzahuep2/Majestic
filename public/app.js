@@ -246,13 +246,10 @@ class HealthDashboard {
 
                     <!-- Additional Metrics (Non-Key + Custom) -->
                     <div class="card mb-4">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card-header">
                             <h6 class="mb-0" style="color: #FFFFFF;">
                                 <i class="fas fa-list me-2"></i>Additional Metrics
                             </h6>
-                            <button class="btn btn-outline-primary btn-sm" onclick="app.showAddCustomMetricModal(${systemData.system.id})">
-                                <i class="fas fa-plus me-1"></i>Add Metric
-                            </button>
                         </div>
                         <div class="card-body">
                             ${this.renderCombinedAdditionalMetrics(systemData)}
@@ -370,9 +367,13 @@ class HealthDashboard {
                 <div class="row">
                     <div class="col-md-4">
                         <label class="form-label" style="color: #FFFFFF; font-size: 12px;">Metric Name</label>
-                        <select class="form-select" id="edit-metric-${metric.id}">
-                            ${this.generateMetricOptions(systemData, metric.metric_name)}
-                        </select>
+                        <div class="metric-name-dropdown-container">
+                            <select class="form-select metric-name-searchable" id="edit-metric-${metric.id}" 
+                                    data-system-id="${systemData.system?.id || systemData.id}" 
+                                    data-metric-id="${metric.id}">
+                                <option value="${metric.metric_name}" selected>${metric.metric_name}</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label" style="color: #FFFFFF; font-size: 12px;">Value</label>
@@ -655,6 +656,124 @@ class HealthDashboard {
         });
     }
 
+    // NEW: Inline custom metric modal during edit flow
+    showInlineCustomMetricModal(systemId, metricId) {
+        const modal = document.createElement('div');
+        modal.className = 'modal fade';
+        modal.id = 'inlineCustomMetricModal';
+        modal.innerHTML = `
+            <div class="modal-dialog modal-sm">
+                <div class="modal-content" style="background-color: #1C1C1E;">
+                    <div class="modal-header" style="border-color: #48484A;">
+                        <h5 class="modal-title" style="color: #FFFFFF;">Create New Metric Type</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="inlineCustomMetricForm">
+                            <div class="mb-3">
+                                <label class="form-label" style="color: #FFFFFF;">Metric Name</label>
+                                <input type="text" class="form-control" id="inlineMetricName" required 
+                                       style="background-color: #2C2C2E; border-color: #48484A; color: #FFFFFF;">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" style="color: #FFFFFF;">Units</label>
+                                <select class="form-select" id="inlineMetricUnits" required 
+                                        style="background-color: #2C2C2E; border-color: #48484A; color: #FFFFFF;">
+                                    ${this.generateUnitsOptions()}
+                                </select>
+                            </div>
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label class="form-label" style="color: #FFFFFF;">Range Min</label>
+                                        <input type="number" class="form-control" id="inlineRangeMin" step="0.01"
+                                               style="background-color: #2C2C2E; border-color: #48484A; color: #FFFFFF;">
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label class="form-label" style="color: #FFFFFF;">Range Max</label>
+                                        <input type="number" class="form-control" id="inlineRangeMax" step="0.01"
+                                               style="background-color: #2C2C2E; border-color: #48484A; color: #FFFFFF;">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" style="color: #FFFFFF;">Gender Applicability</label>
+                                <select class="form-select" id="inlineGender" 
+                                        style="background-color: #2C2C2E; border-color: #48484A; color: #FFFFFF;">
+                                    <option value="All">All</option>
+                                    <option value="F">Female</option>
+                                    <option value="M">Male</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer" style="border-color: #48484A;">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="app.saveInlineCustomMetric(${systemId}, ${metricId})">Create & Use</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        const modalInstance = new bootstrap.Modal(modal);
+        modalInstance.show();
+        
+        // Clean up modal after hiding
+        modal.addEventListener('hidden.bs.modal', () => {
+            document.body.removeChild(modal);
+            // Reset dropdown selection
+            const selectElement = document.getElementById(`edit-metric-${metricId}`);
+            const originalValue = selectElement.querySelector('option:first-child').value;
+            selectElement.value = originalValue;
+        });
+    }
+
+    async saveInlineCustomMetric(systemId, metricId) {
+        try {
+            const metricName = document.getElementById('inlineMetricName').value;
+            const units = document.getElementById('inlineMetricUnits').value;
+            const rangeMin = parseFloat(document.getElementById('inlineRangeMin').value) || null;
+            const rangeMax = parseFloat(document.getElementById('inlineRangeMax').value) || null;
+            const gender = document.getElementById('inlineGender').value;
+
+            if (!metricName || !units) {
+                this.showToast('error', 'Validation Error', 'Metric name and units are required');
+                return;
+            }
+
+            this.showLoading(true);
+
+            // Step 1: Create custom metric type
+            await this.apiCall('/metrics/create-custom-type', 'POST', {
+                systemId: systemId,
+                metricName: metricName,
+                units: units,
+                normalRangeMin: rangeMin,
+                normalRangeMax: rangeMax,
+                rangeApplicableTo: gender
+            });
+
+            // Step 2: Update metric dropdown selection
+            const selectElement = document.getElementById(`edit-metric-${metricId}`);
+            selectElement.value = metricName;
+
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('inlineCustomMetricModal')).hide();
+
+            this.showToast('success', 'Custom Metric Type', 'New metric type created and ready to use');
+
+        } catch (error) {
+            console.error('Failed to create inline custom metric:', error);
+            this.showToast('error', 'Creation Failed', error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
     generateUnitsOptions() {
         const units = [
             'g', 'mg', 'µg', 'ng', 'pg', 'mol/L', 'mmol/L', 'µmol/L',
@@ -887,19 +1006,45 @@ class HealthDashboard {
         }
     }
 
-    generateMetricOptions(systemData, currentMetric) {
-        const metricsData = window.metricUtils?.metricsData || [];
-        const systemMetrics = metricsData.filter(m => m.system === systemData.name);
-        
-        let options = `<option value="${currentMetric}">${currentMetric}</option>`;
-        
-        systemMetrics.forEach(metric => {
-            if (metric.metric !== currentMetric) {
-                options += `<option value="${metric.metric}">${metric.metric}</option>`;
-            }
-        });
-        
-        return options;
+    async populateMetricDropdown(selectElement, systemId, currentMetric) {
+        try {
+            // Fetch available metric types from new API endpoint
+            const response = await this.apiCall(`/metrics/types?systemId=${systemId}`, 'GET');
+            const { officialMetricNames, approvedCustomMetricNames, userPendingMetricNames } = response;
+            
+            // Clear existing options except current
+            selectElement.innerHTML = `<option value="${currentMetric}" selected>${currentMetric}</option>`;
+            
+            // Add all available metric names
+            const allMetricNames = [
+                ...officialMetricNames,
+                ...approvedCustomMetricNames,
+                ...userPendingMetricNames
+            ];
+            
+            // Remove duplicates and current metric
+            const uniqueMetrics = [...new Set(allMetricNames)].filter(name => name !== currentMetric);
+            
+            uniqueMetrics.forEach(metricName => {
+                const option = document.createElement('option');
+                option.value = metricName;
+                option.textContent = metricName;
+                selectElement.appendChild(option);
+            });
+            
+            // Add "+ Add New Metric" option
+            const addOption = document.createElement('option');
+            addOption.value = '__ADD_NEW__';
+            addOption.textContent = '+ Add New Metric Type';
+            addOption.style.fontStyle = 'italic';
+            addOption.style.color = '#007AFF';
+            selectElement.appendChild(addOption);
+            
+            return true;
+        } catch (error) {
+            console.error('Failed to populate metric dropdown:', error);
+            return false;
+        }
     }
 
     generateUnitOptions(metricMatch, currentUnit) {
@@ -920,9 +1065,30 @@ class HealthDashboard {
         return options;
     }
 
-    editMetric(metricId) {
+    async editMetric(metricId) {
         const editRow = document.getElementById(`edit-row-${metricId}`);
         const editForm = document.getElementById(`edit-form-${metricId}`);
+        const displayRow = document.getElementById(`metric-row-${metricId}`);
+        
+        // Show edit form and hide display row
+        displayRow.classList.add('d-none');
+        editRow.classList.remove('d-none');
+        
+        // Populate metric dropdown with available options
+        const selectElement = document.getElementById(`edit-metric-${metricId}`);
+        const systemId = selectElement.dataset.systemId;
+        const currentMetric = selectElement.value;
+        
+        if (systemId) {
+            await this.populateMetricDropdown(selectElement, systemId, currentMetric);
+            
+            // Add change handler for "+ Add New Metric" option
+            selectElement.addEventListener('change', (e) => {
+                if (e.target.value === '__ADD_NEW__') {
+                    this.showInlineCustomMetricModal(systemId, metricId);
+                }
+            });
+        }
         
         // Pre-populate the date field with the existing metric date
         const metricRow = document.querySelector(`[data-metric-id="${metricId}"]`);
