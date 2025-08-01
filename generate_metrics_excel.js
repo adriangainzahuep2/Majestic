@@ -176,7 +176,28 @@ async function generateMetricsExcel() {
     const filepath = `./uploads/${filename}`;
 
     console.log('Writing Excel file...');
-    XLSX.writeFile(workbook, filepath);
+    
+    // Ensure uploads directory exists
+    const fs = require('fs');
+    if (!fs.existsSync('./uploads')) {
+      fs.mkdirSync('./uploads', { recursive: true });
+    }
+    
+    // Write with explicit options for better compatibility
+    XLSX.writeFile(workbook, filepath, { 
+      bookType: 'xlsx', 
+      type: 'buffer',
+      cellStyles: true,
+      sheetStubs: false 
+    });
+    
+    // Verify file was created and is readable
+    const stats = fs.statSync(filepath);
+    console.log(`File size: ${stats.size} bytes`);
+    
+    if (stats.size < 1000) {
+      throw new Error('Generated file appears to be too small - possible corruption');
+    }
 
     console.log(`✅ Excel file created successfully: ${filename}`);
     console.log(`📊 Data Summary:`);

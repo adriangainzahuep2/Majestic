@@ -1,0 +1,110 @@
+id,metric_name,metric_value,metric_unit,reference_range,test_date,is_key_metric,system_name,source_file
+106,Apolipoprotein B,130,mg/dL,<90 mg/dL,2025-02-04,No,Cardiovascular,lipid panel feb 2025.pdf
+99,Chol/HDL Ratio,4.6,calc,<5.0 calc,2025-02-04,No,Cardiovascular,lipid panel feb 2025.pdf
+65,CHOL/HDLC RATIO,3.6,,<5.0,2023-12-22,No,Cardiovascular,quest dec 2023.pdf
+95,Cholesterol,222,mg/dL,<200 mg/dL,2025-02-04,No,Cardiovascular,lipid panel feb 2025.pdf
+96,HDL,48,mg/dL,>39 mg/dL,2025-02-04,No,Cardiovascular,lipid panel feb 2025.pdf
+23,HDL Cholesterol,56,mg/dL,>40,2023-12-22,No,Cardiovascular,"Doc Dec 28, 2023, 11_10.pdf"
+62,HDL CHOLESTEROL,56,mg/dL,>= 40 mg/dL,2023-12-22,No,Cardiovascular,quest dec 2023.pdf
+104,"HDL, LARGE",4764,nmol/L,">6,729 nmol/L",2025-02-04,No,Cardiovascular,lipid panel feb 2025.pdf
+4,Hematocrit,46.2,%,38.5 - 50.0 %,2025-02-05,No,Cardiovascular,MyChart - Test Details.pdf
+64,LDL,120,mg/dL,<100 mg/dL,2023-12-23,Yes,Cardiovascular,quest dec 2023.pdf
+25,LDL,120,mg/dL,<100,2023-12-22,Yes,Cardiovascular,"Doc Dec 28, 2023, 11_10.pdf"
+98,LDL Calculated,151,mg/dL,<100 mg/dL,2025-02-04,Yes,Cardiovascular,lipid panel feb 2025.pdf
+105,LDL PARTICLE SIZE,224.2,Angstrom,200-223 Angstrom,2025-02-04,Yes,Cardiovascular,lipid panel feb 2025.pdf
+101,"LDL Particles, Total",2144,nmol/L,0-1000 nmol/L,2025-02-04,Yes,Cardiovascular,lipid panel feb 2025.pdf
+102,"LDL, Small",333,nmol/L,0-467 nmol/L,2025-02-05,Yes,Cardiovascular,lipid panel feb 2025.pdf
+103,"LDL, Small",419,nmol/L,0-467 nmol/L,2025-02-04,Yes,Cardiovascular,lipid panel feb 2025.pdf
+6,MCH,28.7,pg,27.0 - 33.0 pg,2025-02-04,No,Cardiovascular,MyChart - Test Details.pdf
+7,MCHC,33.1,g/dL,32.0 - 36.0 g/dL,2025-02-04,No,Cardiovascular,MyChart - Test Details.pdf
+5,MCV,86.7,fL,80.0 - 100.0 fL,2025-02-04,No,Cardiovascular,MyChart - Test Details.pdf
+10,MPV,10.1,fL,7.5 - 12.5 fL,2025-02-05,No,Cardiovascular,MyChart - Test Details.pdf
+26,Non HDL Cholesterol,144,mg/dL,<130,2023-12-22,No,Cardiovascular,"Doc Dec 28, 2023, 11_10.pdf"
+66,NON HDL CHOLESTEROL,144,mg/dL,<130 mg/dL,2023-12-22,No,Cardiovascular,quest dec 2023.pdf
+100,NON-HDL CHOLESTEROL,174,mg/dL,<130 mg/dL,2025-02-04,No,Cardiovascular,lipid panel feb 2025.pdf
+9,Platelet Count,249000,Thousand/uL,140 - 400 Thousand/uL,2025-02-04,No,Cardiovascular,MyChart - Test Details.pdf
+8,RDW,13.3,%,11.0 - 15.0 %,2025-02-04,No,Cardiovascular,MyChart - Test Details.pdf
+2,Red Blood Cell Count,5.33,Million/uL,4.20 - 5.80 Million/uL,2025-02-04,No,Cardiovascular,MyChart - Test Details.pdf
+22,Total Cholesterol,200,mg/dL,<200,2023-12-22,No,Cardiovascular,"Doc Dec 28, 2023, 11_10.pdf"
+61,Total Cholesterol,200,mg/dL,<200 mg/dL,2023-12-22,No,Cardiovascular,quest dec 2023.pdf
+97,Triglycerides,109,mg/dL,<150 mg/dL,2025-02-04,No,Cardiovascular,lipid panel feb 2025.pdf
+24,Triglycerides,126,mg/dL,<150,2023-12-22,No,Cardiovascular,"Doc Dec 28, 2023, 11_10.pdf"
+63,TRIGLYCERIDES,126,mg/dL,<150 mg/dL,2023-12-22,No,Cardiovascular,quest dec 2023.pdf
+37,Albumin,4.5,g/dL,3.6-5.1,2023-12-22,No,Digestive,"Doc Dec 28, 2023, 11_10.pdf"
+77,ALBUMIN,4.5,g/dL,3.6-5.1 g/dL,2023-12-22,No,Digestive,quest dec 2023.pdf
+79,ALBUMIN/GLOBULIN RATIO,1.7,,1.0-2.5,2023-12-22,No,Digestive,quest dec 2023.pdf
+40,Alkaline Phosphatase,53,U/L,36-130,2023-12-22,No,Digestive,"Doc Dec 28, 2023, 11_10.pdf"
+42,ALT,21,U/L,9-46,2023-12-22,Yes,Digestive,"Doc Dec 28, 2023, 11_10.pdf"
+41,AST,21,U/L,10-40,2023-12-22,Yes,Digestive,"Doc Dec 28, 2023, 11_10.pdf"
+39,"Bilirubin, Total",0.5,mg/dL,0.0-1.2,2023-12-22,No,Digestive,"Doc Dec 28, 2023, 11_10.pdf"
+80,"BILIRUBIN, TOTAL",0.5,mg/dL,0.2-1.2 mg/dL,2023-12-22,No,Digestive,quest dec 2023.pdf
+27,Glucose,78,mg/dL,65-99,2023-12-22,Yes,Endocrine,"Doc Dec 28, 2023, 11_10.pdf"
+67,GLUCOSE,78,mg/dL,65-99 mg/dL,2023-12-22,Yes,Endocrine,quest dec 2023.pdf
+3,Hemoglobin,15.3,g/dL,13.2 - 17.1 g/dL,2025-02-04,No,Endocrine,MyChart - Test Details.pdf
+47,Hemoglobin,13.9,g/dL,13.2-17.1,2023-12-22,No,Endocrine,"Doc Dec 28, 2023, 11_10.pdf"
+86,HEMOGLOBIN,13.9,g/dL,13.2-17.1 g/dL,2023-12-22,No,Endocrine,quest dec 2023.pdf
+43,Hemoglobin A1c,5.6,%,<5.7,2023-12-22,No,Endocrine,"Doc Dec 28, 2023, 11_10.pdf"
+83,HEMOGLOBIN A1c,5.3,%,<5.7 %,2023-12-22,No,Endocrine,quest dec 2023.pdf
+44,TSH,1.8,mIU/L,0.40-4.50,2023-12-22,Yes,Endocrine,"Doc Dec 28, 2023, 11_10.pdf"
+59,Absolute Basophils,77,cells/uL,0-200,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+93,ABSOLUTE BASOPHILS,42,cells/uL,0-200 cells/uL,2023-12-22,No,Immune/Inflammation,quest dec 2023.pdf
+58,Absolute Eosinophils,102,cells/uL,15-500,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+92,ABSOLUTE EOSINOPHILS,112,cells/uL,15-500 cells/uL,2023-12-22,No,Immune/Inflammation,quest dec 2023.pdf
+56,Absolute Lymphocytes,1869,cells/uL,850-3900,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+90,ABSOLUTE LYMPHOCYTES,1169,cells/uL,850-3900 cells/uL,2023-12-22,No,Immune/Inflammation,quest dec 2023.pdf
+57,Absolute Monocytes,511,cells/uL,200-950,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+91,ABSOLUTE MONOCYTES,560,cells/uL,200-950 cells/uL,2023-12-22,No,Immune/Inflammation,quest dec 2023.pdf
+55,Absolute Neutrophils,5117,cells/uL,1500-7800,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+89,ABSOLUTE NEUTROPHILS,5117,cells/uL,1500-7800 cells/uL,2023-12-22,No,Immune/Inflammation,quest dec 2023.pdf
+15,Basophils Absolute Count,28,cells/uL,0 - 200 cells/uL,2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+20,Basos %,0.5,%,N/A,2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+108,CARDIO CRP(R),0.8,mg/L,<1.0 mg/L,2025-02-05,Yes,Immune/Inflammation,lipid panel feb 2025.pdf
+33,Chloride,101,mmol/L,98-110,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+19,Eos %,5.5,%,N/A,2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+14,Eosinophils Absolute Count,308,cells/uL,15 - 500 cells/uL,2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+38,Globulin,2.9,g/dL,1.9-3.7,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+78,GLOBULIN,2.7,g/dL,1.9-3.7 g/dL,2023-12-22,No,Immune/Inflammation,quest dec 2023.pdf
+48,Hematocrit,40.1,%,38.5-50.0,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+87,HEMATOCRIT,40.1,%,38.5-50.0 %,2023-12-22,No,Immune/Inflammation,quest dec 2023.pdf
+12,Lymphocytes Absolute Count,2262,cells/uL,"850 - 3,900 cells/uL",2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+17,Lymphs %,40.4,%,N/A,2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+50,MCH,28.7,pg,27.0-33.0,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+51,MCHC,34.7,g/dL,32.0-36.0,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+49,MCV,82.7,fL,80.0-100.0,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+18,Monocytes %,6,%,N/A,2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+13,Monocytes Absolute Count,336,cells/uL,200 - 950 cells/uL,2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+54,MPV,10.3,fL,7.5-12.5,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+16,Neutrophils %,47.6,%,N/A,2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+11,Neutrophils Absolute Count,2666,cells/uL,"1,500 - 7,800 cells/uL",2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+53,Platelet Count,203,Thousand/uL,140-400,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+88,PLATELET COUNT,203,Thousand/uL,140-400 Thousand/uL,2023-12-22,No,Immune/Inflammation,quest dec 2023.pdf
+32,Potassium,4.2,mmol/L,3.5-5.3,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+52,RDW,13.4,%,11.0-15.0,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+46,Red Blood Cell Count,4.85,Million/uL,4.20-5.80,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+85,RED BLOOD CELL COUNT,4.85,Million/uL,4.20-5.80 Million/uL,2023-12-22,No,Immune/Inflammation,quest dec 2023.pdf
+31,Sodium,138,mmol/L,135-146,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+1,WBC Count,5.6,Thousand/uL,3.8 - 10.8 Thousand/uL,2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+45,White Blood Cell Count,7000,Thousand/uL,3.8-10.8,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+84,WHITE BLOOD CELL COUNT,7,Thousand/uL,3.8-10.8 Thousand/uL,2023-12-22,No,Immune/Inflammation,quest dec 2023.pdf
+109,LA PLA2 ACTIVITY,93,nmol/min/mL,<124 nmol/min/mL,2025-02-04,Yes,Nervous/Brain,lipid panel feb 2025.pdf
+60,"Testosterone, Total",454,ng/dL,250-827,2023-12-22,Yes,Reproductive,"Doc Dec 28, 2023, 11_10.pdf"
+94,"TESTOSTERONE, TOTAL, MALES (ADULT), IA",454,ng/dL,250-827 ng/dL,2023-12-22,Yes,Reproductive,quest dec 2023.pdf
+34,Carbon Dioxide,27,mmol/L,20-32,2023-12-22,No,Respiratory,"Doc Dec 28, 2023, 11_10.pdf"
+74,CARBON DIOXIDE,27,mmol/L,20-32 mmol/L,2023-12-22,No,Respiratory,quest dec 2023.pdf
+81,ALKALINE PHOSPHATASE,53,U/L,36-130 U/L,2023-12-22,No,Skeletal,quest dec 2023.pdf
+35,Calcium,9.2,mg/dL,8.6-10.3,2023-12-22,No,Skeletal,"Doc Dec 28, 2023, 11_10.pdf"
+75,CALCIUM,9.2,mg/dL,8.6-10.3 mg/dL,2023-12-22,No,Skeletal,quest dec 2023.pdf
+73,CHLORIDE,103,mmol/L,98-110 mmol/L,2023-12-22,No,Urinary,quest dec 2023.pdf
+29,Creatinine,1.14,mg/dL,0.60-1.29,2023-12-22,Yes,Urinary,"Doc Dec 28, 2023, 11_10.pdf"
+69,CREATININE,1.14,mg/dL,0.60-1.29 mg/dL,2023-12-22,Yes,Urinary,quest dec 2023.pdf
+30,eGFR,82,mL/min/1.73m2,>60,2023-12-22,Yes,Urinary,"Doc Dec 28, 2023, 11_10.pdf"
+70,EGFR,82,mL/min/1.73m2,>= 60 mL/min/1.73m2,2023-12-22,Yes,Urinary,quest dec 2023.pdf
+21,Lipoprotein (a),12,nmol/L,<75,2023-12-22,No,Urinary,"Doc Dec 28, 2023, 11_10.pdf"
+107,LIPOPROTEIN (a),19,nmol/L,<75 nmol/L,2025-02-04,No,Urinary,lipid panel feb 2025.pdf
+82,LIPOPROTEIN (a),12,nmol/L,<75 nmol/L,2023-12-22,No,Urinary,quest dec 2023.pdf
+72,POTASSIUM,4.2,mmol/L,3.5-5.3 mmol/L,2023-12-22,No,Urinary,quest dec 2023.pdf
+36,"Protein, Total",7.4,g/dL,6.1-8.1,2023-12-22,No,Urinary,"Doc Dec 28, 2023, 11_10.pdf"
+76,"PROTEIN, TOTAL",7.2,g/dL,6.1-8.1 g/dL,2023-12-22,No,Urinary,quest dec 2023.pdf
+71,SODIUM,138,mmol/L,135-146 mmol/L,2023-12-22,No,Urinary,quest dec 2023.pdf
+28,Urea Nitrogen (BUN),16,mg/dL,7-25,2023-12-22,Yes,Urinary,"Doc Dec 28, 2023, 11_10.pdf"
+68,UREA NITROGEN (BUN),16,mg/dL,7-25 mg/dL,2023-12-22,Yes,Urinary,quest dec 2023.pdf
