@@ -1,0 +1,239 @@
+data_source,id,metric_name,value,unit,reference_range,test_date,is_key_metric,system_name,source_file
+Your Data,106,Apolipoprotein B,130,mg/dL,<90 mg/dL,2025-02-04,No,Cardiovascular,lipid panel feb 2025.pdf
+Your Data,99,Chol/HDL Ratio,4.6,calc,<5.0 calc,2025-02-04,No,Cardiovascular,lipid panel feb 2025.pdf
+Your Data,65,CHOL/HDLC RATIO,3.6,,<5.0,2023-12-22,No,Cardiovascular,quest dec 2023.pdf
+Your Data,95,Cholesterol,222,mg/dL,<200 mg/dL,2025-02-04,No,Cardiovascular,lipid panel feb 2025.pdf
+Your Data,96,HDL,48,mg/dL,>39 mg/dL,2025-02-04,No,Cardiovascular,lipid panel feb 2025.pdf
+Your Data,23,HDL Cholesterol,56,mg/dL,>40,2023-12-22,No,Cardiovascular,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,62,HDL CHOLESTEROL,56,mg/dL,>= 40 mg/dL,2023-12-22,No,Cardiovascular,quest dec 2023.pdf
+Your Data,104,"HDL, LARGE",4764,nmol/L,">6,729 nmol/L",2025-02-04,No,Cardiovascular,lipid panel feb 2025.pdf
+Your Data,4,Hematocrit,46.2,%,38.5 - 50.0 %,2025-02-05,No,Cardiovascular,MyChart - Test Details.pdf
+Your Data,64,LDL,120,mg/dL,<100 mg/dL,2023-12-23,Yes,Cardiovascular,quest dec 2023.pdf
+Your Data,25,LDL,120,mg/dL,<100,2023-12-22,Yes,Cardiovascular,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,98,LDL Calculated,151,mg/dL,<100 mg/dL,2025-02-04,Yes,Cardiovascular,lipid panel feb 2025.pdf
+Your Data,105,LDL PARTICLE SIZE,224.2,Angstrom,200-223 Angstrom,2025-02-04,Yes,Cardiovascular,lipid panel feb 2025.pdf
+Your Data,101,"LDL Particles, Total",2144,nmol/L,0-1000 nmol/L,2025-02-04,Yes,Cardiovascular,lipid panel feb 2025.pdf
+Your Data,102,"LDL, Small",333,nmol/L,0-467 nmol/L,2025-02-05,Yes,Cardiovascular,lipid panel feb 2025.pdf
+Your Data,103,"LDL, Small",419,nmol/L,0-467 nmol/L,2025-02-04,Yes,Cardiovascular,lipid panel feb 2025.pdf
+Your Data,6,MCH,28.7,pg,27.0 - 33.0 pg,2025-02-04,No,Cardiovascular,MyChart - Test Details.pdf
+Your Data,7,MCHC,33.1,g/dL,32.0 - 36.0 g/dL,2025-02-04,No,Cardiovascular,MyChart - Test Details.pdf
+Your Data,5,MCV,86.7,fL,80.0 - 100.0 fL,2025-02-04,No,Cardiovascular,MyChart - Test Details.pdf
+Your Data,10,MPV,10.1,fL,7.5 - 12.5 fL,2025-02-05,No,Cardiovascular,MyChart - Test Details.pdf
+Your Data,26,Non HDL Cholesterol,144,mg/dL,<130,2023-12-22,No,Cardiovascular,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,66,NON HDL CHOLESTEROL,144,mg/dL,<130 mg/dL,2023-12-22,No,Cardiovascular,quest dec 2023.pdf
+Your Data,100,NON-HDL CHOLESTEROL,174,mg/dL,<130 mg/dL,2025-02-04,No,Cardiovascular,lipid panel feb 2025.pdf
+Your Data,9,Platelet Count,249000,Thousand/uL,140 - 400 Thousand/uL,2025-02-04,No,Cardiovascular,MyChart - Test Details.pdf
+Your Data,8,RDW,13.3,%,11.0 - 15.0 %,2025-02-04,No,Cardiovascular,MyChart - Test Details.pdf
+Your Data,2,Red Blood Cell Count,5.33,Million/uL,4.20 - 5.80 Million/uL,2025-02-04,No,Cardiovascular,MyChart - Test Details.pdf
+Your Data,22,Total Cholesterol,200,mg/dL,<200,2023-12-22,No,Cardiovascular,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,61,Total Cholesterol,200,mg/dL,<200 mg/dL,2023-12-22,No,Cardiovascular,quest dec 2023.pdf
+Your Data,97,Triglycerides,109,mg/dL,<150 mg/dL,2025-02-04,No,Cardiovascular,lipid panel feb 2025.pdf
+Your Data,24,Triglycerides,126,mg/dL,<150,2023-12-22,No,Cardiovascular,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,63,TRIGLYCERIDES,126,mg/dL,<150 mg/dL,2023-12-22,No,Cardiovascular,quest dec 2023.pdf
+Your Data,37,Albumin,4.5,g/dL,3.6-5.1,2023-12-22,No,Digestive,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,77,ALBUMIN,4.5,g/dL,3.6-5.1 g/dL,2023-12-22,No,Digestive,quest dec 2023.pdf
+Your Data,79,ALBUMIN/GLOBULIN RATIO,1.7,,1.0-2.5,2023-12-22,No,Digestive,quest dec 2023.pdf
+Your Data,40,Alkaline Phosphatase,53,U/L,36-130,2023-12-22,No,Digestive,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,42,ALT,21,U/L,9-46,2023-12-22,Yes,Digestive,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,41,AST,21,U/L,10-40,2023-12-22,Yes,Digestive,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,39,"Bilirubin, Total",0.5,mg/dL,0.0-1.2,2023-12-22,No,Digestive,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,80,"BILIRUBIN, TOTAL",0.5,mg/dL,0.2-1.2 mg/dL,2023-12-22,No,Digestive,quest dec 2023.pdf
+Your Data,27,Glucose,78,mg/dL,65-99,2023-12-22,Yes,Endocrine,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,67,GLUCOSE,78,mg/dL,65-99 mg/dL,2023-12-22,Yes,Endocrine,quest dec 2023.pdf
+Your Data,3,Hemoglobin,15.3,g/dL,13.2 - 17.1 g/dL,2025-02-04,No,Endocrine,MyChart - Test Details.pdf
+Your Data,47,Hemoglobin,13.9,g/dL,13.2-17.1,2023-12-22,No,Endocrine,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,86,HEMOGLOBIN,13.9,g/dL,13.2-17.1 g/dL,2023-12-22,No,Endocrine,quest dec 2023.pdf
+Your Data,43,Hemoglobin A1c,5.6,%,<5.7,2023-12-22,No,Endocrine,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,83,HEMOGLOBIN A1c,5.3,%,<5.7 %,2023-12-22,No,Endocrine,quest dec 2023.pdf
+Your Data,44,TSH,1.8,mIU/L,0.40-4.50,2023-12-22,Yes,Endocrine,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,59,Absolute Basophils,77,cells/uL,0-200,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,93,ABSOLUTE BASOPHILS,42,cells/uL,0-200 cells/uL,2023-12-22,No,Immune/Inflammation,quest dec 2023.pdf
+Your Data,58,Absolute Eosinophils,102,cells/uL,15-500,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,92,ABSOLUTE EOSINOPHILS,112,cells/uL,15-500 cells/uL,2023-12-22,No,Immune/Inflammation,quest dec 2023.pdf
+Your Data,56,Absolute Lymphocytes,1869,cells/uL,850-3900,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,90,ABSOLUTE LYMPHOCYTES,1169,cells/uL,850-3900 cells/uL,2023-12-22,No,Immune/Inflammation,quest dec 2023.pdf
+Your Data,57,Absolute Monocytes,511,cells/uL,200-950,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,91,ABSOLUTE MONOCYTES,560,cells/uL,200-950 cells/uL,2023-12-22,No,Immune/Inflammation,quest dec 2023.pdf
+Your Data,55,Absolute Neutrophils,5117,cells/uL,1500-7800,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,89,ABSOLUTE NEUTROPHILS,5117,cells/uL,1500-7800 cells/uL,2023-12-22,No,Immune/Inflammation,quest dec 2023.pdf
+Your Data,15,Basophils Absolute Count,28,cells/uL,0 - 200 cells/uL,2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+Your Data,20,Basos %,0.5,%,N/A,2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+Your Data,108,CARDIO CRP(R),0.8,mg/L,<1.0 mg/L,2025-02-05,Yes,Immune/Inflammation,lipid panel feb 2025.pdf
+Your Data,33,Chloride,101,mmol/L,98-110,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,19,Eos %,5.5,%,N/A,2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+Your Data,14,Eosinophils Absolute Count,308,cells/uL,15 - 500 cells/uL,2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+Your Data,38,Globulin,2.9,g/dL,1.9-3.7,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,78,GLOBULIN,2.7,g/dL,1.9-3.7 g/dL,2023-12-22,No,Immune/Inflammation,quest dec 2023.pdf
+Your Data,48,Hematocrit,40.1,%,38.5-50.0,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,87,HEMATOCRIT,40.1,%,38.5-50.0 %,2023-12-22,No,Immune/Inflammation,quest dec 2023.pdf
+Your Data,12,Lymphocytes Absolute Count,2262,cells/uL,"850 - 3,900 cells/uL",2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+Your Data,17,Lymphs %,40.4,%,N/A,2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+Your Data,50,MCH,28.7,pg,27.0-33.0,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,51,MCHC,34.7,g/dL,32.0-36.0,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,49,MCV,82.7,fL,80.0-100.0,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,18,Monocytes %,6,%,N/A,2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+Your Data,13,Monocytes Absolute Count,336,cells/uL,200 - 950 cells/uL,2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+Your Data,54,MPV,10.3,fL,7.5-12.5,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,16,Neutrophils %,47.6,%,N/A,2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+Your Data,11,Neutrophils Absolute Count,2666,cells/uL,"1,500 - 7,800 cells/uL",2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+Your Data,53,Platelet Count,203,Thousand/uL,140-400,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,88,PLATELET COUNT,203,Thousand/uL,140-400 Thousand/uL,2023-12-22,No,Immune/Inflammation,quest dec 2023.pdf
+Your Data,32,Potassium,4.2,mmol/L,3.5-5.3,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,52,RDW,13.4,%,11.0-15.0,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,46,Red Blood Cell Count,4.85,Million/uL,4.20-5.80,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,85,RED BLOOD CELL COUNT,4.85,Million/uL,4.20-5.80 Million/uL,2023-12-22,No,Immune/Inflammation,quest dec 2023.pdf
+Your Data,31,Sodium,138,mmol/L,135-146,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,1,WBC Count,5.6,Thousand/uL,3.8 - 10.8 Thousand/uL,2025-02-04,No,Immune/Inflammation,MyChart - Test Details.pdf
+Your Data,45,White Blood Cell Count,7000,Thousand/uL,3.8-10.8,2023-12-22,No,Immune/Inflammation,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,84,WHITE BLOOD CELL COUNT,7,Thousand/uL,3.8-10.8 Thousand/uL,2023-12-22,No,Immune/Inflammation,quest dec 2023.pdf
+Your Data,109,LA PLA2 ACTIVITY,93,nmol/min/mL,<124 nmol/min/mL,2025-02-04,Yes,Nervous/Brain,lipid panel feb 2025.pdf
+Your Data,60,"Testosterone, Total",454,ng/dL,250-827,2023-12-22,Yes,Reproductive,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,94,"TESTOSTERONE, TOTAL, MALES (ADULT), IA",454,ng/dL,250-827 ng/dL,2023-12-22,Yes,Reproductive,quest dec 2023.pdf
+Your Data,34,Carbon Dioxide,27,mmol/L,20-32,2023-12-22,No,Respiratory,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,74,CARBON DIOXIDE,27,mmol/L,20-32 mmol/L,2023-12-22,No,Respiratory,quest dec 2023.pdf
+Your Data,81,ALKALINE PHOSPHATASE,53,U/L,36-130 U/L,2023-12-22,No,Skeletal,quest dec 2023.pdf
+Your Data,35,Calcium,9.2,mg/dL,8.6-10.3,2023-12-22,No,Skeletal,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,75,CALCIUM,9.2,mg/dL,8.6-10.3 mg/dL,2023-12-22,No,Skeletal,quest dec 2023.pdf
+Your Data,73,CHLORIDE,103,mmol/L,98-110 mmol/L,2023-12-22,No,Urinary,quest dec 2023.pdf
+Your Data,29,Creatinine,1.14,mg/dL,0.60-1.29,2023-12-22,Yes,Urinary,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,69,CREATININE,1.14,mg/dL,0.60-1.29 mg/dL,2023-12-22,Yes,Urinary,quest dec 2023.pdf
+Your Data,30,eGFR,82,mL/min/1.73m2,>60,2023-12-22,Yes,Urinary,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,70,EGFR,82,mL/min/1.73m2,>= 60 mL/min/1.73m2,2023-12-22,Yes,Urinary,quest dec 2023.pdf
+Your Data,21,Lipoprotein (a),12,nmol/L,<75,2023-12-22,No,Urinary,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,107,LIPOPROTEIN (a),19,nmol/L,<75 nmol/L,2025-02-04,No,Urinary,lipid panel feb 2025.pdf
+Your Data,82,LIPOPROTEIN (a),12,nmol/L,<75 nmol/L,2023-12-22,No,Urinary,quest dec 2023.pdf
+Your Data,72,POTASSIUM,4.2,mmol/L,3.5-5.3 mmol/L,2023-12-22,No,Urinary,quest dec 2023.pdf
+Your Data,36,"Protein, Total",7.4,g/dL,6.1-8.1,2023-12-22,No,Urinary,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,76,"PROTEIN, TOTAL",7.2,g/dL,6.1-8.1 g/dL,2023-12-22,No,Urinary,quest dec 2023.pdf
+Your Data,71,SODIUM,138,mmol/L,135-146 mmol/L,2023-12-22,No,Urinary,quest dec 2023.pdf
+Your Data,28,Urea Nitrogen (BUN),16,mg/dL,7-25,2023-12-22,Yes,Urinary,"Doc Dec 28, 2023, 11_10.pdf"
+Your Data,68,UREA NITROGEN (BUN),16,mg/dL,7-25 mg/dL,2023-12-22,Yes,Urinary,quest dec 2023.pdf
+Clinical Reference,ref_1,Resting Heart Rate,,beats/min (bpm),60-100 beats/min (bpm),,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_2,Blood Pressure (Systolic),,mmHg,-120 mmHg,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_3,Blood Pressure (Diastolic),,mmHg,-80 mmHg,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_4,Left Ventricular Ejection Fraction (LVEF),,%,50-70 %,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_5,Cardiac Output (Resting),,L/min,5-6 L/min,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_6,Total Cholesterol,,mg/dL,125-200 mg/dL,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_7,LDL,,mg/dL,-100 mg/dL,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_8,HDL,,mg/dL,40- mg/dL,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_9,Triglycerides,,mg/dL,-150 mg/dL,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_10,Lipoprotein (a),,mg/dL,-30 mg/dL,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_11,Apolipoprotein B (ApoB),,mg/dL,-100 mg/dL,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_12,Homocysteine,,μmol/L,-15 μmol/L,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_13,High-sensitivity CRP (hs-CRP),,mg/L,1-3 mg/L,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_14,Fibrinogen,,mg/dL,200-400 mg/dL,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_15,D-dimer,,μg/mL FEU,-0.5 μg/mL FEU,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_16,Cardiac Troponin (cTnI or cTnT),,ng/L (hs assays),-15 ng/L (hs assays),,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_17,"Creatine Kinase (CK), total",,U/L,30-220 U/L,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_18,B-type Natriuretic Peptide (BNP),,pg/mL,-100 pg/mL,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_19,NT-proBNP,,pg/mL,-125 pg/mL,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_20,Myeloperoxidase (MPO),,pmol/L,470-539 pmol/L,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_21,Trimethylamine N-oxide (TMAO),,μM,-6.2 μM,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_22,Hemoglobin (Blood),,g/dL,12-18 g/dL,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_23,Hematocrit,,% (fraction),36-55 % (fraction),,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_24,Red Blood Cell Count,,million/μL,4.2-6.1 million/μL,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_25,Red Cell Distribution Width (RDW),,%,12-12 %,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_26,Mean Corpuscular Volume (MCV),,fL,80-100 fL,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_27,Mean Corpuscular Hemoglobin (MCH),,pg/cell,27-31 pg/cell,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_28,MCH Concentration (MCHC),,g/dL,32-36 g/dL,,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_29,Ankle-Brachial Index (ABI),,ratio (unitless),1-1.4 ratio (unitless),,No,Cardiovascular,Clinical Database
+Clinical Reference,ref_30,CSF Opening Pressure,,mm H2O,70-180 mm H2O,,No,Nervous/Brain,Clinical Database
+Clinical Reference,ref_31,CSF Total Protein,,mg/dL,15-60 mg/dL,,No,Nervous/Brain,Clinical Database
+Clinical Reference,ref_32,CSF Glucose,,mg/dL,50-80 mg/dL,,No,Nervous/Brain,Clinical Database
+Clinical Reference,ref_33,CSF White Blood Cells,,cells/μL,-5 cells/μL,,No,Nervous/Brain,Clinical Database
+Clinical Reference,ref_34,CSF Red Blood Cells,,cells/μL,- cells/μL,,No,Nervous/Brain,Clinical Database
+Clinical Reference,ref_35,CSF Chloride,,mEq/L,110-125 mEq/L,,No,Nervous/Brain,Clinical Database
+Clinical Reference,ref_36,CSF Gamma Globulin,,%,3-3 %,,No,Nervous/Brain,Clinical Database
+Clinical Reference,ref_37,Serum Vitamin B12,,pg/mL,200-900 pg/mL,,No,Nervous/Brain,Clinical Database
+Clinical Reference,ref_38,Serum Folate (Vitamin B9),,ng/mL,2.7-17 ng/mL,,No,Nervous/Brain,Clinical Database
+Clinical Reference,ref_39,Intracranial Pressure (ICP),,mmHg,7-15 mmHg,,No,Nervous/Brain,Clinical Database
+Clinical Reference,ref_40,Glasgow Coma Scale (GCS),,score (3–15),15-15 score (3–15),,No,Nervous/Brain,Clinical Database
+Clinical Reference,ref_41,Arterial Blood pH,,pH units,7.35-7.45 pH units,,No,Respiratory,Clinical Database
+Clinical Reference,ref_42,PaO2 (Arterial O₂),,mmHg,80-100 mmHg,,No,Respiratory,Clinical Database
+Clinical Reference,ref_43,PaCO2 (Arterial CO₂),,mmHg,35-45 mmHg,,No,Respiratory,Clinical Database
+Clinical Reference,ref_44,Bicarbonate (HCO₃⁻),,mEq/L,22-26 mEq/L,,No,Respiratory,Clinical Database
+Clinical Reference,ref_45,Oxygen Saturation (SpO₂),,% (on room air),95-100 % (on room air),,No,Respiratory,Clinical Database
+Clinical Reference,ref_46,Respiratory Rate,,breaths/min,12-18 breaths/min,,No,Respiratory,Clinical Database
+Clinical Reference,ref_47,Tidal Volume,,mL (at rest),500-500 mL (at rest),,No,Respiratory,Clinical Database
+Clinical Reference,ref_48,Vital Capacity (FVC),,liters,3-5 liters,,No,Respiratory,Clinical Database
+Clinical Reference,ref_49,FEV₁/FVC Ratio,,ratio (no units),0.75-80 ratio (no units),,No,Respiratory,Clinical Database
+Clinical Reference,ref_50,Peak Expiratory Flow (PEF),,L/min,400-600 L/min,,No,Respiratory,Clinical Database
+Clinical Reference,ref_51,Alanine Aminotransferase (ALT),,U/L,5-55 U/L,,No,Digestive,Clinical Database
+Clinical Reference,ref_52,Aspartate Aminotransferase (AST),,U/L,8-48 U/L,,No,Digestive,Clinical Database
+Clinical Reference,ref_53,Alkaline Phosphatase (ALP),,U/L,44-147 U/L,,No,Digestive,Clinical Database
+Clinical Reference,ref_54,Gamma-Glutamyl Transferase (GGT),,U/L,9-48 U/L,,No,Digestive,Clinical Database
+Clinical Reference,ref_55,Total Bilirubin,,mg/dL,0.1-1.2 mg/dL,,No,Digestive,Clinical Database
+Clinical Reference,ref_56,Amylase (Pancreatic),,U/L,30-110 U/L,,No,Digestive,Clinical Database
+Clinical Reference,ref_57,Lipase (Pancreatic),,U/L,-160 U/L,,No,Digestive,Clinical Database
+Clinical Reference,ref_58,Serum Albumin,,g/dL,3.5-5 g/dL,,No,Digestive,Clinical Database
+Clinical Reference,ref_59,Serum Iron,,μg/dL,60-170 μg/dL,,No,Digestive,Clinical Database
+Clinical Reference,ref_60,Ferritin,,ng/mL,15-250 ng/mL,,No,Digestive,Clinical Database
+Clinical Reference,ref_61,Thyroid Stimulating Hormone (TSH),,mIU/L,0.4-4 mIU/L,,No,Endocrine/Hormonal,Clinical Database
+Clinical Reference,ref_62,Free T4 (Thyroxine),,ng/dL,0.8-2 ng/dL,,No,Endocrine/Hormonal,Clinical Database
+Clinical Reference,ref_63,Free T3 (Triiodothyronine),,pg/mL,2.3-4.2 pg/mL,,No,Endocrine/Hormonal,Clinical Database
+Clinical Reference,ref_64,Morning Cortisol (8 AM),,μg/dL,10-20 μg/dL,,No,Endocrine/Hormonal,Clinical Database
+Clinical Reference,ref_65,Afternoon Cortisol (4 PM),,μg/dL,3-10 μg/dL,,No,Endocrine/Hormonal,Clinical Database
+Clinical Reference,ref_66,Fasting Glucose,,mg/dL,70-99 mg/dL,,No,Endocrine/Hormonal,Clinical Database
+Clinical Reference,ref_67,Hemoglobin A1c (HbA1c),,% (of total Hb),-5.7 % (of total Hb),,No,Endocrine/Hormonal,Clinical Database
+Clinical Reference,ref_68,Fasting Insulin,,μIU/mL,-25 μIU/mL,,No,Endocrine/Hormonal,Clinical Database
+Clinical Reference,ref_69,"Vitamin D, 25-OH",,ng/mL,30-100 ng/mL,,No,Endocrine/Hormonal,Clinical Database
+Clinical Reference,ref_70,Calcium (Total Serum),,mg/dL,8.5-10.5 mg/dL,,No,Endocrine/Hormonal,Clinical Database
+Clinical Reference,ref_71,Parathyroid Hormone (PTH),,pg/mL,10-65 pg/mL,,No,Endocrine/Hormonal,Clinical Database
+Clinical Reference,ref_72,Estradiol (Female),,pg/mL,-350 pg/mL,,No,Endocrine/Hormonal,Clinical Database
+Clinical Reference,ref_73,Testosterone (Total),,ng/dL,15-1000 ng/dL,,No,Endocrine/Hormonal,Clinical Database
+Clinical Reference,ref_74,Blood Urea Nitrogen (BUN),,mg/dL,7-20 mg/dL,,No,Urinary/Renal,Clinical Database
+Clinical Reference,ref_75,Serum Creatinine,,mg/dL,0.59-1.35 mg/dL,,No,Urinary/Renal,Clinical Database
+Clinical Reference,ref_76,eGFR (estimated GFR),,mL/min/1.73 m²,90- mL/min/1.73 m²,,No,Urinary/Renal,Clinical Database
+Clinical Reference,ref_77,Sodium (Serum),,mmol/L,135-145 mmol/L,,No,Urinary/Renal,Clinical Database
+Clinical Reference,ref_78,Potassium (Serum),,mmol/L,3.5-5 mmol/L,,No,Urinary/Renal,Clinical Database
+Clinical Reference,ref_79,Chloride (Serum),,mmol/L,98-107 mmol/L,,No,Urinary/Renal,Clinical Database
+Clinical Reference,ref_80,Serum Phosphate,,mg/dL,2.5-4.5 mg/dL,,No,Urinary/Renal,Clinical Database
+Clinical Reference,ref_81,Serum Magnesium,,mg/dL,1.8-2.4 mg/dL,,No,Urinary/Renal,Clinical Database
+Clinical Reference,ref_82,Urine Specific Gravity,,(ratio),1.005-1.03 (ratio),,No,Urinary/Renal,Clinical Database
+Clinical Reference,ref_83,Urine pH,,pH units,4.5-8 pH units,,No,Urinary/Renal,Clinical Database
+Clinical Reference,ref_84,Urine Protein,,mg/day,-150 mg/day,,No,Urinary/Renal,Clinical Database
+Clinical Reference,ref_85,Urine Albumin-Creatinine Ratio,,mg/g,-30 mg/g,,No,Urinary/Renal,Clinical Database
+Clinical Reference,ref_86,Urine RBCs (microscopic),,per HPF,-2 per HPF,,No,Urinary/Renal,Clinical Database
+Clinical Reference,ref_87,Urine WBCs (microscopic),,per HPF,-5 per HPF,,No,Urinary/Renal,Clinical Database
+Clinical Reference,ref_88,Follicle-Stim. Hormone (FSH),,mIU/mL,1.5-13 mIU/mL,,No,Reproductive,Clinical Database
+Clinical Reference,ref_89,Luteinizing Hormone (LH),,mIU/mL,1.8-15 mIU/mL,,No,Reproductive,Clinical Database
+Clinical Reference,ref_90,"Estradiol (E2, Female)",,pg/mL,50-250 pg/mL,,No,Reproductive,Clinical Database
+Clinical Reference,ref_91,Progesterone (Female),,ng/mL,5-20 ng/mL,,No,Reproductive,Clinical Database
+Clinical Reference,ref_92,Total Testosterone,,ng/dL,15-1000 ng/dL,,No,Reproductive,Clinical Database
+Clinical Reference,ref_93,Prostate-Specific Antigen (PSA),,ng/mL,-4 ng/mL,,No,Reproductive,Clinical Database
+Clinical Reference,ref_94,hCG (Pregnancy Test),,mIU/mL,-5 mIU/mL,,No,Reproductive,Clinical Database
+Clinical Reference,ref_95,Anti-Müllerian Hormone (AMH),,ng/mL,1-4 ng/mL,,No,Reproductive,Clinical Database
+Clinical Reference,ref_96,Semen Sperm Count,,per mL,15000000- per mL,,No,Reproductive,Clinical Database
+Clinical Reference,ref_97,Body Temperature (oral),,°F,97.8-99 °F,,No,Integumentary (Skin),Clinical Database
+Clinical Reference,ref_98,Skin pH (surface),,pH units,4.7-5.9 pH units,,No,Integumentary (Skin),Clinical Database
+Clinical Reference,ref_99,Vitamin C (Plasma),,mg/dL,0.6-2 mg/dL,,No,Integumentary (Skin),Clinical Database
+Clinical Reference,ref_100,Zinc (Serum),,μg/dL,60-130 μg/dL,,No,Integumentary (Skin),Clinical Database
+Clinical Reference,ref_101,Copper (Serum),,μg/dL,70-155 μg/dL,,No,Integumentary (Skin),Clinical Database
+Clinical Reference,ref_102,Vitamin A (Retinol),,μg/dL,20-60 μg/dL,,No,Integumentary (Skin),Clinical Database
+Clinical Reference,ref_103,White Blood Cell Count (WBC),,per μL,4500-11000 per μL,,No,Immune/Inflammatory,Clinical Database
+Clinical Reference,ref_104,Neutrophils (Absolute),,per μL,1500-8000 per μL,,No,Immune/Inflammatory,Clinical Database
+Clinical Reference,ref_105,Lymphocytes (Absolute),,per μL,1000-4000 per μL,,No,Immune/Inflammatory,Clinical Database
+Clinical Reference,ref_106,Platelet Count,,per μL,150000-450000 per μL,,No,Immune/Inflammatory,Clinical Database
+Clinical Reference,ref_107,Erythrocyte Sedimentation Rate (ESR),,mm/hour,-30 mm/hour,,No,Immune/Inflammatory,Clinical Database
+Clinical Reference,ref_108,C-Reactive Protein (CRP),,mg/L,-5 mg/L,,No,Immune/Inflammatory,Clinical Database
+Clinical Reference,ref_109,Rheumatoid Factor (RF),,IU/mL,-20 IU/mL,,No,Immune/Inflammatory,Clinical Database
+Clinical Reference,ref_110,IgG (Immunoglobulin G),,mg/dL,700-1600 mg/dL,,No,Immune/Inflammatory,Clinical Database
+Clinical Reference,ref_111,IgA (Immunoglobulin A),,mg/dL,70-400 mg/dL,,No,Immune/Inflammatory,Clinical Database
+Clinical Reference,ref_112,IgM (Immunoglobulin M),,mg/dL,40-230 mg/dL,,No,Immune/Inflammatory,Clinical Database
+Clinical Reference,ref_113,Complement C3,,mg/dL,90-180 mg/dL,,No,Immune/Inflammatory,Clinical Database
+Clinical Reference,ref_114,Complement C4,,mg/dL,10-40 mg/dL,,No,Immune/Inflammatory,Clinical Database
+Clinical Reference,ref_115,Visual Acuity (Snellen),,%,20-20 %,,No,Sensory (Vision),Clinical Database
+Clinical Reference,ref_116,Intraocular Pressure (IOP),,mmHg,10-21 mmHg,,No,Sensory (Vision),Clinical Database
+Clinical Reference,ref_117,Color Vision (Ishihara),,,-,,No,Sensory (Vision),Clinical Database
+Clinical Reference,ref_118,Hearing Level (Audiometry),,dB HL,-25 dB HL,,No,Sensory (Hearing),Clinical Database
+Clinical Reference,ref_119,Tympanic Membrane Mobility,,– (qualitative),- – (qualitative),,No,Sensory (Hearing),Clinical Database
+Clinical Reference,ref_120,DNA Methylation Age (Epigenetic Age),,years,- years,,No,Biological Age/Epigenetics,Clinical Database
+Clinical Reference,ref_121,Telomere Length (Leukocyte),,kilobases,7-10 kilobases,,No,Biological Age/Epigenetics,Clinical Database
+Clinical Reference,ref_122,Frailty Index,,(proportion),-0.2 (proportion),,No,Biological Age/Epigenetics,Clinical Database
+Clinical Reference,ref_123,Grip Strength,,kg,20- kg,,No,Biological Age/Epigenetics,Clinical Database
+Clinical Reference,ref_124,Gait Speed (4-m walk),,m/s,1- m/s,,No,Biological Age/Epigenetics,Clinical Database
+Clinical Reference,ref_125,Bone Density (T-score),,– (SD score),-1- – (SD score),,No,Biological Age/Epigenetics,Clinical Database
+Clinical Reference,ref_126,Advanced Glycation (AGEs),,AU (arbitrary),-14 AU (arbitrary),,No,Biological Age/Epigenetics,Clinical Database
+Custom Type,12,LDL PARTICLE SIZE,,Angstrom,200-223 Angstrom,2025-08-01,Custom,Cardiovascular,Created by Demo User
+Custom Type,11,"LDL Particles, Total",,nmol/L,-1000 nmol/L,2025-08-01,Custom,Cardiovascular,Created by Demo User
+Custom Type,10,"LDL, Small",,nmol/L,-467 nmol/L,2025-08-01,Custom,Cardiovascular,Created by Demo User
