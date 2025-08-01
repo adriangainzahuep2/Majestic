@@ -939,8 +939,8 @@ class HealthDashboard {
         if (!metricRow) return;
 
         // Check if this metric has a valid canonical match to remove "Needs Review"
-        const metricMatch = window.metricUtils ? window.metricUtils.findMetricMatch(updatedMetric.metric_name) : null;
-        const needsReview = !metricMatch || updatedMetric.needs_review;
+        const metricMatchOld = window.metricUtils ? window.metricUtils.findMetricMatch(updatedMetric.metric_name) : null;
+        const needsReview = !metricMatchOld || updatedMetric.needs_review;
 
         // Update the metric name cell and remove "Needs Review" badge if metric is now valid
         const nameCell = metricRow.querySelector('td:first-child');
