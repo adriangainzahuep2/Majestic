@@ -860,7 +860,7 @@ class HealthDashboard {
             'L', 'mL', 'µL', 'mmHg', 'bpm', 'breaths/min', '°C', '°F',
             '×10⁹/L', '×10¹²/L', '#/µL', '%', 'ratio', 'sec', 'min', 'hr',
             'IU/L', 'mEq/L', 'U/L', 'g/24h', 'Osm/kg', 'Osm/L',
-            'kg', 'cm', 'mmol/mol', 'Other'
+            'kg', 'cm', 'mmol/mol', 'Angstrom', 'Other'
         ];
         
         return units.map(unit => `<option value="${unit}">${unit}</option>`).join('');
@@ -873,7 +873,7 @@ class HealthDashboard {
             'L', 'mL', 'µL', 'mmHg', 'bpm', 'breaths/min', '°C', '°F',
             '×10⁹/L', '×10¹²/L', '#/µL', '%', 'ratio', 'sec', 'min', 'hr',
             'IU/L', 'mEq/L', 'U/L', 'g/24h', 'Osm/kg', 'Osm/L',
-            'kg', 'cm', 'mmol/mol', 'Other'
+            'kg', 'cm', 'mmol/mol', 'Angstrom', 'Other'
         ];
         
         return units.map(unit => {

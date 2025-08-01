@@ -42,6 +42,8 @@ The frontend is a **vanilla JavaScript SPA** served as static files:
 - **✓ Removed standalone Add Metric** - Users can only create custom metrics through edit flow, preventing duplicate entries
 - **✓ Database integrity preserved** - No schema changes, text-based approach maintains backward compatibility
 - **✓ User permission system** - Custom metrics visible to creator until admin approval makes them globally available
+- **✓ Fixed Range Analysis column** - Now prioritizes custom reference_range from database over metricUtils fallback data
+- **✓ Added "Angstrom" unit support** - Extended frontend dropdowns and database constraints to include Angstrom unit for specialized metrics
 
 ### Previous Changes (July 30, 2025)
 - **✓ Enhanced AI insights system** - Updated OpenAI prompts with structured medical analysis format for better clinical assessments
