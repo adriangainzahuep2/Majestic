@@ -1,0 +1,80 @@
+INSTRUCTION: DO NOT IMPLEMENT.
+Review this plan for correctness and completeness only.
+Focus on API flow, field references, and conflict resolution with current implementation.
+Do not change schema or code yet.
+
+==================================================
+MANDATORY CHANGES
+==================================================
+
+1. EDIT VS ADD BEHAVIOR
+- When a user EDITS an existing metric row (from the metrics table):
+  • If the user selects a new metric type from the dropdown:
+      - Send PUT /metrics/:id to UPDATE the same row.
+      - Do NOT create a new metric row.
+  • If the metric type is not in the dropdown and the user clicks "+ Add Metric":
+      - Create the new metric type in user_custom_metrics (source_type=user, review_status=pending).
+      - Immediately update the same row to use this new type (PUT /metrics/:id).
+      - Do NOT create a duplicate metric row.
+
+2. INLINE "+ ADD METRIC" IN DROPDOWN (INSIDE EDIT FLOW ONLY)
+- The Metric Name field in the edit modal must be a searchable dropdown.
+- If no match is found:
+  • Show an option at the bottom: "+ Add <typed text>"
+  • When clicked:
+      - Open a small inline modal.
+      - Pre-fill with the typed metric name.
+      - Collect: Units, Normal Range Min, Normal Range Max, Gender applicability.
+      - On Save:
+          1. Validate the metric name to avoid duplicates.
+          2. Save new metric type in user_custom_metrics for admin review.
+          3. Update the current metric row to use this new type (PUT /metrics/:id).
+      - Do NOT create a new metric row.
+- **UI FIX:** All text in the Add Metric modal must use a contrasting color.
+
+3. DROPDOWN CONTENT (IMPORTANT)
+- The dropdown list of metric types must include:
+    • All official metrics (from metrics table)
+    • All approved custom metrics (user_custom_metrics where source_type='official')
+- It must NOT include:
+    • Pending custom metrics from other users
+- For the current user, their own pending custom metrics should appear only for them (not globally).
+
+4. ADMIN REVIEW WORKFLOW
+- Admin reviews user_custom_metrics via existing CSV import/export.
+- When approved:
+    • source_type changes to 'official'
+    • 
+5. PENDING METRICS BEHAVIOR
+- Pending metric types are visible in the dropdown ONLY to the user who created them.
+- If rejected later, the user can no longer assign new metrics to that type.
+
+6. SEPARATE FLOWS
+- Edit flow:
+    • Always PUT /metrics/:id to update the same row.
+- Add flow (outside of editing):
+    • REMOVE this capability completely.
+    • Users CANNOT create new metrics from the Additional Metrics table.
+
+7. FRONTEND UI RULES
+- REMOVE the standalone “+ Add Metric” button from the Additional Metrics table header.
+- The ONLY way to create a new metric is via the inline modal shown during edit.
+
+==================================================
+IMPORTANT NOTES
+==================================================
+
+• Do NOT change the existing metrics table structure.
+• user_custom_metrics already exists.
+• Only adjust backend and frontend logic as described.
+• Validate name uniqueness during "+ Add Metric" creation.
+• Verify PUT vs POST behavior matches these flows.
+
+==================================================
+CLARIFIED GOALS BASED ON REVIEW
+==================================================
+
+- Fix the current conflict where custom metrics are treated as completely separate:
+  • After this change, editing an uploaded metric can reassign its type to a custom metric (user_custom_metrics).
+- Ensure dropdown always merges official metrics + approved custom metrics.
+- Remove all standalone "Add Metric" actions outside of edit mode.
