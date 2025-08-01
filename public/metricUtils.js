@@ -44,11 +44,29 @@ class MetricUtils {
         }
     }
 
-    // Find matching metric from our reference data
-    findMetricMatch(metricName, systemName = null) {
+    // Find matching metric from our reference data OR custom metrics
+    findMetricMatch(metricName, systemName = null, customMetrics = []) {
+        // First check custom metrics (higher priority for user's own custom metrics)
+        if (customMetrics && customMetrics.length > 0) {
+            const customMatch = customMetrics.find(cm => 
+                cm.metric_name && cm.metric_name.toLowerCase() === metricName.toLowerCase()
+            );
+            if (customMatch && customMatch.normal_range_min !== null && customMatch.normal_range_max !== null) {
+                return {
+                    metric: customMatch.metric_name,
+                    normalRangeMin: parseFloat(customMatch.normal_range_min),
+                    normalRangeMax: parseFloat(customMatch.normal_range_max),
+                    units: customMatch.units,
+                    system: systemName,
+                    source: 'Custom Metric',
+                    isCustom: true
+                };
+            }
+        }
+
         if (!this.metricsData) return null;
 
-        // First try exact match
+        // Then try official metrics - exact match
         let match = this.metricsData.find(m => 
             m.metric.toLowerCase() === metricName.toLowerCase() &&
             (!systemName || m.system.toLowerCase().includes(systemName.toLowerCase()))
@@ -56,7 +74,7 @@ class MetricUtils {
 
         if (match) return match;
 
-        // Try partial matching
+        // Try partial matching for official metrics
         match = this.metricsData.find(m => {
             const metricLower = m.metric.toLowerCase();
             const nameLower = metricName.toLowerCase();

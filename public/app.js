@@ -203,6 +203,8 @@ class HealthDashboard {
         this.showLoading(true);
         try {
             const data = await this.apiCall(`/metrics/system/${systemId}`, 'GET');
+            // Store current system data for range analysis
+            this.currentSystemData = data;
             this.renderSystemModal(data);
         } catch (error) {
             console.error('Failed to load system details:', error);
@@ -333,7 +335,10 @@ class HealthDashboard {
     }
 
     renderMetricRow(metric, systemData) {
-        const metricMatch = window.metricUtils ? window.metricUtils.findMetricMatch(metric.metric_name) : null;
+        // Pass custom metrics from systemData to find range data
+        const customMetrics = systemData.customMetrics || [];
+        const metricMatch = window.metricUtils ? 
+            window.metricUtils.findMetricMatch(metric.metric_name, systemData.system?.name || systemData.name, customMetrics) : null;
         const needsReview = !metricMatch || metric.needs_review;
         
         let rangeBlock = '';
@@ -771,14 +776,38 @@ class HealthDashboard {
                 rangeApplicableTo: gender
             });
 
-            // Step 2: Update metric dropdown selection
+            // Step 2: Update metric with new name and preserve existing value
             const selectElement = document.getElementById(`edit-metric-${metricId}`);
+            const currentValue = document.getElementById(`edit-value-${metricId}`).value;
+            const currentUnit = document.getElementById(`edit-unit-${metricId}`).value;
+            const currentDate = document.getElementById(`edit-date-${metricId}`).value;
+            
             selectElement.value = metricName;
+            
+            // Step 3: Update the metric with custom type and reference range
+            const referenceRange = rangeMin && rangeMax ? `${rangeMin}-${rangeMax} ${units}` : '';
+            
+            await this.apiCall(`/metrics/${metricId}`, 'PUT', {
+                metric_name: metricName,
+                metric_value: parseFloat(currentValue),
+                metric_unit: units, // Use the custom metric units
+                reference_range: referenceRange,
+                test_date: currentDate,
+                source: 'User Edited - Custom Type'
+            });
 
             // Close modal
             bootstrap.Modal.getInstance(document.getElementById('inlineCustomMetricModal')).hide();
 
-            this.showToast('success', 'Custom Metric Type', 'New metric type created and ready to use');
+            this.showToast('success', 'Custom Metric Type', 'New metric type created and metric updated successfully');
+            
+            // Refresh the drill-down to show updated metric
+            setTimeout(() => {
+                const currentSystemId = document.querySelector('.drill-down-content')?.dataset.systemId;
+                if (currentSystemId) {
+                    this.showSystemDrillDown(currentSystemId);
+                }
+            }, 500);
 
         } catch (error) {
             console.error('Failed to create inline custom metric:', error);
@@ -962,6 +991,13 @@ class HealthDashboard {
 
         // Update the range indicator using existing metric utilities
         const rangeCell = metricRow.querySelector('.range-indicator');
+        
+        // Get custom metrics for range analysis
+        const systemData = this.currentSystemData || {};
+        const customMetrics = systemData.customMetrics || [];
+        const metricMatch = window.metricUtils ? 
+            window.metricUtils.findMetricMatch(updatedMetric.metric_name, systemData.system?.name || systemData.name, customMetrics) : null;
+            
         if (rangeCell && window.metricUtils && metricMatch) {
             if (updatedMetric.metric_value) {
                 const status = window.metricUtils.calculateStatus(
