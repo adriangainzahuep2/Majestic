@@ -1,0 +1,222 @@
+evaluate if this is correct and clear and there are no missing info "Here’s the updated Replit Agent prompt with your requested enhancement so that visual studies (from imaging_studies) also appear in the relevant body system pages.
+This integrates the new linkedSystemId, ensures the backend populates it, and updates the frontend to display studies under the “Studies & Imaging” section.
+
+⸻
+
+REPLIT AGENT PROMPT – FINAL (MAJESTIC: PHASE 1 UNIFIED INGESTION PIPELINE, WITH SYSTEM INTEGRATION)
+
+⸻
+
+Objective
+
+Build Phase 1 of the unified ingestion pipeline for Majestic.
+This version includes integration of visual studies into their corresponding System drill‑down pages.
+
+The pipeline will:
+	1.	Accept files from direct upload.
+	2.	Classify the file as:
+	•	lab
+	•	visual
+	•	mixed
+	3.	For visual or mixed files:
+	•	Securely store the file
+	•	Extract metrics, findings, and test date using GPT‑4o (supporting multi-image / multi-page reports)
+	•	Compare the study with prior studies of the same type (trend detection)
+	•	Associate the study with the correct body system (linkedSystemId)
+	4.	Update the imaging_studies table and make results accessible via APIs and in the relevant system UI.
+
+No advanced UI or overlays in this phase.
+
+⸻
+
+Key Requirements
+	•	Use camelCase in code and JSON (snake_case in DB).
+	•	Status values:
+	•	pendingProcessing
+	•	processed
+	•	failedExtraction
+	•	Required fields:
+	•	studyType, linkedSystemId, metricsJson, metricChangesJson, comparisonSummary, aiSummary, testDate.
+
+⸻
+
+Pipeline Steps
+
+⸻
+
+Step 1 – Ingestion
+	•	Input:
+	•	userId
+	•	file (PDF, image, DICOM)
+	•	testDate (if available, else use current date)
+	•	POST endpoint: /ingestFile
+
+⸻
+
+Step 2 – Classification
+
+Use GPT‑4o to classify:
+
+{
+  "dataType": "lab" | "visual" | "mixed",
+  "studyType": "eye_topography" | "oct" | "fundus" | "mri" | "ct" | "xray" | "dexa" | "ecg" | "eeg" | "unknown",
+  "linkedSystemId": "<determine which system this study belongs to>"
+}
+
+	•	If lab: forward to numeric lab ingestion pipeline.
+	•	If visual: forward to visual diagnostics pipeline.
+	•	If mixed:
+	•	Extract numeric metrics to lab_results
+	•	Extract images to imaging_studies
+	•	These must be processed in parallel.
+
+⸻
+
+Step 3 – Visual Diagnostics Pipeline
+	1.	Store the file:
+	•	Upload to Supabase/S3
+	•	Generate thumbnail preview
+	2.	Preprocess:
+	•	PDF: Extract all images and text.
+	•	DICOM: Extract images for preview.
+	•	Must handle multi-image/multi-page input and extract metrics from all.
+	3.	Extract Metrics & Findings (GPT‑4o prompt):
+
+{
+  "studyType": "<eye_topography | mri | ct | etc.>",
+  "measurements": [
+    {"name": "Kmax", "value": 51.3, "units": "D"},
+    {"name": "cornealThickness", "value": 465, "units": "µm"}
+  ],
+  "keyFindings": [
+    "Inferior steepening of cornea",
+    "Stable pattern since 2021"
+  ],
+  "dateFoundInImage": "2023-08-12",
+  "summary": "Stable keratoconus with Kmax 51.3 D and corneal thickness 465 µm."
+}
+
+	4.	Save to imaging_studies:
+	•	fileUrl
+	•	studyType
+	•	linkedSystemId (set based on study type: e.g., eye_topography → Sensory)
+	•	metricsJson
+	•	aiSummary
+	•	testDate = dateFoundInImage if present, else current date
+	•	status = processed
+
+If extraction fails, set status = failedExtraction.
+
+⸻
+
+Step 4 – Auto-comparison and Trend Detection
+
+Compare current study metrics with previous studies (oldest and most recent previous):
+
+{
+  "trendSummary": "Overall stable corneal shape since 2021 with less than 0.5D change in Kmax.",
+  "metricChanges": [
+    {
+      "metric": "Kmax",
+      "previous": {"value": 51.5, "units": "D", "date": "2021-07-12"},
+      "current": {"value": 51.3, "units": "D", "date": "2023-08-10"},
+      "trend": "slightly improved"
+    }
+  ]
+}
+
+Save:
+	•	comparisonSummary
+	•	metricChangesJson
+
+⸻
+
+Database Schema
+
+Table: imaging_studies
+
+id (PK)
+userId
+linkedSystemId (FK to health_systems)
+studyType
+fileUrl
+thumbnailUrl
+testDate
+aiSummary (text)
+metricsJson (jsonb)
+comparisonSummary (text, nullable)
+metricChangesJson (jsonb, nullable)
+status ('pendingProcessing' | 'processed' | 'failedExtraction')
+createdAt
+updatedAt
+
+⸻
+
+API Endpoints
+
+POST /ingestFile
+
+Output:
+
+{
+  "status": "processed",
+  "studyType": "...",
+  "aiSummary": "...",
+  "metricsJson": [...]
+}
+
+GET /imaging_studies?userId=…
+
+Returns list of imaging studies with summaries, metrics, comparisons.
+
+GET /systems/:systemId/studies
+
+Returns imaging_studies for a particular system.
+
+⸻
+
+UI Integration
+
+In System Drill-Down Pages:
+	1.	Key Metrics table (labs)
+	2.	Additional Metrics table (labs)
+	3.	AI Analysis (from numeric metrics)
+	4.	NEW: Studies & Imaging Section
+	•	Show all visual studies for this system (linkedSystemId)
+	•	For each study:
+	•	Thumbnail
+	•	Study type
+	•	Date
+	•	Key metrics (from metricsJson)
+	•	Trend summary (if available)
+	•	Clicking opens Study Details:
+	•	AI summary
+	•	Metrics table
+	•	Comparison summary
+
+This makes visual studies visible inside each relevant system while still appearing in the global timeline.
+
+⸻
+
+Success Criteria
+	•	For uploaded files:
+	•	Auto-classified
+	•	Visual studies stored, extracted, compared
+	•	Timeline updated
+	•	Visual studies appear in the correct system drill-down page
+
+⸻
+
+Out of Scope
+	•	Advanced graphing
+	•	Email ingestion automation
+	•	Fine-tuned models
+	•	Specialized templates
+
+⸻
+
+Important Notes
+	•	No manual tagging: AI determines studyType and linkedSystemId.
+	•	Multi-page/multi-image fully supported.
+	•	Comparison uses metrics and visual findings.
+	•	camelCase in code.
