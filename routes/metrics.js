@@ -511,16 +511,16 @@ router.put('/:metricId', async (req, res) => {
   try {
     const userId = req.user.userId;
     const metricId = req.params.metricId;
-    const { metric_name, metric_value, metric_unit, test_date, source } = req.body;
+    const { metric_name, metric_value, metric_unit, test_date, source, reference_range } = req.body;
 
-    // Update the metric
+    // Update the metric including reference_range
     const updateResult = await req.db.query(`
       UPDATE metrics 
       SET metric_name = $1, metric_value = $2, metric_unit = $3, test_date = $4, 
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = $5 AND user_id = $6
+          reference_range = $5, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $6 AND user_id = $7
       RETURNING *
-    `, [metric_name, metric_value, metric_unit, test_date, metricId, userId]);
+    `, [metric_name, metric_value, metric_unit, test_date, reference_range, metricId, userId]);
 
     if (updateResult.rows.length === 0) {
       return res.status(404).json({

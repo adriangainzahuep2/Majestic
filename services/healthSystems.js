@@ -313,6 +313,7 @@ class HealthSystemsService {
       `, [userId, systemId]);
 
       // Get custom metrics for this system (user's private + approved global)
+      // Exclude zero-value entries which are just type definitions, not actual metrics
       const customMetricsResult = await pool.query(`
         SELECT 
           id,
@@ -330,6 +331,7 @@ class HealthSystemsService {
         FROM user_custom_metrics 
         WHERE system_id = $1 
           AND (user_id = $2 OR (source_type = 'official' AND review_status = 'approved'))
+          AND value != '0'
         ORDER BY created_at DESC
       `, [systemId, userId]);
 

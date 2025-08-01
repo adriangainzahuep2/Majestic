@@ -784,6 +784,8 @@ class HealthDashboard {
             // Step 3: Update the metric with custom type and reference range
             const referenceRange = rangeMin && rangeMax ? `${rangeMin}-${rangeMax} ${units}` : '';
             
+            console.log('DEBUG updating metric:', { metricId, metricName, currentValue, units, referenceRange });
+            
             await this.apiCall(`/metrics/${metricId}`, 'PUT', {
                 metric_name: metricName,
                 metric_value: parseFloat(currentValue),
