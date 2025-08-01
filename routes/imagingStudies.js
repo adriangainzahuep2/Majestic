@@ -144,7 +144,7 @@ router.get('/system/:systemId', async (req, res) => {
       thumbnailUrl: study.thumbnail_url ? `/uploads/thumbnails/${study.thumbnail_url.split('/').pop()}` : null,
       fileUrl: study.file_url ? `/uploads/${study.file_url.split('/').pop()}` : null,
       // Extract key metrics for display
-      keyMetrics: this.extractKeyMetrics(study.metrics_json),
+      keyMetrics: extractKeyMetrics(study.metrics_json || []),
       trendSummary: study.comparison_summary
     }));
 
