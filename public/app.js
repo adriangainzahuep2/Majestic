@@ -679,7 +679,21 @@ class HealthDashboard {
                                 <label class="form-label" style="color: #FFFFFF;">Units</label>
                                 <select class="form-select" id="inlineMetricUnits" required 
                                         style="background-color: #2C2C2E; border-color: #48484A; color: #FFFFFF;">
-                                    ${this.generateUnitsOptions()}
+                                    <option value="">Select units</option>
+                                    <option value="mg/dL">mg/dL</option>
+                                    <option value="mmHg">mmHg</option>
+                                    <option value="g/dL">g/dL</option>
+                                    <option value="%">%</option>
+                                    <option value="U/L">U/L</option>
+                                    <option value="ng/mL">ng/mL</option>
+                                    <option value="pg/mL">pg/mL</option>
+                                    <option value="μg/L">μg/L</option>
+                                    <option value="IU/mL">IU/mL</option>
+                                    <option value="beats/min">beats/min</option>
+                                    <option value="L/min">L/min</option>
+                                    <option value="mg/L">mg/L</option>
+                                    <option value="μmol/L">μmol/L</option>
+                                    <option value="nmol/L">nmol/L</option>
                                 </select>
                             </div>
                             <div class="row">
