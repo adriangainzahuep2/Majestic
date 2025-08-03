@@ -1,0 +1,78 @@
+INSTRUCTION: DO NOT IMPLEMENT OR CHANGE ANY CODE.
+Your task is to analyze the entire Majestic codebase and generate a comprehensive "system graph" that includes all relevant structural details.
+
+This system graph will be used later to evaluate future code changes before implementation, so accuracy and completeness are critical.
+
+==================================================
+OUTPUT REQUIRED
+==================================================
+
+Produce a hierarchical structured graph (in Markdown) that includes:
+
+1. DATABASE STRUCTURE
+   • All tables (name, columns, data types, default values)
+   • Primary keys, foreign keys, indexes
+   • Relationships between tables (one-to-many, many-to-many)
+
+2. BACKEND STRUCTURE
+   • Key modules and files
+   • All API endpoints (REST paths and HTTP methods)
+   • Each function with:
+     – Name
+     – Input parameters
+     – Output
+     – Which database tables it reads/writes
+   • Event listeners (e.g., SQS/SNS, cron jobs)
+
+3. FRONTEND STRUCTURE
+   • Pages, components, and their state variables
+   • Data flow: which APIs are called by each component
+   • Key UI elements linked to APIs
+
+4. VARIABLES AND CONSTANTS
+   • Global constants, configuration values, and environment variables
+   • Enum values used throughout the app (e.g., status enums, source_type)
+
+5. RELATIONSHIPS & DEPENDENCIES
+   • Draw relationships between:
+     – APIs and tables
+     – Tables and tables
+     – UI components and APIs
+   • Show how data flows end-to-end from DB → backend → frontend.
+
+6. CRITICAL FLOWS (ANNOTATED)
+   • Mark critical workflows with numbers:
+     – Metric ingestion (labs)
+     – Imaging ingestion
+     – Metric editing (+ Add Metric flow)
+     – Genetics pipeline (if implemented)
+   • For each, show which tables, functions, and components are involved.
+
+==================================================
+OUTPUT FORMAT
+==================================================
+
+- Use Markdown headings.
+- Use indentation and nested bullet points for hierarchy.
+- Use code blocks for small schema snippets if helpful.
+- Provide an **overview diagram (ASCII or Markdown)** at the top showing major systems and their relationships.
+
+==================================================
+KEY RULES
+==================================================
+
+1. DO NOT modify or generate any new code.
+2. DO NOT make assumptions—if something cannot be resolved, note it as "UNKNOWN".
+3. This output must be **accurate enough that it can be used as the single source of truth** for future code review automation.
+4. Explicitly mention any missing or duplicate API endpoints you notice.
+5. Output everything in one response.
+
+==================================================
+GOAL
+==================================================
+
+After this is complete, we will:
+- Use this graph to validate all future changes before implementation.
+- Prevent breaking dependencies and ensure schema/API alignment.
+
+DO NOT skip any part of the system.
