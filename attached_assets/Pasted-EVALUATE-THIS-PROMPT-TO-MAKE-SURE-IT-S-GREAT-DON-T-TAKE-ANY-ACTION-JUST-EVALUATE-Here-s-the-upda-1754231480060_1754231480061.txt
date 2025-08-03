@@ -1,0 +1,57 @@
+EVALUATE THIS PROMPT TO MAKE SURE IT'S GREAT. DON'T TAKE ANY ACTION JUST EVALUATE. [[Here’s the updated and clarified prompt for the Replit Agent.
+It removes the “Recent Uploads” table from system drill‑down pages and adds explicit instructions to clean up empty containers and spacing:
+
+⸻
+
+Update: Remove “Recent Uploads” from System Pages
+
+Required Change:
+In every System drill‑down page (e.g., Cardiovascular, Sensory, etc.), remove the “Recent Uploads” table/section that currently appears at the bottom of the page.
+
+⸻
+
+What Should Remain on a System Page:
+Each system page must now show only these sections (in order):
+	1.	Key Metrics (table)
+	2.	Additional Metrics (table)
+	3.	AI Analysis (existing section)
+	4.	Studies & Imaging (if any, from linkedSystemId)
+	5.	Trends (if any)
+
+⸻
+
+What to Remove:
+	•	The “Recent Uploads” table currently showing uploaded files (before they are processed) on each system page.
+	•	This section is no longer needed on a per‑system basis.
+
+⸻
+
+Important:
+	•	Do not remove or modify any other sections.
+	•	The global dashboard/timeline (outside of system pages) must continue showing “Recent Uploads”.
+	•	This removal applies only to individual system drill‑down pages.
+
+⸻
+
+Impact:
+	•	No backend or database changes.
+	•	Frontend-only change: Remove rendering of the Recent Uploads table/section in system drill‑down components.
+	•	Ensure that processed results still appear in the correct sections (Key Metrics, Additional Metrics, Studies & Imaging, Trends).
+
+⸻
+
+Follow-up Cleanup Instructions:
+After removing the “Recent Uploads” table:
+	•	Remove any empty containers, blank rows, or spacing left behind.
+	•	Check that page layouts remain visually consistent (no blank area where the table used to be).
+	•	Verify that section titles and content flow directly from one to the next with no placeholder gap.
+
+⸻
+
+Goal:
+System drill‑down pages should feel clean and seamless, with only the sections listed above.
+
+⸻
+
+This prompt ensures the section is removed cleanly without breaking layout or other functionality.
+]]
