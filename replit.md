@@ -33,7 +33,15 @@ The frontend is a **vanilla JavaScript SPA** served as static files:
 - **Daily plan generation** with personalized health recommendations
 - **Structured JSON outputs** for consistent data handling
 
-### Recent Changes (August 1, 2025)
+### Recent Changes (August 3, 2025)
+- **✓ VISUAL STUDIES AI INSIGHTS INTEGRATION** - Enhanced generateSystemInsights to merge lab metrics with visual study data
+- **✓ System-level AI analysis** - AI insights now incorporate imaging findings, summaries, and metric changes from visual studies
+- **✓ Comprehensive health assessment** - Combined lab and imaging data provides holistic system-level insights
+- **✓ Performance optimized queries** - Limited to 10 most recent studies per system using existing database indexes
+- **✓ Robust error handling** - Safe null checking for JSONB fields and graceful fallbacks for missing data
+- **✓ Updated AI prompts** - Medical AI now analyzes both lab metrics AND visual studies for comprehensive system assessment
+
+### Previous Changes (August 1, 2025)
 - **✓ PHASE 1 UNIFIED INGESTION PIPELINE** - Complete implementation of visual studies processing alongside lab reports
 - **✓ New imaging_studies database table** - Stores visual studies with AI analysis, metrics, and comparison data
 - **✓ Unified file classification** - AI automatically detects lab, visual, or mixed file types

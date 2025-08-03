@@ -376,8 +376,10 @@ class QueueService {
           // 3. GPT CALL LOGGING
           console.log(`[GPT CALL PAYLOAD] userId=${userId} system=${systemName} metricsCount=${metricsResult.rows.length}`);
           
-          // Pass ALL metrics to AI analysis - not just recent ones
+          // Pass ALL metrics to AI analysis with visual studies integration
           const insights = await openaiService.generateSystemInsights(
+            userId,
+            systemId,
             systemName, 
             metricsResult.rows, // ALL metrics for this system
             [] // No separate historical data needed
@@ -387,13 +389,14 @@ class QueueService {
           console.log(`[GPT OUTPUT RECEIVED] userId=${userId} system=${systemName} insightsGenerated=true`);
           console.log(`[GPT OUTPUT CONTENT]`, JSON.stringify(insights, null, 2));
           
-          // Save insights
+          // Save insights with systemId for proper caching
           await openaiService.logAIOutput(
             userId,
             'system_insights',
             `system_id:${systemId}`,
             insights,
-            0
+            0,
+            systemId
           );
           
           console.log(`[GPT OUTPUT SAVED] userId=${userId} system=${systemName} outputType=system_insights`);

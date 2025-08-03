@@ -346,40 +346,73 @@ Return JSON in this format:
   }
 
   // Generate per-system insights
-  async generateSystemInsights(systemName, systemMetrics, historicalData) {
+  async generateSystemInsights(userId, systemId, systemName, systemMetrics, historicalData) {
     try {
-      console.log(`[OPENAI SERVICE CALLED] function=generateSystemInsights system=${systemName} metricsCount=${systemMetrics.length}`);
+      console.log(`[OPENAI SERVICE CALLED] function=generateSystemInsights system=${systemName} metricsCount=${systemMetrics.length} userId=${userId} systemId=${systemId}`);
       
-      // Format metrics for the new prompt structure
+      // Format lab metrics for the new prompt structure
       const formattedMetrics = systemMetrics.map(metric => ({
         metric: metric.metric_name,
         system: systemName,
         normalMin: metric.normalRangeMin || metric.reference_range_min || 0,
         normalMax: metric.normalRangeMax || metric.reference_range_max || 100,
         value: metric.metric_value,
-        units: metric.metric_unit || metric.units
+        units: metric.metric_unit || metric.units,
+        date: metric.test_date
       }));
 
-      console.log(`[FORMATTED METRICS FOR GPT]`, JSON.stringify(formattedMetrics, null, 2));
+      // Fetch visual studies for this system
+      const visualStudies = await this.getVisualStudiesForSystem(userId, systemId);
+      console.log(`[VISUAL STUDIES] Found ${visualStudies.length} studies for system ${systemId}`);
 
-      const prompt = `You are a medical AI system analyzing one biological system (${systemName}) using lab metrics.
+      // Merge lab metrics and visual study data
+      const mergedData = {
+        systemId: systemId,
+        systemName: systemName,
+        labMetrics: formattedMetrics,
+        visualStudies: visualStudies.map(study => ({
+          studyType: study.study_type,
+          testDate: study.test_date,
+          metricsJson: study.metrics_json || [],
+          aiSummary: study.ai_summary || null,
+          comparisonSummary: study.comparison_summary || null,
+          metricChangesJson: study.metric_changes_json || []
+        }))
+      };
 
-Input:
-${JSON.stringify(formattedMetrics, null, 2)}
+      console.log(`[MERGED DATA FOR GPT]`, JSON.stringify({
+        ...mergedData,
+        visualStudies: mergedData.visualStudies.map(s => ({ 
+          studyType: s.studyType, 
+          testDate: s.testDate, 
+          metricsCount: s.metricsJson.length 
+        }))
+      }, null, 2));
 
-Analyze these metrics following this format:
+      const prompt = `You are a medical AI system analyzing one biological system (${systemName}) using both lab metrics and visual studies.
+
+Combined Data Input:
+${JSON.stringify(mergedData, null, 2)}
+
+Analyze this comprehensive data following this format:
 
 Your Tasks:
-1. Analyze Metrics in Context - Evaluate all metrics for this system together, not in isolation
+1. Analyze Lab Metrics AND Visual Study Data Together - Evaluate all data for this system holistically
 2. Assign an Overall System Status - Choose exactly one: Optimal, Mild Concern, At Risk, High Risk  
-3. Generate a Plain-Language Summary
-4. For Each Out-of-Range Metric (if any): Provide metric name, value vs range, definition, implication, recommendations
-5. Practical Recommendations (2-5 total)
+3. Generate a Plain-Language Summary that incorporates both lab and imaging findings
+4. For Each Out-of-Range Metric (from labs or imaging): Provide metric name, value vs range, definition, implication, recommendations
+5. Practical Recommendations (2-5 total) based on complete data picture
+
+Visual Study Integration Guidelines:
+- Include insights from AI summaries and comparison analyses
+- Reference visual study metrics when relevant to overall assessment
+- Consider trends and changes shown in metric comparisons
+- Integrate imaging findings with lab values for comprehensive evaluation
 
 Return JSON in this exact format:
 {
   "system_status": "Optimal|Mild Concern|At Risk|High Risk",
-  "summary_insight": "Concise system-level explanation",
+  "summary_insight": "Comprehensive system-level explanation incorporating lab and imaging data",
   "out_of_range_metrics": [
     {
       "metric_name": "string",
@@ -390,21 +423,20 @@ Return JSON in this exact format:
     }
   ],
   "recommendations": [
-    "Recommendation 1",
+    "Recommendation 1 (may reference imaging findings)",
     "Recommendation 2",
     "Recommendation 3"
   ]
 }`;
 
-      console.log(`[GPT CALL INITIATED] system=${systemName} metricsCount=${formattedMetrics.length}`);
-      console.log(`PROMPT=${prompt}`);
+      console.log(`[GPT CALL INITIATED] system=${systemName} labMetrics=${formattedMetrics.length} visualStudies=${visualStudies.length}`);
       
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
           {
             role: "system",
-            content: "You are a medical AI system analyzing biological systems using lab metrics. Base your evaluation strictly on value vs. normalMin/normalMax. Remain neutral, evidence-based, and professional. Do not provide a diagnosis—focus on risk assessment and actionable guidance."
+            content: "You are a medical AI system analyzing biological systems using lab metrics AND visual studies. Integrate both data sources for comprehensive assessment. Base evaluation on lab values vs. normal ranges AND imaging findings. Remain neutral, evidence-based, and professional. Do not provide diagnosis—focus on integrated risk assessment and actionable guidance."
           },
           {
             role: "user",
@@ -412,17 +444,45 @@ Return JSON in this exact format:
           }
         ],
         response_format: { type: "json_object" },
-        max_tokens: 1500
+        max_tokens: 2000
       });
 
       const result = JSON.parse(response.choices[0].message.content);
       console.log(`[GPT OUTPUT RECEIVED] system=${systemName} responseLength=${response.choices[0].message.content.length}`);
-      console.log(`RESPONSE=${response.choices[0].message.content}`);
+      console.log(`INTEGRATED RESPONSE=${response.choices[0].message.content}`);
       
       return result;
     } catch (error) {
       console.error('System insights generation error:', error);
       throw new Error(`Failed to generate system insights: ${error.message}`);
+    }
+  }
+
+  // New method to fetch visual studies for a specific system
+  async getVisualStudiesForSystem(userId, systemId) {
+    const { pool } = require('../database/schema');
+    
+    try {
+      const result = await pool.query(`
+        SELECT 
+          study_type,
+          test_date,
+          metrics_json,
+          ai_summary,
+          comparison_summary,
+          metric_changes_json
+        FROM imaging_studies 
+        WHERE user_id = $1 AND linked_system_id = $2 AND linked_system_id IS NOT NULL
+        ORDER BY test_date DESC 
+        LIMIT 10
+      `, [userId, systemId]);
+
+      console.log(`[VISUAL STUDIES QUERY] userId=${userId} systemId=${systemId} found=${result.rows.length}`);
+      
+      return result.rows;
+    } catch (error) {
+      console.error(`Failed to fetch visual studies for system ${systemId}:`, error);
+      return []; // Return empty array on error to prevent breaking insights generation
     }
   }
 
