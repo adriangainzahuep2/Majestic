@@ -304,18 +304,6 @@ class HealthDashboard {
                         </div>
                     </div>
 
-                    <!-- Upload History -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h6 class="mb-0" style="color: #FFFFFF;">
-                                <i class="fas fa-history me-2"></i>Recent Uploads
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <p style="color: #EBEBF5; font-size: 13px;">Upload history for this system will appear here.</p>
-                        </div>
-                    </div>
-
                     <!-- Trends Preview -->
                     <div class="card mb-4">
                         <div class="card-header">
