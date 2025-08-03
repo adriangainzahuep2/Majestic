@@ -309,6 +309,7 @@ class IngestionService {
   mapStudyTypeToSystem(studyType) {
     const mapping = {
       'eye_topography': 12, // Sensory
+      'keratometry': 12,    // Sensory (same as eye_topography)
       'oct': 12,           // Sensory
       'fundus': 12,        // Sensory
       'mri': 2,            // Nervous/Brain
@@ -320,6 +321,7 @@ class IngestionService {
       'unknown': null
     };
 
+    console.log(`[MAPPING] studyType="${studyType}" -> systemId=${mapping[studyType] || null}`);
     return mapping[studyType] || null;
   }
 

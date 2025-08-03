@@ -372,9 +372,18 @@ class QueueService {
         
         console.log(`[DETAILED METRICS]`, JSON.stringify(detailedMetrics, null, 2));
         
-        if (metricsResult.rows.length > 0) {
+        // Check for visual studies even if no lab metrics
+        const visualStudiesResult = await pool.query(`
+          SELECT COUNT(*) as count FROM imaging_studies 
+          WHERE user_id = $1 AND linked_system_id = $2 AND linked_system_id IS NOT NULL
+        `, [userId, systemId]);
+        
+        const hasVisualStudies = parseInt(visualStudiesResult.rows[0].count) > 0;
+        console.log(`[VISUAL STUDIES CHECK] userId=${userId} systemId=${systemId} hasVisualStudies=${hasVisualStudies}`);
+
+        if (metricsResult.rows.length > 0 || hasVisualStudies) {
           // 3. GPT CALL LOGGING
-          console.log(`[GPT CALL PAYLOAD] userId=${userId} system=${systemName} metricsCount=${metricsResult.rows.length}`);
+          console.log(`[GPT CALL PAYLOAD] userId=${userId} system=${systemName} metricsCount=${metricsResult.rows.length} visualStudies=${hasVisualStudies}`);
           
           // Pass ALL metrics to AI analysis with visual studies integration
           const insights = await openaiService.generateSystemInsights(
@@ -401,7 +410,7 @@ class QueueService {
           
           console.log(`[GPT OUTPUT SAVED] userId=${userId} system=${systemName} outputType=system_insights`);
         } else {
-          console.log(`[NO METRICS FOUND] userId=${userId} system=${systemName} skipping AI generation`);
+          console.log(`[NO DATA FOUND] userId=${userId} system=${systemName} skipping AI generation - no metrics or visual studies`);
         }
         
         console.log(`Generated system insights for user ${userId}, system ${systemName}`);
@@ -723,12 +732,23 @@ class QueueService {
       });
       console.log(`metrics=${JSON.stringify(detailedMetrics, null, 2)}`);
       
-      if (metricsResult.rows.length > 0) {
+      // Check for visual studies even if no lab metrics
+      const visualStudiesResult = await pool.query(`
+        SELECT COUNT(*) as count FROM imaging_studies 
+        WHERE user_id = $1 AND linked_system_id = $2 AND linked_system_id IS NOT NULL
+      `, [userId, systemId]);
+      
+      const hasVisualStudies = parseInt(visualStudiesResult.rows[0].count) > 0;
+      console.log(`[VISUAL STUDIES CHECK] userId=${userId} systemId=${systemId} hasVisualStudies=${hasVisualStudies}`);
+
+      if (metricsResult.rows.length > 0 || hasVisualStudies) {
         // 3. GPT CALL LOGGING
-        console.log(`[GPT CALL INITIATED] userId=${userId} systemId=${systemId} metricsCount=${metricsResult.rows.length}`);
+        console.log(`[GPT CALL INITIATED] userId=${userId} systemId=${systemId} metricsCount=${metricsResult.rows.length} visualStudies=${hasVisualStudies}`);
         
-        // Pass ALL metrics to AI analysis
+        // Pass ALL metrics to AI analysis with visual studies integration
         const insights = await openaiService.generateSystemInsights(
+          userId,
+          systemId,
           systemName, 
           metricsResult.rows,
           []
@@ -749,7 +769,7 @@ class QueueService {
         );
         console.log(`[INSIGHTS SAVE PAYLOAD] userId=${userId} systemId=${systemId} payload=${JSON.stringify(insights)}`);
         
-        // Save insights
+        // Save insights with systemId for proper caching
         const saveResult = await openaiService.logAIOutput(
           userId,
           'system_insights',
