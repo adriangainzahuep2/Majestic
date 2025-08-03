@@ -1,0 +1,158 @@
+Evaluate this prompt rigorously according to the system architecture and let me know if there are any issues. DON'T TAKE ANY ACTION, JUST EVALUTE. [[
+⸻
+
+REPLIT AGENT PROMPT – MERGE VISUAL STUDIES INTO SYSTEM-LEVEL AI INSIGHTS (FINAL CORRECTED VERSION)
+
+⸻
+
+Objective
+
+Enhance the System Level AI Insights feature in Majestic so that these insights combine:
+	1.	Numeric lab metrics (from the metrics table)
+	2.	Visual study data (from the imaging_studies table)
+
+Currently, only lab metrics are included.
+
+⸻
+
+Additional Critical Requirements
+
+1. Linked System Assignment (New Requirement)
+	•	In the visual study ingestion pipeline (e.g., VisualStudyService.processVisualStudy()):
+	•	Implement mapping logic from studyType → linked_system_id.
+	•	Assign the correct linked_system_id when inserting into imaging_studies.
+	•	If no valid mapping exists, log an error and do not insert until the mapping is resolved.
+	•	Maintain a mapping configuration in one place (e.g., a dictionary):
+
+const studyTypeToSystem = {
+  "eye_topography": "Sensory",
+  "oct": "Sensory",
+  "mri": "Nervous",
+  "ct": "Skeletal",
+  "xray": "Skeletal",
+  "dexa": "Endocrine",
+  "ecg": "Cardiovascular",
+  "eeg": "Nervous",
+  "unknown": null
+};
+
+
+
+⸻
+
+2. Error Handling for Missing Data (New Requirement)
+
+When merging visual study data in OpenAIService.generateSystemInsights(), handle null/undefined values safely:
+	•	metricsJson: If null, use an empty array [].
+	•	aiSummary: If null, skip it.
+	•	comparisonSummary / metricChangesJson: If null, skip them.
+	•	The merged JSON payload passed to the AI model must always be valid.
+
+⸻
+
+Data Sources
+
+For a given system (e.g., Cardiovascular, Sensory):
+
+From metrics:
+	•	Include all lab metrics for that system_id.
+
+From imaging_studies:
+	•	Filter where linked_system_id = systemId.
+	•	Include:
+	•	metricsJson
+	•	aiSummary
+	•	comparisonSummary
+	•	metricChangesJson
+
+⸻
+
+Merged Input for AI
+
+In OpenAIService.generateSystemInsights():
+	1.	Fetch all relevant lab metrics.
+	2.	Fetch all relevant imaging studies.
+	3.	Normalize null fields.
+	4.	Merge into:
+
+{
+  "systemId": "...",
+  "labMetrics": [...],
+  "visualStudies": [
+    {
+      "metricsJson": [...],
+      "aiSummary": "...",
+      "comparisonSummary": "...",
+      "metricChangesJson": [...]
+    }
+  ]
+}
+
+	5.	Pass this combined data to the AI model.
+
+⸻
+
+Processing Logic
+	•	Where: Modify OpenAIService.generateSystemInsights() so that it:
+	•	Queries imaging_studies in addition to metrics.
+	•	Safely merges data as shown above.
+	•	Summarization:
+	•	If there are more than 10 imaging studies:
+	•	Include only the most recent 10 (sorted by test_date).
+	•	Caching:
+	•	Maintain existing caching behavior.
+
+⸻
+
+UI Changes
+
+No changes.
+	•	Visual studies remain in Studies & Imaging.
+	•	These studies now inform the AI Insights text.
+
+⸻
+
+What NOT to Do
+	•	Do not duplicate visual study metrics in Key Metrics or Additional Metrics tables.
+	•	Do not alter API schemas.
+	•	Do not change ingestion pipelines for labs other than ensuring linked_system_id assignment.
+
+⸻
+
+Deliverables
+	1.	Backend:
+	•	Update VisualStudyService.processVisualStudy() (or equivalent) to assign linked_system_id based on studyType.
+	•	Update OpenAIService.generateSystemInsights() to:
+	•	Query imaging_studies
+	•	Merge lab metrics + visual data
+	•	Handle null/undefined fields
+	2.	Validation:
+	•	Confirm that /api/dashboard/insights/:systemId returns updated insights after uploading a visual study.
+	3.	Testing:
+	•	Upload visual studies with known values and confirm that their metrics and summaries influence AI insights.
+
+⸻
+
+Expected Outcome
+
+Example:
+If the Sensory system has:
+	•	12 lab metrics
+	•	3 imaging studies (Kmax, cornealThickness, aiSummary)
+
+Then /api/dashboard/insights/:systemId must reflect both numeric labs and imaging metrics.
+
+⸻
+
+Key Notes
+	•	Use camelCase for variables.
+	•	No schema changes.
+	•	If no visual studies exist, behavior remains unchanged.
+
+⸻
+
+Success Criteria
+	•	Frontend remains unchanged.
+	•	Visual study data influences AI insights without duplication or errors.
+
+]]
