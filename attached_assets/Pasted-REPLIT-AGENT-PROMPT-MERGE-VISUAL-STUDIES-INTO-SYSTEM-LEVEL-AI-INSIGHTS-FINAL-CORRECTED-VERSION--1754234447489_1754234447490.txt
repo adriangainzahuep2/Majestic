@@ -1,0 +1,144 @@
+REPLIT AGENT PROMPT – MERGE VISUAL STUDIES INTO SYSTEM-LEVEL AI INSIGHTS (FINAL CORRECTED VERSION)
+
+Objective
+
+Enhance the System Level AI Insights feature in Majestic so that these insights combine:
+
+Numeric lab metrics (from the metrics table)
+Visual study data (from the imaging_studies table)
+Currently, only lab metrics are included.
+
+Additional Critical Requirements
+
+1. Linked System Assignment (Corrected Mapping)
+
+In the visual study ingestion pipeline (e.g., VisualStudyService.processVisualStudy()):
+
+Implement mapping logic from studyType → linked_system_id using numeric IDs.
+Assign the correct linked_system_id when inserting into imaging_studies.
+If no valid mapping exists, log an error and assign linked_system_id = null.
+Maintain a mapping configuration using system IDs:
+const studyTypeToSystemId = {
+  "eye_topography": 12,  // Sensory
+  "oct": 12,             // Sensory  
+  "fundus": 12,          // Sensory
+  "mri": 2,              // Nervous/Brain
+  "ct": 2,               // Nervous/Brain (most CT scans)
+  "xray": 5,             // Skeletal
+  "dexa": 5,             // Skeletal (bone density)
+  "ecg": 1,              // Cardiovascular
+  "eeg": 2,              // Nervous/Brain
+  "unknown": null
+};
+2. Error Handling for Missing Data
+
+When merging visual study data in OpenAIService.generateSystemInsights(), handle null/undefined values safely:
+
+metrics_json: If null, use an empty array [].
+ai_summary: If null, skip it entirely.
+comparison_summary / metric_changes_json: If null, skip them.
+Handle existing records where linked_system_id is null by excluding them from system-specific queries.
+The merged JSON payload passed to the AI model must always be valid.
+3. Performance Optimization
+
+Use efficient queries with proper WHERE clauses and existing indexes.
+Limit imaging studies to most recent 10 per system to prevent oversized payloads.
+Leverage existing database indexes: idx_imaging_studies_user_system.
+Data Sources
+
+For a given system (e.g., systemId = 1 for Cardiovascular, systemId = 12 for Sensory):
+
+From metrics:
+
+Include all lab metrics where system_id = systemId.
+From imaging_studies:
+
+Filter where linked_system_id = systemId AND linked_system_id IS NOT NULL.
+Include: metrics_json, ai_summary, comparison_summary, metric_changes_json.
+Merged Input for AI
+
+In OpenAIService.generateSystemInsights():
+
+Fetch all relevant lab metrics by system_id.
+Fetch all relevant imaging studies by linked_system_id.
+Normalize null fields to prevent JSON errors.
+Merge into structured payload:
+{
+  "systemId": systemId,
+  "systemName": "Cardiovascular", // from health_systems table
+  "labMetrics": [...],
+  "visualStudies": [
+    {
+      "studyType": "ecg",
+      "testDate": "2025-01-15",
+      "metricsJson": [...] || [],
+      "aiSummary": "..." || null,
+      "comparisonSummary": "..." || null,
+      "metricChangesJson": [...] || []
+    }
+  ]
+}
+Pass this combined data to the AI model with updated prompt context.
+Processing Logic
+
+Where: Modify OpenAIService.generateSystemInsights(userId, systemId) to:
+Query both metrics and imaging_studies tables using proper system ID joins.
+Safely merge data with null checking.
+Use existing database indexes for optimal performance.
+Summarization:
+If there are more than 10 imaging studies, include only the most recent 10 (ORDER BY test_date DESC).
+Caching:
+Maintain existing caching behavior in ai_outputs_log with system_id field.
+Database Queries (Reference)
+
+-- Lab metrics query
+SELECT * FROM metrics 
+WHERE user_id = ? AND system_id = ? 
+ORDER BY test_date DESC;
+-- Visual studies query  
+SELECT * FROM imaging_studies 
+WHERE user_id = ? AND linked_system_id = ? AND linked_system_id IS NOT NULL
+ORDER BY test_date DESC 
+LIMIT 10;
+UI Changes
+
+None required.
+
+Visual studies remain displayed in "Studies & Imaging" section.
+These studies now inform the "AI Insights" text content.
+What NOT to Do
+
+Do not duplicate visual study metrics in Key Metrics or Additional Metrics tables.
+Do not alter API response schemas for /api/dashboard/insights/:systemId.
+Do not change ingestion pipelines for lab reports.
+Do not modify the imaging_studies table schema.
+Deliverables
+
+Backend Updates:
+Update VisualStudyService.processVisualStudy() to assign linked_system_id using corrected mapping.
+Update OpenAIService.generateSystemInsights() to:
+Query imaging_studies table with proper system ID filtering
+Merge lab metrics + visual study data safely
+Handle null/undefined fields without breaking JSON
+Validation:
+Confirm /api/dashboard/insights/:systemId returns enhanced insights after uploading visual studies.
+Verify existing records with linked_system_id = null are handled gracefully.
+Testing:
+Upload visual studies and confirm their data influences AI insights.
+Test with systems that have no visual studies (should work unchanged).
+Expected Outcome
+
+Example: If Sensory system (ID: 12) has:
+
+8 lab metrics (vision tests, hearing tests)
+4 imaging studies (eye topography with Kmax, corneal thickness data)
+Then /api/dashboard/insights/12 returns AI insights combining both lab and imaging data.
+
+Success Criteria
+
+Frontend remains unchanged.
+Visual study data enhances AI insights without duplication.
+Existing functionality for systems without visual studies unchanged.
+No performance degradation on systems with many studies.
+Proper error handling for malformed or null data.
+This corrected prompt addresses the system ID mapping issues, clarifies null data handling, and includes performance considerations for production deployment.
