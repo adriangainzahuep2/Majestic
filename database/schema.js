@@ -108,6 +108,24 @@ async function initializeDatabase() {
       );
     `);
 
+    // Create user_custom_metrics table for custom metric types
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_custom_metrics (
+        id SERIAL PRIMARY KEY,
+        system_id INTEGER REFERENCES health_systems(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        metric_name VARCHAR(255) NOT NULL,
+        value VARCHAR(100) NOT NULL,
+        units VARCHAR(50),
+        normal_range_min DECIMAL(10,3),
+        normal_range_max DECIMAL(10,3),
+        range_applicable_to VARCHAR(100) DEFAULT 'General',
+        source_type VARCHAR(50) DEFAULT 'user',
+        review_status VARCHAR(50) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // Create imaging_studies table for Phase 1 visual pipeline
     await client.query(`
       CREATE TABLE IF NOT EXISTS imaging_studies (
@@ -147,6 +165,8 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_ai_outputs_user_type ON ai_outputs_log(user_id, output_type);
       CREATE INDEX IF NOT EXISTS idx_imaging_studies_user_system ON imaging_studies(user_id, linked_system_id);
       CREATE INDEX IF NOT EXISTS idx_imaging_studies_type_date ON imaging_studies(study_type, test_date);
+      CREATE INDEX IF NOT EXISTS idx_user_custom_metrics_user_system ON user_custom_metrics(user_id, system_id);
+      CREATE INDEX IF NOT EXISTS idx_user_custom_metrics_review ON user_custom_metrics(source_type, review_status);
     `);
 
     console.log('Database schema initialized successfully');
