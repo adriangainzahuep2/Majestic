@@ -1,0 +1,84 @@
+Fixes for Replit Deployment (Updated August 2025)
+Fix 1: Add Root Route Handler (CRITICAL)
+In server.js, add this route before any middleware:
+```
+// Root route for health checks - must be first
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+```
+Fix 2: Verify .replit Configuration (HIGH)
+Ensure .replit file contains exactly:
+```
+run = "node server.js"
+```
+Not: npm start, node --help, or any other command
+Fix 3: Port Configuration (HIGH)
+Verify server.js uses proper external binding:
+```
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+});
+```
+Critical: Must use '0.0.0.0' not 'localhost' for Replit deployment
+Fix 4: Middleware Order (CRITICAL)
+Structure routes in this exact sequence:
+```
+// 1. API routes first (before any static serving)
+app.use('/api', require('./routes'));
+// 2. Explicit root route for health checks
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+// 3. Static assets (CSS, JS, images)
+app.use(express.static('public'));
+// 4. SPA fallback for client-side routing (must be last)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+```
+Fix 5: Verify Health Endpoint (RECOMMENDED)
+Confirm /api/health exists and returns proper status:
+```
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    service: 'Majestic Health Dashboard'
+  });
+});
+```
+Fix 6: Package.json Validation (MEDIUM)
+Ensure proper start script (backup for .replit):
+```
+{
+  "scripts": {
+    "start": "node server.js"
+  }
+}
+```
+Implementation Order (Prioritized)
+1. Root route handler (fixes health check failure immediately)
+2. Verify .replit config (ensures correct startup command)
+3. Check port binding (enables external access from Replit)
+4. Validate middleware order (prevents route conflicts)
+5. Test locally (verify all routes respond correctly)
+6. Redeploy to Replit (should now pass all health checks)
+Pre-Deployment Testing
+Test these endpoints locally before deploying:
+- curl http://localhost:5000/ → Should return HTML
+- curl http://localhost:5000/api/health → Should return JSON status
+- curl http://localhost:5000/nonexistent → Should return HTML (SPA fallback)
+Key Architecture Insights
+- Replit's health checker hits / first and expects immediate 200response
+- Middleware order matters - API routes must come before static serving
+- External binding required - 0.0.0.0 allows Replit's proxy to connect
+- SPA support - Catch-all route enables client-side routing for your dashboard
+Deployment Success Indicators
+After implementing fixes, successful deployment shows:
+- ✅ Health checks passing
+- ✅ Public URL accessible
+- ✅ Google OAuth working on deployed URL
+- ✅ Dashboard loads correctly
+- ✅ API endpoints responding

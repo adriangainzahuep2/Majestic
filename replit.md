@@ -33,8 +33,17 @@ The frontend is a **vanilla JavaScript SPA** served as static files:
 - **Daily plan generation** with personalized health recommendations
 - **Structured JSON outputs** for consistent data handling
 
-### Recent Changes (August 3, 2025)
-- **✓ DEPLOYMENT READINESS COMPLETE** - Added root route handler, proper middleware ordering, and health check endpoints for Replit deployment
+### Recent Changes (August 5, 2025)
+- **✓ CRITICAL DEPLOYMENT FIXES IMPLEMENTED** - Successfully resolved path-to-regexp errors by downgrading Express from 5.1.0 → 4.18.2
+- **✓ PERFECT MIDDLEWARE ORDERING** - Implemented correct sequence: API routes → root route → static files → SPA fallback
+- **✓ ENHANCED HEALTH CHECK ENDPOINT** - Upgraded `/api/health` with proper status, timestamp, and service identification
+- **✓ EXPLICIT ROOT ROUTE HANDLER** - Added dedicated `/` handler before static middleware for Replit health checks
+- **✓ SPA ROUTING SUPPORT** - Implemented catch-all route (`*`) enabling client-side routing functionality
+- **✓ EXTERNAL PORT BINDING** - Verified 0.0.0.0 binding for Replit proxy compatibility
+- **✓ DEPLOYMENT TESTING COMPLETE** - All endpoints validated: root HTML, health JSON, SPA fallback working
+- **✓ SERVER STABILITY RESTORED** - Application now starts successfully without path-to-regexp errors
+
+### Previous Changes (August 3, 2025)
 - **✓ HIGH CONTRAST UI FIXES** - Fixed close button visibility in system drill-down modals with white styling and text shadows
 - **✓ VISUAL STUDIES AI INSIGHTS INTEGRATION** - Enhanced generateSystemInsights to merge lab metrics with visual study data
 - **✓ System-level AI analysis** - AI insights now incorporate imaging findings, summaries, and metric changes from visual studies
@@ -183,7 +192,7 @@ Each system has:
 - **Redis** - Queue backend (`REDIS_URL`, optional with local fallback)
 
 ### Node.js Dependencies
-- **Express 5.1.0** - Web framework
+- **Express 4.18.2** - Web framework (downgraded from 5.1.0 to resolve path-to-regexp deployment issues)
 - **Bull 4.16.5** - Job queue management
 - **OpenAI 5.10.2** - AI API client
 - **PostgreSQL (pg) 8.16.3** - Database driver
