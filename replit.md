@@ -2,7 +2,7 @@
 
 ## Overview
 
-Majestic is an AI-driven health application MVP that helps users track their health across 13 body systems using AI-powered insights. The system processes lab reports through OCR, provides personalized daily health plans, and presents health data through an intuitive dashboard interface with a modern Apple Health + Calm aesthetic.
+Majestic is an AI-driven health application MVP that helps users track their health across 13 body systems using AI-powered insights. The system processes both lab reports and visual studies (X-rays, MRIs, CT scans, eye studies) through unified AI analysis, provides personalized daily health plans, and presents comprehensive health data through an intuitive dashboard interface with a modern Apple Health + Calm aesthetic. The application is deployment-ready with proper health check endpoints and static file serving.
 
 ## User Preferences
 
@@ -34,12 +34,15 @@ The frontend is a **vanilla JavaScript SPA** served as static files:
 - **Structured JSON outputs** for consistent data handling
 
 ### Recent Changes (August 3, 2025)
+- **✓ DEPLOYMENT READINESS COMPLETE** - Added root route handler, proper middleware ordering, and health check endpoints for Replit deployment
+- **✓ HIGH CONTRAST UI FIXES** - Fixed close button visibility in system drill-down modals with white styling and text shadows
 - **✓ VISUAL STUDIES AI INSIGHTS INTEGRATION** - Enhanced generateSystemInsights to merge lab metrics with visual study data
 - **✓ System-level AI analysis** - AI insights now incorporate imaging findings, summaries, and metric changes from visual studies
 - **✓ Comprehensive health assessment** - Combined lab and imaging data provides holistic system-level insights
 - **✓ Performance optimized queries** - Limited to 10 most recent studies per system using existing database indexes
-- **✓ Robust error handling** - Safe null checking for JSONB fields and graceful fallbacks for missing data
-- **✓ Updated AI prompts** - Medical AI now analyzes both lab metrics AND visual studies for comprehensive system assessment
+- **✓ Enhanced queue processing** - Added visual studies support to direct processing mode when Redis unavailable
+- **✓ Study type mapping completion** - Added keratometry → Sensory system mapping for comprehensive eye study support
+- **✓ Updated system documentation** - Complete system graph reflects all current features and deployment configuration
 
 ### Previous Changes (August 1, 2025)
 - **✓ PHASE 1 UNIFIED INGESTION PIPELINE** - Complete implementation of visual studies processing alongside lab reports

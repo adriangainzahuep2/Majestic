@@ -1,0 +1,435 @@
+Majestic Health Dashboard - Complete System Graph (Updated August 2025)
+
+
+Overview Diagram
+
+┌─────────────────────────────────────────────────────────────┐
+│                    MAJESTIC SYSTEM                          │
+├─────────────────────────────────────────────────────────────┤
+│  Frontend (Vanilla JS SPA)                                 │
+│  ├── Authentication & User Management                       │
+│  ├── Dashboard (13 System Tiles)                           │
+│  ├── Upload Interface (Drag & Drop)                        │
+│  ├── Drill-down Modals (High Contrast UI)                  │
+│  └── Trends Visualization                                  │
+├─────────────────────────────────────────────────────────────┤
+│  Backend API Layer (Express.js)                            │
+│  ├── Root & Deployment Routes (/, /health, *)              │
+│  ├── Auth Routes (/api/auth)                               │
+│  ├── Upload Routes (/api/uploads)                          │
+│  ├── Metrics Routes (/api/metrics)                         │
+│  ├── Dashboard Routes (/api/dashboard)                     │
+│  ├── Unified Ingestion (/api/ingestFile)                   │
+│  └── Imaging Studies (/api/imaging-studies)                │
+├─────────────────────────────────────────────────────────────┤
+│  Services Layer                                            │
+│  ├── OpenAI Service (GPT-4o + Visual Studies Integration)  │
+│  ├── Health Systems Service                                │
+│  ├── Authentication Service                                │
+│  ├── Ingestion Service (Unified Pipeline)                  │
+│  ├── Visual Study Service (COMPLETE)                       │
+│  ├── Thumbnail Service                                     │
+│  ├── Queue Service (Bull/Redis with Direct Fallback)       │
+│  ├── Unified AI Insights (Lab + Imaging Data)              │
+│  └── Insights Refresh Service                              │
+├─────────────────────────────────────────────────────────────┤
+│  Database Layer (PostgreSQL)                               │
+│  ├── Core Tables (users, health_systems, uploads)          │
+│  ├── Metrics & Lab Data (metrics)                          │
+│  ├── Visual Studies (imaging_studies)                      │
+│  ├── Custom Metrics (user_custom_metrics)                  │
+│  ├── AI Logs (ai_outputs_log with system_id)               │
+│  └── User Interactions (questionnaire_responses)           │
+├─────────────────────────────────────────────────────────────┤
+│  Deployment Configuration                                  │
+│  ├── .replit (run = "node server.js")                      │
+│  ├── Root Route Handler (/) for Health Checks              │
+│  ├── External Port Binding (0.0.0.0:PORT)                  │
+│  └── Proper Middleware Ordering                            │
+└─────────────────────────────────────────────────────────────┘
+
+1. DATABASE STRUCTURE
+
+
+Core Tables
+
+users
+- id (SERIAL PRIMARY KEY)
+- email (VARCHAR(255) UNIQUE NOT NULL)
+- google_id (VARCHAR(255) UNIQUE)
+- name (VARCHAR(255))
+- avatar_url (TEXT)
+- created_at (TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+- updated_at (TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+
+health_systems
+- id (INTEGER PRIMARY KEY)
+- name (VARCHAR(100) NOT NULL)
+- description (TEXT)
+- created_at (TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+
+uploads
+- id (SERIAL PRIMARY KEY)
+- user_id (INTEGER REFERENCES users(id) ON DELETE CASCADE)
+- filename (VARCHAR(255) NOT NULL)
+- file_type (VARCHAR(50))
+- file_size (INTEGER)
+- upload_type (VARCHAR(50) DEFAULT 'manual')
+- storage_path (TEXT)
+- processing_status (VARCHAR(50) DEFAULT 'pending')
+- processing_error (TEXT)
+- created_at (TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+- processed_at (TIMESTAMP)
+
+metrics
+- id (SERIAL PRIMARY KEY)
+- user_id (INTEGER REFERENCES users(id) ON DELETE CASCADE)
+- upload_id (INTEGER REFERENCES uploads(id) ON DELETE CASCADE)
+- system_id (INTEGER REFERENCES health_systems(id))
+- metric_name (VARCHAR(255) NOT NULL)
+- metric_value (DECIMAL)
+- metric_unit (VARCHAR(50))
+- reference_range (TEXT)
+- is_key_metric (BOOLEAN DEFAULT false)
+- is_outlier (BOOLEAN DEFAULT false)
+- test_date (DATE)
+- created_at (TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+- UNIQUE(user_id, metric_name, test_date, upload_id)
+
+imaging_studies (Phase 1 Visual Pipeline - COMPLETE)
+- id (SERIAL PRIMARY KEY)
+- user_id (INTEGER REFERENCES users(id) ON DELETE CASCADE)
+- linked_system_id (INTEGER REFERENCES health_systems(id))
+- study_type (VARCHAR(100))
+- file_url (TEXT)
+- thumbnail_url (TEXT)
+- test_date (DATE)
+- ai_summary (TEXT)
+- metrics_json (JSONB)
+- comparison_summary (TEXT)
+- metric_changes_json (JSONB)
+- status (VARCHAR(50) DEFAULT 'pendingProcessing')
+- created_at (TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+- updated_at (TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+
+user_custom_metrics (Text-based Custom Metrics)
+- id (SERIAL PRIMARY KEY)
+- system_id (INTEGER REFERENCES health_systems(id))
+- user_id (INTEGER REFERENCES users(id) ON DELETE CASCADE)
+- metric_name (VARCHAR(255) NOT NULL)
+- value (DECIMAL)
+- units (VARCHAR(50))
+- normal_range_min (DECIMAL)
+- normal_range_max (DECIMAL)
+- range_applicable_to (VARCHAR(50) DEFAULT 'All')
+- source_type (VARCHAR(20) DEFAULT 'user')
+- review_status (VARCHAR(20) DEFAULT 'pending')
+- created_at (TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+
+ai_outputs_log (Enhanced for System-Level Caching)
+- id (SERIAL PRIMARY KEY)
+- user_id (INTEGER REFERENCES users(id) ON DELETE CASCADE) 
+- system_id (INTEGER) -- For per-system insights caching
+- output_type (VARCHAR(100) NOT NULL)
+- prompt (TEXT NOT NULL)
+- response (TEXT NOT NULL)
+- model_version (VARCHAR(50) DEFAULT 'gpt-4o')
+- processing_time_ms (INTEGER)
+- created_at (TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+- updated_at (TIMESTAMP DEFAULT CURRENT_TIMESTAMP) -- ADDED
+
+questionnaire_responses
+- id (SERIAL PRIMARY KEY)
+- user_id (INTEGER REFERENCES users(id) ON DELETE CASCADE)
+- question_type (VARCHAR(255) NOT NULL)
+- question (TEXT NOT NULL)
+- response (TEXT NOT NULL)
+- response_date (DATE DEFAULT CURRENT_DATE)
+- created_at (TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+
+Database Indexes
+
+- idx_metrics_user_system ON metrics(user_id, system_id)
+- idx_metrics_test_date ON metrics(test_date)
+- idx_uploads_user_status ON uploads(user_id, processing_status)
+- idx_ai_outputs_user_type ON ai_outputs_log(user_id, output_type)
+- idx_ai_outputs_system ON ai_outputs_log(user_id, system_id, output_type)
+- idx_imaging_studies_user_system ON imaging_studies(user_id, linked_system_id)
+- idx_imaging_studies_type_date ON imaging_studies(study_type, test_date)
+
+Relationships
+
+- users → uploads (1:many, CASCADE DELETE)
+- users → metrics (1:many, CASCADE DELETE)
+- users → imaging_studies (1:many, CASCADE DELETE)
+- users → user_custom_metrics (1:many, CASCADE DELETE)
+- users → ai_outputs_log (1:many, CASCADE DELETE)
+- health_systems → metrics (1:many)
+- health_systems → imaging_studies (1:many)
+- health_systems → user_custom_metrics (1:many)
+- uploads → metrics (1:many, CASCADE DELETE)
+
+2. BACKEND STRUCTURE
+
+
+API Endpoints
+
+Root & Deployment Routes (Public)
+- GET / - Root route for health checks and main app
+- GET /health - Health check endpoint
+- GET * - SPA fallback for client-side routing (catch-all)
+
+Authentication Routes (/api/auth)
+- POST /api/auth/google - Google OAuth login
+- POST /api/auth/demo - Demo login for testing
+- GET /api/auth/me - Get current user profile
+- PUT /api/auth/profile - Update user profile
+- DELETE /api/auth/account - Delete user account
+- POST /api/auth/logout - Logout (client-side token removal)
+
+Upload Routes (/api/uploads) [AUTH REQUIRED]
+- POST /api/uploads - Upload files (max 5 files, 10MB each)
+- GET /api/uploads - Get upload history (paginated)
+- GET /api/uploads/:id - Get upload details
+- POST /api/uploads/:id/retry - Retry failed upload processing
+- DELETE /api/uploads/:id - Delete upload
+
+Metrics Routes (/api/metrics) [AUTH REQUIRED]
+- GET /api/metrics - Get all metrics with filters
+- GET /api/metrics/system/:systemId - Get system-specific metrics
+- GET /api/metrics/types?systemId=X - Get metric types for dropdown (official + custom)
+- GET /api/metrics/trends?metrics=X,Y,Z - Get trend data
+- POST /api/metrics - Manual metric entry
+- PUT /api/metrics/:id - Update metric (with custom validation)
+- DELETE /api/metrics/:id - Delete metric
+- GET /api/metrics/export/:format - Export metrics (CSV/JSON)
+- GET /api/metrics/reference - Get reference metrics data (PUBLIC)
+
+Dashboard Routes (/api/dashboard) [AUTH REQUIRED]
+- GET /api/dashboard - Main dashboard with 13 system tiles
+- GET /api/dashboard/daily-plan - Get latest daily plan
+- GET /api/dashboard/daily-plans/history - Get historical daily plans
+- POST /api/dashboard/daily-plan/regenerate - Force regenerate daily plan
+- GET /api/dashboard/insights/:systemId - Get system insights
+- GET /api/dashboard/activity - Get activity feed
+- GET /api/dashboard/stats - Get dashboard statistics
+
+Custom Metrics Routes (/api/metrics/custom) [AUTH REQUIRED]
+- GET /api/metrics/custom?systemId=X - Get custom metrics for system
+- POST /api/metrics/custom - Add new custom metric
+- PUT /api/metrics/custom/:id - Edit custom metric
+- DELETE /api/metrics/custom/:id - Delete custom metric
+- GET /api/metrics/custom/export - Export custom metrics (ADMIN ONLY)
+- POST /api/metrics/custom/import - Import custom metrics CSV (ADMIN ONLY)
+
+Unified Ingestion Pipeline (/api/ingestFile) [AUTH REQUIRED]
+- POST /api/ingestFile - Main unified ingestion endpoint (JPEG, PNG, PDF, DICOM)
+
+Imaging Studies Routes (/api/imaging-studies) [AUTH REQUIRED]
+- GET /api/imaging-studies - Get all imaging studies (paginated)
+- GET /api/imaging-studies/:id - Get specific study details
+- GET /api/imaging-studies/system/:systemId - Get studies for specific system
+- GET /api/imaging-studies/stats/summary - Get study statistics
+
+Email Webhook (No Auth)
+- POST /api/webhook/email - Email ingestion webhook
+
+3. DEPLOYMENT CONFIGURATION
+
+
+Required Files & Settings
+
+.replit Configuration
+```toml
+run = "node server.js"
+```
+
+Package.json Scripts
+```json
+{
+  "scripts": {
+    "start": "node server.js"
+  }
+}
+```
+
+Server Configuration (server.js)
+- External port binding (0.0.0.0:PORT)
+- Environment variable PORT support
+- Proper middleware ordering:
+  1. API routes (/api/*)
+  2. Root route handler (/)
+  3. Static file serving
+  4. SPA fallback (*)
+
+Critical Routes for Deployment Success
+- Root handler (/) - Returns index.html for health checks
+- Health endpoint (/api/health) - Application status
+- Catch-all (*) - SPA routing support
+
+Middleware Order (CRITICAL)
+```javascript
+// 1. API routes first
+app.use('/api', apiRoutes);
+
+// 2. Explicit root route for health checks
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// 3. Static assets (CSS, JS, images)
+app.use(express.static('public'));
+
+// 4. SPA fallback for client-side routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+```
+
+4. ENHANCED SERVICES LAYER
+
+
+Key Functions by Service
+
+AuthService (services/auth.js)
+- findOrCreateUser(googleUserData) → User object | Reads: users | Writes: users
+- generateToken(user) → JWT string | Reads: none | Writes: none
+- verifyToken(token) → Decoded payload | Reads: none | Writes: none
+- getUserById(userId) → User object | Reads: users | Writes: none
+- updateUserProfile(userId, updates) → Updated user | Reads: users | Writes: users
+- deleteUser(userId) → Success status | Reads: users | Writes: users (CASCADE)
+
+HealthSystemsService (services/healthSystems.js)
+- getSystemDashboard(userId) → Dashboard tiles array | Reads: metrics, health_systems | Writes: none
+- getSystemDetails(userId, systemId) → System metrics & details | Reads: metrics, health_systems | Writes: none
+- mapMetricToSystem(metricName, category) → System ID | Reads: none | Writes: none
+- isKeyMetric(systemId, metricName) → Boolean | Reads: none | Writes: none
+- getTrendData(userId, metricNames) → Trend analysis | Reads: metrics | Writes: none
+
+IngestionService (services/ingestionService.js)
+- processFile({userId, file, testDate}) → Processing result | Reads: multiple | Writes: multiple
+- classifyFile(file) → Classification result | Reads: none | Writes: none
+- processLabFile(userId, file, testDate) → Lab processing result | Reads: uploads | Writes: uploads, metrics
+- processVisualFile(userId, file, testDate, classification) → Visual processing result | Reads: imaging_studies | Writes: imaging_studies
+- mapStudyTypeToSystem(studyType) → System ID | Reads: none | Writes: none
+- generateStudyComparison(currentStudyId) → Comparison analysis | Reads: imaging_studies | Writes: imaging_studies
+
+OpenAIService (services/openai.js) - ENHANCED WITH VISUAL STUDIES
+- generateCompletion(prompt, base64Data, fileName) → AI response | Reads: none | Writes: ai_outputs_log
+- processLabReport(base64Data, fileName) → Extracted metrics | Reads: none | Writes: ai_outputs_log
+- processPDFWithFilesAPI(base64Data, fileName) → PDF extraction result | Reads: none | Writes: ai_outputs_log
+- generateSystemInsights(userId, systemId, systemName, metrics, []) → System insights with visual studies integration | Reads: metrics, imaging_studies | Writes: ai_outputs_log
+- generateDailyPlan(userId) → Daily plan | Reads: metrics, health_systems | Writes: ai_outputs_log
+- logAIOutput(userId, outputType, prompt, response, processingTime, systemId) → Enhanced logging with system association | Reads: none | Writes: ai_outputs_log
+
+VisualStudyService (services/visualStudyService.js) - COMPLETE
+- processVisualStudy({userId, file, testDate, studyType, linkedSystemId}) → Study result | Reads: imaging_studies | Writes: imaging_studies
+- extractStudyMetrics(base64Data, studyType) → Metrics array | Reads: none | Writes: none
+- compareWithPreviousStudies(userId, studyType, currentMetrics) → Comparison analysis | Reads: imaging_studies | Writes: none
+- generateComparison(currentStudy, previousStudy, allPreviousStudies) → Detailed comparison | Reads: none | Writes: none
+
+ThumbnailService (services/thumbnailService.js)
+- generateThumbnail(filePath, outputPath) → Thumbnail path | Reads: file system | Writes: file system
+- generatePDFThumbnail(filePath, outputPath) → PDF thumbnail | Reads: file system | Writes: file system
+
+QueueService (services/queue.js) - ENHANCED WITH DIRECT FALLBACK
+- addJob(jobType, data, options) → Queue job or direct processing | Reads: various | Writes: various
+- processDirectly(jobType, data) → Direct processing fallback | Reads: various | Writes: various
+- processSystemInsightsDirectly(data) → Direct system insights with visual studies support | Reads: metrics, imaging_studies | Writes: ai_outputs_log
+- processUploadDirectly(data) → Direct upload processing | Reads: uploads | Writes: uploads, metrics, imaging_studies
+- processDailyPlanDirectly(data) → Direct daily plan generation | Reads: metrics | Writes: ai_outputs_log
+
+5. DATA FLOW & INTEGRATION
+
+
+Visual Studies Integration (COMPLETE)
+
+Processing Pipeline:
+1. File Upload → Classification (Lab/Visual/Mixed)
+2. Visual Studies → AI Analysis → Metric Extraction
+3. System Mapping → Database Storage
+4. Comparison Generation → Previous Studies Analysis
+5. Thumbnail Creation → UI Integration
+
+AI Insights Integration:
+1. System Insights Request → Fetch Lab Metrics + Visual Studies
+2. Data Merging → Comprehensive Analysis Payload
+3. GPT-4o Processing → Combined Health Assessment
+4. Response Caching → System-Level Storage
+5. Frontend Display → Unified Health Overview
+
+Study Type Mapping (COMPLETE):
+- eye_topography, keratometry, oct, fundus → Sensory (12)
+- mri, ct, eeg → Nervous/Brain (2)
+- xray, dexa → Skeletal (5)
+- ecg → Cardiovascular (1)
+
+6. FRONTEND ENHANCEMENTS
+
+
+UI Improvements (COMPLETE)
+- High contrast close buttons in system modals
+- Proper white (✕) styling with text shadow
+- Hover effects for better visual feedback
+- CSS specificity fixes for modal components
+
+Visual Studies Display:
+- Studies & Imaging section in system drill-downs
+- Thumbnail previews with study details
+- Comparison summaries and metric changes
+- AI analysis integration in insights panels
+
+Custom Metrics UI:
+- Inline metric type creation during edit flow
+- Three-tier validation system (official → approved → pending)
+- Text-based approach with admin review workflow
+- Merged dropdown data from API endpoint
+
+7. PERFORMANCE & SCALABILITY
+
+
+Optimization Features
+- Limited to 10 most recent visual studies per system
+- Proper database indexing for complex queries
+- System-level AI insights caching
+- Queue fallback to direct processing
+- Efficient thumbnail generation
+
+Error Handling
+- Graceful Redis fallback when unavailable
+- Robust null checking for JSONB fields
+- Safe processing of missing visual study data
+- Comprehensive logging for debugging
+
+Security & Privacy
+- JWT-based authentication with Google OAuth
+- User data isolation (CASCADE DELETE)
+- File upload validation and size limits
+- Rate limiting on upload endpoints
+
+8. CURRENT STATUS (AUGUST 2025)
+
+
+Completed Features ✓
+- Visual studies integration into AI insights
+- Unified ingestion pipeline (lab + imaging)
+- System-level AI analysis with combined data
+- High contrast UI fixes
+- Enhanced queue processing with fallback
+- Study type mapping and system association
+- Deployment readiness with proper routing
+
+Deployment Ready ✓
+- Root route handler for health checks
+- Proper middleware ordering
+- External port binding configuration
+- Static file serving with SPA support
+
+Production Considerations
+- SSL/TLS enabled in production mode
+- Database connection pooling
+- Error logging throughout application
+- File upload limits and validation
+- CDN-ready static assets
+
+The system is now fully integrated with visual studies processing and ready for production deployment via Replit's deployment system.
