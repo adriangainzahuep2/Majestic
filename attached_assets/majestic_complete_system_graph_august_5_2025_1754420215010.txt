@@ -1,0 +1,251 @@
+MAJESTIC HEALTH DASHBOARD - COMPLETE SYSTEM ARCHITECTURE GRAPH
+===============================================================
+Updated: August 5, 2025 - Production Deployment Analysis
+
+🔸 DEPLOYMENT STATUS
+┌─────────────────────────────────────────────────────────────┐
+│ ✅ Production URL: https://majesticapp.replit.app          │
+│ ✅ Local Development: http://localhost:5000                │
+│ ✅ Health Check: /api/health (200 OK)                      │
+│ ✅ Database: PostgreSQL connected                          │
+│ ✅ Queue: Redis fallback to direct processing              │
+│ ⚠️  Google OAuth: Domain configuration needed              │
+│ ❌ System Details: Missing API endpoint                    │
+└─────────────────────────────────────────────────────────────┘
+
+🔸 AUTHENTICATION FLOW
+┌─────────────────────────────────────────────────────────────┐
+│ Frontend (app.js)                                           │
+│ ├── "Try Demo" → generates demo-token                      │
+│ ├── "Continue with Google" → calls Google Sign-In API      │
+│ │   ├── ✅ Google library loaded: accounts.google.com     │
+│ │   ├── ❌ Origin blocked: need majesticapp.replit.app    │
+│ │   └── Backend: /api/auth/google (JWT verification)      │
+│ └── Token Storage: localStorage.authToken                  │
+│                                                             │
+│ Backend Authentication Routes                               │
+│ ├── GET /api/auth/config → returns Google Client ID       │
+│ ├── POST /api/auth/google → validates Google JWT token    │
+│ └── JWT Middleware → validates all API requests            │
+└─────────────────────────────────────────────────────────────┘
+
+🔸 API ENDPOINTS ARCHITECTURE
+┌─────────────────────────────────────────────────────────────┐
+│ WORKING ENDPOINTS                                           │
+│ ├── /api/health → System health check                      │
+│ ├── /api/auth/config → Google OAuth configuration          │
+│ ├── /api/auth/google → Google authentication               │
+│ ├── /api/dashboard → Main dashboard data                   │
+│ ├── /api/dashboard/insights/:systemId → System insights   │
+│ ├── /api/uploads → File upload processing                  │
+│ ├── /api/ingestFile → Unified ingestion pipeline           │
+│ ├── /api/imaging-studies → Visual studies management       │
+│ └── /api/metrics → Health metrics CRUD operations          │
+│                                                             │
+│ MISSING ENDPOINTS (causing errors)                         │
+│ ├── ❌ /api/metrics/system/:systemId → System details     │
+│ │   └── Frontend calls this but route doesn't exist       │
+│ └── ❌ Alternative: Use /api/dashboard/insights/:systemId  │
+└─────────────────────────────────────────────────────────────┘
+
+🔸 DATABASE SCHEMA
+┌─────────────────────────────────────────────────────────────┐
+│ PostgreSQL Tables (Production Ready)                       │
+│ ├── users (id, email, name, google_id, created_at)        │
+│ ├── health_systems (id, name, description, key_metrics)   │
+│ ├── metrics (id, user_id, system_id, metric_name, value)  │
+│ ├── uploads (id, user_id, filename, processed_at)         │
+│ ├── ai_outputs_log (id, user_id, output_type, response)   │
+│ └── imaging_studies (id, user_id, system_id, study_type)  │
+│                                                             │
+│ Key Relationships                                           │
+│ ├── users.id → metrics.user_id (1:many)                   │
+│ ├── health_systems.id → metrics.system_id (1:many)        │
+│ └── users.id → imaging_studies.user_id (1:many)           │
+└─────────────────────────────────────────────────────────────┘
+
+🔸 13 BODY SYSTEMS FRAMEWORK
+┌─────────────────────────────────────────────────────────────┐
+│ System ID | Name                | Key Metrics | Status      │
+│ ─────────┼────────────────────┼─────────────┼─────────────│
+│    1     │ Cardiovascular     │     29      │ ❌ API Error│
+│    2     │ Nervous/Brain      │     15      │ ✅ Working  │
+│    3     │ Respiratory        │     12      │ ✅ Working  │
+│    4     │ Muscular           │      8      │ ✅ Working  │
+│    5     │ Skeletal           │     11      │ ✅ Working  │
+│    6     │ Digestive          │     18      │ ✅ Working  │
+│    7     │ Endocrine          │     13      │ ✅ Working  │
+│    8     │ Urinary            │     14      │ ✅ Working  │
+│    9     │ Reproductive       │      9      │ ✅ Working  │
+│   10     │ Integumentary     │      7      │ ✅ Working  │
+│   11     │ Immune/Inflammation│     10      │ ✅ Working  │
+│   12     │ Sensory           │      6      │ ✅ Working  │
+│   13     │ Biological Age    │      4      │ ✅ Working  │
+└─────────────────────────────────────────────────────────────┘
+
+🔸 AI PROCESSING PIPELINE
+┌─────────────────────────────────────────────────────────────┐
+│ OpenAI GPT-4o Integration                                   │
+│ ├── Lab Report Processing                                   │
+│ │   ├── PDF → OpenAI Files API → Chat Completions         │
+│ │   ├── Images → Vision API → Structured JSON             │
+│ │   └── Output: Metrics with system categorization        │
+│ │                                                           │
+│ ├── Visual Studies Processing                              │
+│ │   ├── X-rays, MRIs, CT scans → Vision API               │
+│ │   ├── Eye studies (OCT, fundus) → Specialized prompts   │
+│ │   └── Output: Findings + metrics + comparisons          │
+│ │                                                           │
+│ ├── AI Insights Generation                                 │
+│ │   ├── System-level health analysis                      │
+│ │   ├── Trend identification and risk assessment          │
+│ │   └── Personalized recommendations                      │
+│ │                                                           │
+│ └── Daily Plan Generation                                  │
+│     ├── Aggregates data across all 13 systems             │
+│     ├── Generates actionable health recommendations       │
+│     └── Cached in ai_outputs_log table                    │
+└─────────────────────────────────────────────────────────────┘
+
+🔸 FRONTEND ARCHITECTURE
+┌─────────────────────────────────────────────────────────────┐
+│ Vanilla JavaScript SPA                                     │
+│ ├── app.js (Main application logic)                       │
+│ │   ├── Authentication handling                           │
+│ │   ├── Dashboard rendering (13 system tiles)             │
+│ │   ├── System drill-down modals                          │
+│ │   └── File upload interface                             │
+│ │                                                           │
+│ ├── metricUtils.js (Health metrics utilities)             │
+│ │   ├── Range analysis and status calculation             │
+│ │   ├── Clinical reference data (126 metrics)             │
+│ │   └── Visual range bars and status indicators           │
+│ │                                                           │
+│ ├── Bootstrap 5 + Custom CSS                              │
+│ │   ├── Dark mode Apple Health aesthetic                  │
+│ │   ├── Responsive grid layout                            │
+│ │   └── Majestic branding with rising sun icon            │
+│ │                                                           │
+│ └── External Libraries                                     │
+│     ├── Plotly.js (trend charts and visualizations)       │
+│     ├── Google Sign-In (accounts.google.com/gsi/client)   │
+│     └── Font Awesome + Feather Icons                      │
+└─────────────────────────────────────────────────────────────┘
+
+🔸 FILE PROCESSING WORKFLOW
+┌─────────────────────────────────────────────────────────────┐
+│ Unified Ingestion Pipeline                                 │
+│ ├── Step 1: File Upload (Multer middleware)               │
+│ │   ├── Supports: PDF, JPEG, PNG, DICOM                  │
+│ │   ├── Size limit: 10MB per file, 5 files max           │
+│ │   └── Storage: /uploads directory                       │
+│ │                                                           │
+│ ├── Step 2: AI Classification                             │
+│ │   ├── Determines: Lab report vs Visual study           │
+│ │   ├── Identifies study type (X-ray, MRI, CT, etc.)     │
+│ │   └── Routes to appropriate processing pipeline        │
+│ │                                                           │
+│ ├── Step 3: Data Extraction                               │
+│ │   ├── Lab reports → Metrics with values and units      │
+│ │   ├── Visual studies → Findings + comparative analysis │
+│ │   └── Mixed documents → Both metrics and findings      │
+│ │                                                           │
+│ ├── Step 4: System Mapping                                │
+│ │   ├── Auto-categorizes into 1 of 13 body systems       │
+│ │   ├── Identifies key vs non-key metrics                │
+│ │   └── Updates dashboard tile colors                     │
+│ │                                                           │
+│ └── Step 5: Storage & Indexing                            │
+│     ├── Metrics → metrics table                           │
+│     ├── Visual studies → imaging_studies table            │
+│     └── AI responses → ai_outputs_log table               │
+└─────────────────────────────────────────────────────────────┘
+
+🔸 CURRENT ISSUES & FIXES NEEDED
+┌─────────────────────────────────────────────────────────────┐
+│ CRITICAL ISSUES                                             │
+│ ├── 🔴 Google OAuth Domain Configuration                   │
+│ │   ├── Error: "origin is not allowed for client ID"     │
+│ │   ├── Fix: Add majesticapp.replit.app to Google Console│
+│ │   └── Location: Google Cloud Console → OAuth consent   │
+│ │                                                           │
+│ ├── 🔴 Missing System Details API Route                   │
+│ │   ├── Frontend calls: /api/metrics/system/:systemId    │
+│ │   ├── Route doesn't exist → 404 error                  │
+│ │   ├── Fix: Create route or update frontend calls       │
+│ │   └── Alternative: Use /api/dashboard/insights/:id     │
+│ │                                                           │
+│ └── 🔴 JWT Token Authentication Mismatch                  │
+│     ├── Production returns: "Invalid or expired token"    │
+│     ├── Demo token not recognized by production server    │
+│     └── Fix: Verify JWT_SECRET consistency                │
+│                                                             │
+│ MINOR ISSUES                                               │
+│ ├── 🟡 Metrics loading fallback to /src/data/metrics.json │
+│ └── 🟡 Console warnings about FedCM migration             │
+└─────────────────────────────────────────────────────────────┘
+
+🔸 DEPLOYMENT ENVIRONMENT
+┌─────────────────────────────────────────────────────────────┐
+│ Production Configuration                                    │
+│ ├── Platform: Replit Deployments                          │
+│ ├── Node.js Version: Latest LTS                           │
+│ ├── Express Version: 4.18.2 (downgraded for compatibility)│
+│ ├── Port: 5000 (Replit deployment standard)               │
+│ │                                                           │
+│ ├── Environment Variables                                  │
+│ │   ├── ✅ DATABASE_URL (PostgreSQL connection)          │
+│ │   ├── ✅ GOOGLE_CLIENT_ID (OAuth configuration)        │
+│ │   ├── ✅ GOOGLE_CLIENT_SECRET (OAuth verification)     │
+│ │   ├── ✅ JWT_SECRET (token signing)                    │
+│ │   ├── ✅ OPENAI_API_KEY (AI processing)               │
+│ │   └── ⚠️  REDIS_URL (optional, fallback enabled)      │
+│ │                                                           │
+│ └── Static File Serving                                    │
+│     ├── /public → Frontend assets                         │
+│     ├── /uploads → User uploaded files                    │
+│     └── Health check: /api/health                         │
+└─────────────────────────────────────────────────────────────┘
+
+🔸 RECENT CHANGES (August 5, 2025)
+┌─────────────────────────────────────────────────────────────┐
+│ ✅ COMPLETED CHANGES                                       │
+│ ├── Google OAuth implementation with error handling       │
+│ ├── Google Sign-In JavaScript library integration         │
+│ ├── OAuth credentials securely configured                 │
+│ ├── Enhanced authentication error messages                │
+│ ├── Deployment cache refresh successful                   │
+│ └── Complete system diagnostics and issue identification  │
+│                                                             │
+│ 🔄 IN PROGRESS                                             │
+│ ├── Google Cloud Console domain authorization             │
+│ ├── System details API endpoint creation                  │
+│ └── JWT token authentication fixes                        │
+│                                                             │
+│ 📋 NEXT STEPS                                              │
+│ ├── 1. Fix /api/metrics/system/:systemId endpoint         │
+│ ├── 2. Update Google OAuth authorized origins             │
+│ ├── 3. Resolve JWT token validation issues                │
+│ └── 4. Complete end-to-end authentication testing         │
+└─────────────────────────────────────────────────────────────┘
+
+🔸 PERFORMANCE & SCALABILITY
+┌─────────────────────────────────────────────────────────────┐
+│ Current Performance Characteristics                        │
+│ ├── Database: PostgreSQL with connection pooling          │
+│ ├── Queue Processing: Bull/Redis with direct fallback     │
+│ ├── File Upload: 10MB limit, thumbnail generation         │
+│ ├── AI Processing: OpenAI API rate limits apply           │
+│ └── Frontend: Client-side rendering, localStorage caching │
+│                                                             │
+│ Scaling Considerations                                     │
+│ ├── Stateless API design enables horizontal scaling       │
+│ ├── Database indexes on user_id and system_id columns     │
+│ ├── AI response caching reduces OpenAI API costs          │
+│ └── CDN-ready static assets for global distribution       │
+└─────────────────────────────────────────────────────────────┘
+
+===============================================================
+SYSTEM STATUS: 🟡 PRODUCTION READY WITH CRITICAL FIXES NEEDED
+===============================================================
+Core functionality operational, authentication and API routing fixes required for full production deployment.
