@@ -1,0 +1,41 @@
+Implement Google OAuth authentication for the deployed Majestic Health Dashboard to replace the placeholder "Google OAuth would be implemented here" message.
+Requirements:
+1. Configure Google OAuth 2.0 client credentials in the Google Cloud Console
+2. Update the frontend login button to use actual Google OAuth flow using the google-auth-library
+3. Ensure the existing JWT token system continues to work with Google user data
+4. Maintain compatibility with the current authentication middleware and user database schema
+5. Configure required environment variables: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET
+6. Test the complete login flow: Google OAuth → JWT token → authenticated dashboard access
+Current status:
+- Backend auth routes are functional (/api/auth/google exists)
+- Frontend shows placeholder message instead of real OAuth
+- Database user table supports Google ID and user profiles
+- JWT authentication system is working
+- google-auth-library dependency is already installed
+Expected outcome:
+- Users can click "Continue with Google" and complete real OAuth flow
+- Successful authentication redirects to dashboard with working session
+- User profile data (name, email, avatar) populates from Google account
+- All existing dashboard functionality remains operational
+- Demo authentication continues to work as fallback
+Implementation priorities:
+1. Use existing authentication architecture without breaking current functionality
+2. Leverage the installed google-auth-library for OAuth token verification
+3. Request Google OAuth secrets from user if not already configured
+4. Maintain backward compatibility with demo login for testing
+5. Ensure production-ready error handling for OAuth failures
+Success criteria:
+- Real Google login replaces placeholder message
+- OAuth flow redirects properly to dashboard
+- User data persists correctly in existing database schema
+- No disruption to current authenticated users or demo functionality
+Key Improvements:
+
+Specific Library Reference - Mentions google-auth-library (already installed)
+Environment Variables - Lists required GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET
+Secrets Handling - Instructs to request OAuth secrets from user
+Fallback Preservation - Maintains demo login as testing backup
+Error Handling - Specifies production-ready OAuth failure handling
+Priority Order - Implementation priorities ranked by importance
+Dependency Status - Notes library is already available
+This enhanced prompt provides more specific technical guidance while maintaining the comprehensive scope and clear success criteria.
