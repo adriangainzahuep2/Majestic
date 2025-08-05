@@ -1,0 +1,126 @@
+Complete Majestic Deployment Fix Prompt (Updated August 2025)
+Critical Deployment Fixes for Replit (Prioritized)
+Fix 1: .replit Configuration (CRITICAL - DEPLOYMENT BLOCKER)
+Manually edit .replit file to add this line at the top level:
+
+run = "node server.js"
+Not inside a workflow section - this must be at the root configuration level for Replit deployment to find it.
+
+Fix 2: Restore Complete Server Functionality (HIGH)
+In server.js, uncomment and restore all route imports:
+
+// Import routes
+const authRoutes = require('./routes/auth');
+const uploadRoutes = require('./routes/uploads');
+const metricsRoutes = require('./routes/metrics');
+const dashboardRoutes = require('./routes/dashboard');
+// Import middleware
+const authMiddleware = require('./middleware/auth');
+// Import services
+const queueService = require('./services/queue');
+const { initializeDatabase } = require('./database/schema');
+Fix 3: Restore API Routes with Correct Middleware Order (CRITICAL)
+Maintain this exact sequence in server.js:
+
+// 1. API routes first (before any static serving)
+app.use('/api/auth', authRoutes);
+app.use('/api/uploads', authMiddleware, uploadRoutes);
+app.use('/api/metrics/custom', authMiddleware, require('./routes/customMetrics'));
+app.use('/api/metrics', authMiddleware, metricsRoutes);
+app.use('/api/dashboard', authMiddleware, dashboardRoutes);
+// Phase 1 Unified Ingestion Pipeline Routes
+app.use('/api/ingestFile', authMiddleware, require('./routes/ingestFile'));
+app.use('/api/imaging-studies', authMiddleware, require('./routes/imagingStudies'));
+// Public route for reference metrics data (no auth required)
+app.get('/api/metrics/reference', (req, res) => {
+  // ... existing implementation
+});
+// Email ingestion webhook (no auth required)
+app.post('/api/webhook/email', express.json(), async (req, res) => {
+  // ... existing implementation
+});
+// Enhanced health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    service: 'Majestic Health Dashboard'
+  });
+});
+// 2. Explicit root route for health checks (must be before static files)
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+// 3. Static assets (CSS, JS, images)
+app.use(express.static('public'));
+app.use('/uploads', express.static('uploads'));
+// 4. SPA fallback for client-side routing (must be last)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+Fix 4: Restore Database and Queue Initialization (HIGH)
+Uncomment and restore the complete startServer() function:
+
+async function startServer() {
+  try {
+    // Initialize database schema
+    console.log('Initializing database...');
+    await initializeDatabase();
+    
+    // Initialize queue service (with graceful degradation)
+    console.log('Initializing queue service...');
+    queueService.init();
+    
+    // Configuration logging
+    if (process.env.SKIP_GLOBAL_JOBS === "true") {
+      console.log("[CONFIG] SKIP_GLOBAL_JOBS is ENABLED – Key Findings and Daily Plan will NOT run.");
+    } else {
+      console.log("[CONFIG] SKIP_GLOBAL_JOBS is DISABLED – Global jobs will run normally.");
+    }
+    
+    // Start the server
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Majestic Health Dashboard server running on port ${PORT}`);
+      console.log(`Health check: http://localhost:${PORT}/api/health`);
+      console.log(`Application: http://localhost:${PORT}/`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+Fix 5: Maintain Critical Deployment Settings (MEDIUM)
+DO NOT CHANGE:
+
+Express version 4.18.2 (prevents path-to-regexp errors)
+Port binding to 0.0.0.0 (enables external access)
+Enhanced health endpoint format
+Middleware order sequence
+Implementation Order (Sequential)
+Edit .replit file (fixes deployment command detection)
+Restore server.js routes (enables full application functionality)
+Test locally → curl http://localhost:5000/api/health should return JSON
+Test authentication → Frontend login should work
+Verify all endpoints → Dashboard, uploads, metrics all functional
+Deploy on Replit → Should now pass health checks
+Environment Variables for Deployment
+Ensure these are configured in Replit deployment settings:
+
+DATABASE_URL (PostgreSQL connection)
+OPENAI_API_KEY (AI processing)
+GOOGLE_CLIENT_ID (OAuth authentication)
+JWT_SECRET (token signing)
+REDIS_URL (optional - graceful fallback exists)
+Success Indicators
+After implementation, verify:
+
+✅ Server starts without path-to-regexp errors
+✅ All API endpoints respond (auth, metrics, dashboard, uploads)
+✅ Frontend login works with demo authentication
+✅ Health check returns proper JSON
+✅ SPA routing functions for dashboard navigation
+✅ Database connection and queue service initialize
+Deployment Command
+Use node server.js as the run command (now properly configured in .replit)
+
+This prompt restores your complete Majestic health dashboard with all visual studies integration, AI insights, authentication, and deployment readiness while maintaining the critical fixes that resolve the path-to-regexp deployment blocker.
