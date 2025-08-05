@@ -87,7 +87,13 @@ class HealthDashboard {
             const config = await configResponse.json();
             
             if (!config.googleClientId) {
-                this.showToast('error', 'Configuration Error', 'Google OAuth not configured');
+                this.showToast('error', 'Configuration Error', 'Google OAuth not configured. Please contact support.');
+                return;
+            }
+
+            // Check if Google Sign-In library is loaded
+            if (!window.google || !window.google.accounts) {
+                this.showToast('error', 'Google Library Error', 'Google Sign-In library not loaded. Please refresh and try again.');
                 return;
             }
 
@@ -99,51 +105,62 @@ class HealthDashboard {
 
             // Prompt the user to sign in
             window.google.accounts.id.prompt((notification) => {
-                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                    // Fallback to popup if prompt is not displayed
-                    window.google.accounts.id.renderButton(
-                        document.createElement('div'),
-                        { theme: 'outline', size: 'large' }
-                    );
-                    // Trigger the popup directly
+                if (notification.isNotDisplayed()) {
+                    this.showToast('error', 'Google OAuth Error', 'Google Sign-In prompt blocked. This may be due to domain configuration or browser settings.');
+                    return;
+                }
+                if (notification.isSkippedMoment()) {
+                    // User dismissed the prompt - show popup as alternative
                     this.showGoogleSignInPopup(config.googleClientId);
                 }
             });
         } catch (error) {
             console.error('Google login initialization error:', error);
-            this.showToast('error', 'Login Error', 'Failed to initialize Google login');
+            this.showToast('error', 'Google OAuth Failed', `Authentication error: ${error.message}`);
         }
     }
 
     showGoogleSignInPopup(clientId) {
-        window.google.accounts.id.initialize({
-            client_id: clientId,
-            callback: this.handleGoogleSignIn.bind(this)
-        });
-        
-        // Create a temporary button and click it to trigger popup
-        const tempDiv = document.createElement('div');
-        document.body.appendChild(tempDiv);
-        
-        window.google.accounts.id.renderButton(tempDiv, {
-            theme: 'outline',
-            size: 'large',
-            type: 'standard'
-        });
-        
-        // Auto-click the button
-        setTimeout(() => {
-            const button = tempDiv.querySelector('div[role="button"]');
-            if (button) {
-                button.click();
-            }
-            document.body.removeChild(tempDiv);
-        }, 100);
+        try {
+            window.google.accounts.id.initialize({
+                client_id: clientId,
+                callback: this.handleGoogleSignIn.bind(this)
+            });
+            
+            // Create a temporary button and click it to trigger popup
+            const tempDiv = document.createElement('div');
+            tempDiv.style.display = 'none';
+            document.body.appendChild(tempDiv);
+            
+            window.google.accounts.id.renderButton(tempDiv, {
+                theme: 'outline',
+                size: 'large',
+                type: 'standard'
+            });
+            
+            // Auto-click the button
+            setTimeout(() => {
+                const button = tempDiv.querySelector('div[role="button"]');
+                if (button) {
+                    button.click();
+                } else {
+                    this.showToast('error', 'Google OAuth Error', 'Unable to create Google Sign-In popup. Please check domain configuration.');
+                }
+                document.body.removeChild(tempDiv);
+            }, 100);
+        } catch (error) {
+            console.error('Google popup error:', error);
+            this.showToast('error', 'Google OAuth Error', `Popup failed: ${error.message}`);
+        }
     }
 
     async handleGoogleSignIn(response) {
         try {
             this.showLoading(true);
+            
+            if (!response.credential) {
+                throw new Error('No credential received from Google');
+            }
             
             // Send the Google ID token to our backend
             const authResponse = await fetch(`${this.apiBase}/auth/google`, {
@@ -163,13 +180,18 @@ class HealthDashboard {
                 this.user = data.user;
                 localStorage.setItem('authToken', this.token);
                 this.showApp();
-                this.showToast('success', 'Welcome!', `Successfully logged in as ${this.user.name}`);
+                this.showToast('success', 'Google OAuth Success!', `Authenticated as ${this.user.name}`);
             } else {
-                throw new Error(data.message || 'Authentication failed');
+                throw new Error(data.message || 'Backend authentication failed');
             }
         } catch (error) {
             console.error('Google sign-in error:', error);
-            this.showToast('error', 'Login Failed', error.message);
+            // Show specific error message without fallback
+            if (error.message.includes('origin')) {
+                this.showToast('error', 'Domain Configuration Error', 'Your Google OAuth app needs to be configured for this domain. Please update your Google Cloud Console settings.');
+            } else {
+                this.showToast('error', 'Google OAuth Failed', `Authentication error: ${error.message}`);
+            }
         } finally {
             this.showLoading(false);
         }
