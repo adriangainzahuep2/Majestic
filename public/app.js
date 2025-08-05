@@ -81,10 +81,98 @@ class HealthDashboard {
     }
 
     async googleLogin() {
-        this.showToast('info', 'Google Login', 'Google OAuth integration would be implemented here with proper client ID');
-        // In a real implementation, this would use Google OAuth
-        // For now, fallback to demo login
-        await this.demoLogin();
+        try {
+            // Get Google Client ID from backend
+            const configResponse = await fetch(`${this.apiBase}/auth/config`);
+            const config = await configResponse.json();
+            
+            if (!config.googleClientId) {
+                this.showToast('error', 'Configuration Error', 'Google OAuth not configured');
+                return;
+            }
+
+            // Initialize Google Sign-In
+            window.google.accounts.id.initialize({
+                client_id: config.googleClientId,
+                callback: this.handleGoogleSignIn.bind(this)
+            });
+
+            // Prompt the user to sign in
+            window.google.accounts.id.prompt((notification) => {
+                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                    // Fallback to popup if prompt is not displayed
+                    window.google.accounts.id.renderButton(
+                        document.createElement('div'),
+                        { theme: 'outline', size: 'large' }
+                    );
+                    // Trigger the popup directly
+                    this.showGoogleSignInPopup(config.googleClientId);
+                }
+            });
+        } catch (error) {
+            console.error('Google login initialization error:', error);
+            this.showToast('error', 'Login Error', 'Failed to initialize Google login');
+        }
+    }
+
+    showGoogleSignInPopup(clientId) {
+        window.google.accounts.id.initialize({
+            client_id: clientId,
+            callback: this.handleGoogleSignIn.bind(this)
+        });
+        
+        // Create a temporary button and click it to trigger popup
+        const tempDiv = document.createElement('div');
+        document.body.appendChild(tempDiv);
+        
+        window.google.accounts.id.renderButton(tempDiv, {
+            theme: 'outline',
+            size: 'large',
+            type: 'standard'
+        });
+        
+        // Auto-click the button
+        setTimeout(() => {
+            const button = tempDiv.querySelector('div[role="button"]');
+            if (button) {
+                button.click();
+            }
+            document.body.removeChild(tempDiv);
+        }, 100);
+    }
+
+    async handleGoogleSignIn(response) {
+        try {
+            this.showLoading(true);
+            
+            // Send the Google ID token to our backend
+            const authResponse = await fetch(`${this.apiBase}/auth/google`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    token: response.credential
+                })
+            });
+
+            const data = await authResponse.json();
+            
+            if (data.success) {
+                this.token = data.token;
+                this.user = data.user;
+                localStorage.setItem('authToken', this.token);
+                this.showApp();
+                this.showToast('success', 'Welcome!', `Successfully logged in as ${this.user.name}`);
+            } else {
+                throw new Error(data.message || 'Authentication failed');
+            }
+        } catch (error) {
+            console.error('Google sign-in error:', error);
+            this.showToast('error', 'Login Failed', error.message);
+        } finally {
+            this.showLoading(false);
+        }
     }
 
     logout() {

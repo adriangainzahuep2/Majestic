@@ -139,6 +139,14 @@ router.delete('/account', async (req, res) => {
   }
 });
 
+// Get auth configuration (Google Client ID for frontend)
+router.get('/config', (req, res) => {
+  res.json({
+    googleClientId: process.env.GOOGLE_CLIENT_ID || null,
+    hasGoogleAuth: !!process.env.GOOGLE_CLIENT_ID
+  });
+});
+
 // Logout (client-side token removal)
 router.post('/logout', (req, res) => {
   res.json({ success: true, message: 'Logged out successfully' });
