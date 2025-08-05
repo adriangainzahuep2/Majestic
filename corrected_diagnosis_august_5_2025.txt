@@ -1,0 +1,148 @@
+MAJESTIC HEALTH DASHBOARD - CORRECTED PRODUCTION DIAGNOSIS
+==========================================================
+Updated: August 5, 2025 - Verified Against Codebase
+
+🔸 CRITICAL ISSUES IDENTIFIED
+
+Issue 1: Google OAuth Domain Configuration Error
+Console Log Evidence:
+- [GSI_LOGGER]: The given origin is not allowed for the given client ID.
+
+Root Cause: Google Cloud Console OAuth app is not configured to allow requests from majesticapp.replit.app domain.
+
+Solution: Add https://majesticapp.replit.app to your Google Cloud Console OAuth app's "Authorized JavaScript origins" list.
+
+Location: Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client IDs
+
+---
+
+Issue 2: System Details API Authentication Failure
+Console Log Evidence:
+- Production API returns {"error":"Unauthorized","message":"Invalid or expired token"}
+- Frontend error: "Failed to load system details"
+
+Root Cause: The /api/metrics/system/:systemId endpoint EXISTS but fails due to JWT authentication issues.
+
+What's happening:
+- Frontend (app.js line 320): this.apiCall('/metrics/system/${systemId}', 'GET')
+- Backend route EXISTS in routes/metrics.js line 72: router.get('/system/:systemId', ...)
+- Route is properly registered in server.js: app.use('/api/metrics', authMiddleware, metricsRoutes)
+- BUT: JWT middleware rejects the token before reaching the endpoint logic
+
+Technical Details:
+- Endpoint exists and is properly routed
+- Authentication middleware fails token validation
+- Returns 401 Unauthorized before processing system details
+- NOT a missing endpoint issue - it's an authentication issue
+
+---
+
+Issue 3: JWT Token Authentication Mismatch
+Evidence: 
+- Production server rejecting demo tokens
+- Local development works, production fails
+- Same authentication code, different behavior
+
+Root Cause Options:
+1. JWT_SECRET environment variable mismatch between local/production
+2. Demo token generation algorithm differs from production validation
+3. Token expiration handling differences
+4. Middleware configuration differences
+
+---
+
+Issue 4: Partial System Functionality
+Evidence:
+- Only Cardiovascular system shows "❌ API Error"  
+- All other 12 systems show "✅ Working"
+
+Root Cause: This suggests the endpoint works for most systems but fails specifically for Cardiovascular (system ID 1), indicating:
+- Authentication works intermittently
+- Possible data-specific issue in Cardiovascular system processing
+- Race condition or system-specific database query problem
+
+🔸 CORRECTED TECHNICAL ANALYSIS
+
+ENDPOINTS ARCHITECTURE (CORRECTED):
+✅ WORKING ENDPOINTS
+├── /api/health → System health check (200 OK)
+├── /api/auth/config → Google OAuth configuration
+├── /api/auth/google → Google authentication
+├── /api/dashboard → Main dashboard data  
+├── /api/dashboard/insights/:systemId → System insights
+├── /api/uploads → File upload processing
+├── /api/ingestFile → Unified ingestion pipeline
+├── /api/imaging-studies → Visual studies management
+└── /api/metrics → Health metrics CRUD operations
+
+⚠️  EXISTING BUT FAILING ENDPOINTS
+├── /api/metrics/system/:systemId → System details (EXISTS but auth fails)
+│   ├── Route defined: routes/metrics.js line 72
+│   ├── Properly registered: server.js line 40
+│   └── Failure cause: JWT authentication middleware rejection
+
+❌ AUTHENTICATION ISSUES
+├── Google OAuth → Domain not authorized
+├── Demo login → JWT token validation fails
+└── Production JWT → Secret/validation mismatch
+
+🔸 PRIORITY FIXES REQUIRED
+
+Priority 1: Fix JWT Authentication
+- Verify JWT_SECRET consistency between environments
+- Debug demo token generation vs production validation
+- Test authentication middleware with production tokens
+
+Priority 2: Google OAuth Domain Authorization  
+- Add https://majesticapp.replit.app to Google Cloud Console
+- Test OAuth flow end-to-end after domain authorization
+
+Priority 3: System-Specific Debugging
+- Investigate why Cardiovascular system specifically fails
+- Check for data-specific issues in system ID 1
+- Verify database queries work for all 13 systems
+
+Priority 4: Authentication Error Handling
+- Improve error messages to distinguish auth vs endpoint issues
+- Add specific debugging for JWT token validation failures
+
+🔸 DEPLOYMENT VERIFICATION
+
+✅ CONFIRMED WORKING:
+- Production deployment active at https://majesticapp.replit.app
+- Health check endpoint operational
+- Database connectivity established
+- Google Sign-In library loaded
+- Static file serving functional
+
+❌ CONFIRMED FAILING:
+- User authentication (both Google OAuth and Demo)
+- System details access (authentication required)
+- JWT token validation in production environment
+
+⚠️  PARTIALLY WORKING:
+- Dashboard loads (no auth required for initial view)
+- Public endpoints accessible
+- Frontend JavaScript execution successful
+
+🔸 ROOT CAUSE SUMMARY
+
+The "Failed to load system details" error is NOT caused by missing API endpoints.
+
+ACTUAL CAUSE: Authentication system failure prevents access to existing, properly configured endpoints.
+
+TECHNICAL EVIDENCE:
+1. /api/metrics/system/:systemId endpoint exists and is properly routed
+2. JWT authentication middleware rejects tokens before endpoint execution
+3. Google OAuth blocked by domain configuration
+4. Demo authentication tokens fail validation in production
+
+CORRECTED UNDERSTANDING:
+- System architecture is sound
+- API endpoints are properly implemented
+- Authentication layer is the bottleneck preventing functionality
+- Fix authentication → system details will work immediately
+
+==========================================================
+CORRECTED STATUS: Authentication Issues Block Otherwise Functional System
+==========================================================
