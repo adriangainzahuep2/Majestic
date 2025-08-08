@@ -48,16 +48,17 @@ app.use('/api/dashboard', authMiddleware, dashboardRoutes);
 app.use('/api/ingestFile', authMiddleware, require('./routes/ingestFile'));
 app.use('/api/imaging-studies', authMiddleware, require('./routes/imagingStudies'));
 
-// TEMPORARY DIAGNOSTIC ROUTE - Remove after schema verification
-app.get('/__diag/ai_outputs_log_columns', async (req, res) => {
+
+// TEMPORARY DIAGNOSTIC ROUTE - Remove after schema verification (no auth required)
+app.get('/api/__diag/ai_outputs_log_columns', async (req, res) => {
   try {
     // Security check - only allow with correct diagnostic token
     const diagToken = req.headers['x-diag-token'];
     if (!diagToken || diagToken !== process.env.DIAG_TOKEN) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(401).json({ error: 'unauthorized' });
     }
 
-    // Query database identity using the same pool the app uses
+    // Query database identity using the same pool the app uses at runtime
     const identityResult = await pool.query(`
       SELECT 
         current_database() as database,
@@ -65,7 +66,7 @@ app.get('/__diag/ai_outputs_log_columns', async (req, res) => {
         current_setting('search_path') as search_path
     `);
 
-    // Query ai_outputs_log columns using the same pool the app uses
+    // Query ai_outputs_log columns using the same pool the app uses at runtime
     const columnsResult = await pool.query(`
       SELECT column_name, data_type, is_nullable
       FROM information_schema.columns
@@ -73,7 +74,7 @@ app.get('/__diag/ai_outputs_log_columns', async (req, res) => {
       ORDER BY ordinal_position
     `);
 
-    res.json({
+    res.status(200).set('Content-Type', 'application/json').json({
       env: 'prod',
       db_identity: identityResult.rows[0],
       columns: columnsResult.rows
