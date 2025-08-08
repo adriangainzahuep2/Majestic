@@ -1,0 +1,57 @@
+Use the SAME production DB connection the app uses (same host, DB, user, and search_path as the running app).
+
+Goal: add missing columns to public.ai_outputs_log safely, then verify. Make no other changes.
+
+-1) Safety prechecks (print only, no changes):
+   select current_database() as db,
+          current_user as user,
+          current_setting('search_path') as search_path,
+          current_setting('server_version') as pg_version,
+          current_setting('transaction_read_only') as tx_read_only;
+   -- If tx_read_only = 'on', STOP and report (likely a read-replica).
+
+0) Session guards (non-destructive):
+   set local statement_timeout = '30s';
+   set local lock_timeout = '5s';  -- fail fast to avoid blocking prod traffic
+   -- Qualify tables with public.* (do NOT rely on search_path).
+   -- Print SHA-256 of the actual DATABASE_URL the app uses (hash only).
+
+0b) Confirm target object is a BASE TABLE:
+   select n.nspname as schema, c.relname, c.relkind
+   from pg_class c join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname='public' and c.relname='ai_outputs_log';
+   -- If relkind != 'r' (table), STOP and report (don’t alter views).
+
+1) Alter table (idempotent, safe) — single batch:
+   alter table public.ai_outputs_log
+     add column if not exists system_id integer,
+     add column if not exists is_current boolean,
+     add column if not exists updated_at timestamp without time zone;
+
+2) Create index in a SEPARATE, non-transactional step:
+   -- If the client auto-wraps commands in a transaction, open a new autocommit connection.
+   create index concurrently if not exists idx_ai_outputs_log_system_id
+     on public.ai_outputs_log(system_id);
+   -- If CONCURRENTLY is unsupported or blocked by a transaction, REPORT and SKIP (do not downgrade silently).
+
+3) Verify schema (authoritative list):
+   select column_name, data_type, is_nullable, column_default
+   from information_schema.columns
+   where table_schema='public' and table_name='ai_outputs_log'
+   order by ordinal_position;
+
+4) Smoke test endpoints using prod auth:
+   - GET /api/metrics/system/1  → print HTTP status + first 200 chars
+   - GET /api/__diag/ai_outputs_log_columns (token header) → print first 12 lines of JSON
+
+5) Output concise summary:
+   - Columns added (if any)
+   - Verification list (last 5 rows)
+   - Endpoint status/result excerpt
+   - Whether index creation ran or was skipped (and why)
+   - DB identity hash confirmation
+
+Constraints:
+- Do NOT modify other tables or code.
+- All queries must run using the same connection context the prod app uses.
+- If any step fails (permissions, read-only, lock timeout, object type mismatch), STOP and report the exact error with no guesses.
