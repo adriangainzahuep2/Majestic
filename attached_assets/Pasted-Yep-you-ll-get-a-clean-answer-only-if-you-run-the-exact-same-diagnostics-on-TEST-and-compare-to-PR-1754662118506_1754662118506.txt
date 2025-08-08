@@ -1,0 +1,60 @@
+Yep—you’ll get a clean answer only if you **run the exact same diagnostics on TEST and compare to PROD**. Here’s a **diagnostic-only, copy-paste prompt** for Replit Agent that does both and prints a clear diff.
+
+---
+
+### Paste this to Replit Agent (no changes, diagnostics only)
+
+```
+DIAG-ONLY. Do not modify any code, DBs, or env vars.
+
+Goal: Compare TEST vs PROD for the ai_outputs_log issue (“column 'system_id' does not exist” in PROD). Produce evidence and a clear verdict.
+
+ENV TARGETS
+- TEST: the app/environment where the test build is running and works.
+- PROD: the running production app/environment.
+
+For EACH environment (TEST first, then PROD), using the SAME code path and DB connection the app uses at runtime, print:
+
+A) Connection fingerprint
+- current_database(), current_user, current_schema
+- current_setting('search_path')
+- pg_backend_pid(), inet_server_addr(), inet_server_port(), server_version
+- SHA-256 of the EXACT DB URL used by the app (hash only; never print the URL)
+- List names + SHA-256 hashes of ANY env vars matching /(DB|DATABASE|PG)_/i
+- ORM/DB client config snapshot (driver, pool size, schema setting, search_path init)
+
+B) Object identity for ai_outputs_log
+- Is it TABLE, VIEW, or MATERIALIZED VIEW? (query pg_class/pg_namespace)
+- If VIEW/MAT VIEW, print its definition (pg_get_viewdef)
+- List ALL schemas containing an object with name like 'ai_output%' (name + type)
+
+C) Runtime column list for ai_outputs_log
+- Print a deterministic list of: column_name | data_type | is_nullable | column_default
+- Then compute and print a SCHEMA_SIGNATURE = SHA-256 of the sorted "column_name:data_type:is_nullable" lines
+
+D) Migration history snapshot
+- Detect migration tool (Prisma/_prisma_migrations, Drizzle/__drizzle_migrations, Knex/knex_migrations)
+- Print applied migration identifiers and timestamps (limit to 100 rows)
+
+E) Endpoint sanity (non-invasive)
+- Hit this environment’s /api/metrics/system/1 (or the equivalent test URL) with whatever auth that env uses and print:
+  - HTTP status
+  - First 200 chars of body (redact tokens)
+  - If error, print the error message verbatim
+
+AFTER both environments are printed, produce a COMPARISON SUMMARY:
+1) DB URL hash (TEST vs PROD) — SAME or DIFFERENT
+2) current_database() and inet_server_addr() — SAME or DIFFERENT
+3) ai_outputs_log object type — SAME or DIFFERENT
+4) ai_outputs_log SCHEMA_SIGNATURE — SAME or DIFFERENT
+5) Migration list diffs — list missing/extra migrations by name/id
+6) search_path differences
+7) Endpoint behavior difference (status + excerpt)
+8) Most likely root cause (1–2 lines), based strictly on the above evidence.
+
+Do not run any ALTERs, CREATEs, or DROP statements. Diagnostics only.
+```
+
+---
+
+If you want a **shorter** version later, say “short prompt” and I’ll compress it to \~10 lines.
