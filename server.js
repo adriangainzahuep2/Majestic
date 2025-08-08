@@ -48,6 +48,46 @@ app.use('/api/dashboard', authMiddleware, dashboardRoutes);
 app.use('/api/ingestFile', authMiddleware, require('./routes/ingestFile'));
 app.use('/api/imaging-studies', authMiddleware, require('./routes/imagingStudies'));
 
+// TEMPORARY DIAGNOSTIC ROUTE - Remove after schema verification
+app.get('/__diag/ai_outputs_log_columns', async (req, res) => {
+  try {
+    // Security check - only allow with correct diagnostic token
+    const diagToken = req.headers['x-diag-token'];
+    if (!diagToken || diagToken !== process.env.DIAG_TOKEN) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    // Query database identity using the same pool the app uses
+    const identityResult = await pool.query(`
+      SELECT 
+        current_database() as database,
+        current_user as user,
+        current_setting('search_path') as search_path
+    `);
+
+    // Query ai_outputs_log columns using the same pool the app uses
+    const columnsResult = await pool.query(`
+      SELECT column_name, data_type, is_nullable
+      FROM information_schema.columns
+      WHERE table_schema='public' AND table_name='ai_outputs_log'
+      ORDER BY ordinal_position
+    `);
+
+    res.json({
+      env: 'prod',
+      db_identity: identityResult.rows[0],
+      columns: columnsResult.rows
+    });
+
+  } catch (error) {
+    console.error('Diagnostic route error:', error);
+    res.status(500).json({ 
+      error: 'Diagnostic query failed',
+      message: error.message 
+    });
+  }
+});
+
 // Public route for reference metrics data (no auth required)
 app.get('/api/metrics/reference', (req, res) => {
   try {
