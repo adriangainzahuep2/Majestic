@@ -336,10 +336,9 @@ app.use((error, req, res, next) => {
 // Initialize services and start server
 async function startServer() {
   try {
-    // Initialize database schema - TEMPORARILY DISABLED FOR SAFE DEPLOYMENT
-    console.log('🚀 DEPLOYMENT MODE: Skipping database schema initialization to prevent data loss');
-    console.log('⚠️  Production database schema changes DISABLED');
-    // await initializeDatabase(); // COMMENTED OUT TO PREVENT PRODUCTION DATA LOSS
+    // Initialize database schema
+    console.log('Initializing database...');
+    await initializeDatabase();
     
     // Initialize queue service (with graceful degradation)
     console.log('Initializing queue service...');
