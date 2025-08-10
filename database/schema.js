@@ -104,7 +104,10 @@ async function initializeDatabase() {
         response TEXT NOT NULL,
         model_version VARCHAR(50) DEFAULT 'gpt-4o',
         processing_time_ms INTEGER,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        system_id INTEGER,
+        is_current BOOLEAN DEFAULT true,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
