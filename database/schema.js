@@ -99,15 +99,12 @@ async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS ai_outputs_log (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        output_type varchar NOT NULL,
+        output_type VARCHAR(100) NOT NULL,
         prompt TEXT NOT NULL,
         response TEXT NOT NULL,
-        model_version varchar,
+        model_version VARCHAR(50) DEFAULT 'gpt-4o',
         processing_time_ms INTEGER,
-        created_at TIMESTAMP,
-        system_id INTEGER,
-        is_current BOOLEAN DEFAULT true,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
