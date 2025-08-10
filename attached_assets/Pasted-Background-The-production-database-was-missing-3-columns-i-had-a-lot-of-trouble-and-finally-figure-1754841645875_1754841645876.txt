@@ -1,0 +1,28 @@
+Background: The production database was missing 3 columns. i had a lot of trouble and finally figured out we were trying to add the wrong production database. i finally found it in the replit admin panel. so before, when i clicked on one of the 12 system panels, in production. now, when i click, they do load. but, if i upload a lab test, they do show as being uploaded in upload history, but they are not being reflected in the system pages (eg cardiovascular). i think it's because system_id is not being added. that's one of the 3 variables.
+
+EVALUATION: Production System Mapping Failure After Schema Fix
+Root Cause Analysis:
+The production upload shows system_id = null despite the schema fix, indicating the system mapping logic itself is failing in production. Here are the likely causes:
+1. AI Processing Environment Differences:
+- OpenAI API key issues - Production may have different/invalid OPENAI_API_KEY
+- API rate limits - Production hitting OpenAI limits causing extraction failures
+- Network connectivity - Production environment blocking OpenAI API calls
+2. Health Systems Service Failure:
+- Missing reference data - Production may be missing the src/data/metrics.json file needed for system mapping
+- File path issues - Production serving different file paths than development
+- System mapping logic errors - healthSystems.js service failing to categorize cardiovascular metrics
+3. Queue Processing Differences:
+- Redis unavailable - Production running in "direct processing mode" vs proper queue processing
+- Processing timeout - Production jobs timing out during AI analysis
+- Error handling - Production swallowing errors that would be visible in development
+4. Database Transaction Issues:
+- Partial commits - Upload record saved but metrics transaction rolled back
+- Connection pooling - Production database connection issues during metric insertion
+- Constraint violations - Foreign key or data validation failing in production
+Most Likely Culprit:The webview console logs show "Failed to load metrics data" errors, suggesting the metrics.json reference file that contains system mapping data is failing to load in production. This would cause the AI processing to extract metrics but fail to assign proper system_id values.
+Evidence Points:
+- Upload successful (appears in history)
+- AI extraction likely successful (metrics extracted)
+- System categorization failed (system_id = null)
+- Frontend metrics loading errors in console
+The issue is likely the missing or corrupted src/data/metrics.json file in production that provides the cardiovascular system mapping data.
