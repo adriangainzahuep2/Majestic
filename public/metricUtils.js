@@ -9,9 +9,9 @@ class MetricUtils {
         try {
             // Try different possible paths for the metrics data
             const possiblePaths = [
+                '/api/metrics/reference', // Backend endpoint (primary)
                 '/src/data/metrics.json',
                 './src/data/metrics.json',
-                '/api/metrics/reference', // Backend endpoint if available
                 'src/data/metrics.json'
             ];
             

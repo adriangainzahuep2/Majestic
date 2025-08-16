@@ -82,6 +82,16 @@ class HealthDashboard {
 
     async googleLogin() {
         try {
+            // Check if we're in development environment
+            const isDevelopment = window.location.hostname.includes('replit.dev') || window.location.hostname === 'localhost';
+            
+            if (isDevelopment) {
+                this.showToast('warning', 'Development Mode', 'Google OAuth requires domain authorization. Use Demo Mode for development testing.');
+                // Automatically switch to demo mode in development
+                setTimeout(() => this.demoLogin(), 2000);
+                return;
+            }
+
             // Get Google Client ID from backend
             const configResponse = await fetch(`${this.apiBase}/auth/config`);
             const config = await configResponse.json();
