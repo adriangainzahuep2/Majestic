@@ -1,0 +1,172 @@
+{
+    "dashboard": [
+        {
+            "id": 1,
+            "name": "Cardiovascular",
+            "description": "Heart and blood vessel health",
+            "color": "gray",
+            "keyMetricsCount": 0,
+            "totalMetricsCount": 0,
+            "lastUpdated": null
+        },
+        {
+            "id": 2,
+            "name": "Nervous/Brain",
+            "description": "Cognitive and neurological function",
+            "color": "gray",
+            "keyMetricsCount": 0,
+            "totalMetricsCount": 0,
+            "lastUpdated": null
+        },
+        {
+            "id": 3,
+            "name": "Respiratory",
+            "description": "Lung and breathing function",
+            "color": "gray",
+            "keyMetricsCount": 0,
+            "totalMetricsCount": 0,
+            "lastUpdated": null
+        },
+        {
+            "id": 4,
+            "name": "Muscular",
+            "description": "Muscle mass and strength",
+            "color": "gray",
+            "keyMetricsCount": 0,
+            "totalMetricsCount": 0,
+            "lastUpdated": null
+        },
+        {
+            "id": 5,
+            "name": "Skeletal",
+            "description": "Bone health and density",
+            "color": "gray",
+            "keyMetricsCount": 0,
+            "totalMetricsCount": 0,
+            "lastUpdated": null
+        },
+        {
+            "id": 6,
+            "name": "Digestive",
+            "description": "Gut health and liver function",
+            "color": "gray",
+            "keyMetricsCount": 0,
+            "totalMetricsCount": 0,
+            "lastUpdated": null
+        },
+        {
+            "id": 7,
+            "name": "Endocrine",
+            "description": "Hormone regulation and metabolism",
+            "color": "gray",
+            "keyMetricsCount": 0,
+            "totalMetricsCount": 0,
+            "lastUpdated": null
+        },
+        {
+            "id": 8,
+            "name": "Urinary",
+            "description": "Kidney and urinary function",
+            "color": "gray",
+            "keyMetricsCount": 0,
+            "totalMetricsCount": 0,
+            "lastUpdated": null
+        },
+        {
+            "id": 9,
+            "name": "Reproductive",
+            "description": "Reproductive hormone health",
+            "color": "gray",
+            "keyMetricsCount": 0,
+            "totalMetricsCount": 0,
+            "lastUpdated": null
+        },
+        {
+            "id": 10,
+            "name": "Integumentary",
+            "description": "Skin, hair, and nail health",
+            "color": "gray",
+            "keyMetricsCount": 0,
+            "totalMetricsCount": 0,
+            "lastUpdated": null
+        },
+        {
+            "id": 11,
+            "name": "Immune/Inflammation",
+            "description": "Immune system and inflammation markers",
+            "color": "gray",
+            "keyMetricsCount": 0,
+            "totalMetricsCount": 0,
+            "lastUpdated": null
+        },
+        {
+            "id": 12,
+            "name": "Sensory",
+            "description": "Vision, hearing, and sensory function",
+            "color": "gray",
+            "keyMetricsCount": 0,
+            "totalMetricsCount": 0,
+            "lastUpdated": null
+        },
+        {
+            "id": 13,
+            "name": "Biological Age",
+            "description": "Cellular aging and longevity markers",
+            "color": "gray",
+            "keyMetricsCount": 0,
+            "totalMetricsCount": 0,
+            "lastUpdated": null
+        }
+    ],
+    "summary": {
+        "total_systems": 13,
+        "systems_with_data": 0,
+        "green_systems": 0,
+        "yellow_systems": 0,
+        "red_systems": 0,
+        "gray_systems": 13,
+        "recent_uploads": 6,
+        "recent_metrics": 0
+    },
+    "daily_plan": {
+        "plan_date": "2025-07-29",
+        "recommendations": [
+            {
+                "category": "nutrition",
+                "action": "Increase consumption of soluble fiber by adding foods like oats, beans, and fruits such as apples and pears to meals.",
+                "reason": "Soluble fiber can help reduce LDL cholesterol levels, which are currently above the recommended range.",
+                "priority": "high"
+            },
+            {
+                "category": "exercise",
+                "action": "Engage in at least 150 minutes of moderate aerobic exercise, such as brisk walking, per week.",
+                "reason": "Regular aerobic exercise can effectively lower LDL cholesterol levels and improve cardiovascular health.",
+                "priority": "high"
+            },
+            {
+                "category": "lifestyle",
+                "action": "Incorporate stress-reduction techniques such as meditation or yoga for 15-20 minutes daily.",
+                "reason": "Stress management can help improve heart health and potentially lower LDL cholesterol.",
+                "priority": "medium"
+            },
+            {
+                "category": "nutrition",
+                "action": "Limit intake of saturated fats by choosing lean meats and low-fat dairy products.",
+                "reason": "Reducing saturated fat intake can help lower cholesterol levels, particularly LDL cholesterol.",
+                "priority": "high"
+            },
+            {
+                "category": "sleep",
+                "action": "Ensure 7-9 hours of quality sleep each night.",
+                "reason": "Adequate sleep is vital for overall cardiovascular health and managing inflammation.",
+                "priority": "medium"
+            }
+        ],
+        "key_focus_areas": [
+            "Lowering LDL cholesterol",
+            "Improving cardiovascular health"
+        ],
+        "estimated_compliance_time_minutes": 90,
+        "generated_at": "2025-07-30T22:03:21.666Z"
+    }
+}
