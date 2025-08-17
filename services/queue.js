@@ -91,9 +91,14 @@ class QueueService {
           throw new Error(`Unsupported file type: ${fileExtension}`);
         }
 
-        // Save extracted metrics to database
+        // Save extracted metrics to database with enhanced logging
         if (extractedData.metrics) {
+          console.log(`[METRICS SAVE] User ${userId}, Upload ${uploadId}, Metrics Count: ${extractedData.metrics.length}`);
+          console.log(`[METRICS DATA SAMPLE]`, JSON.stringify(extractedData.metrics.slice(0, 3), null, 2));
           await this.saveMetricsToDatabase(userId, uploadId, extractedData.metrics);
+          console.log(`[METRICS SAVE SUCCESS] User ${userId}, Upload ${uploadId}`);
+        } else {
+          console.log(`[METRICS SAVE SKIP] User ${userId}, Upload ${uploadId} - No metrics extracted`);
         }
 
         // Update upload status
@@ -217,34 +222,54 @@ class QueueService {
     
     try {
       await client.query('BEGIN');
+      console.log(`[SAVE METRICS] Starting transaction for ${metrics.length} metrics`);
 
-      for (const metric of metrics) {
-        // Map metric to health system
-        const systemId = healthSystemsService.mapMetricToSystem(metric.name, metric.category);
-        const isKeyMetric = healthSystemsService.isKeyMetric(systemId, metric.name);
+      for (const [index, metric] of metrics.entries()) {
+        try {
+          // Log each metric being processed
+          console.log(`[METRIC ${index + 1}/${metrics.length}] Processing: ${metric.name || 'unnamed'} = ${metric.value}`);
+          
+          // Map metric to health system
+          const systemId = healthSystemsService.mapMetricToSystem(metric.name, metric.category);
+          const isKeyMetric = healthSystemsService.isKeyMetric(systemId, metric.name);
 
-        // Check for duplicates
-        const existingResult = await client.query(`
-          SELECT id FROM metrics 
-          WHERE user_id = $1 AND metric_name = $2 AND test_date = $3
-        `, [userId, metric.name, metric.test_date]);
+          // Handle test_date - use provided date or current date
+          const testDate = metric.test_date || metric.testDate || new Date().toISOString().split('T')[0];
 
-        if (existingResult.rows.length === 0) {
-          // Insert new metric
-          await client.query(`
-            INSERT INTO metrics (user_id, upload_id, system_id, metric_name, metric_value, 
-                               metric_unit, reference_range, is_key_metric, test_date)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-          `, [
-            userId, uploadId, systemId, metric.name, metric.value,
-            metric.unit, metric.reference_range, isKeyMetric, metric.test_date
-          ]);
+          console.log(`[METRIC MAPPING] ${metric.name} -> SystemId: ${systemId}, IsKey: ${isKeyMetric}, TestDate: ${testDate}`);
+
+          // Check for duplicates
+          const existingResult = await client.query(`
+            SELECT id FROM metrics 
+            WHERE user_id = $1 AND metric_name = $2 AND test_date = $3
+          `, [userId, metric.name, testDate]);
+
+          if (existingResult.rows.length === 0) {
+            // Insert new metric
+            await client.query(`
+              INSERT INTO metrics (user_id, upload_id, system_id, metric_name, metric_value, 
+                                 metric_unit, reference_range, is_key_metric, test_date)
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            `, [
+              userId, uploadId, systemId, metric.name, metric.value,
+              metric.unit || metric.metric_unit, metric.reference_range || metric.referenceRange, 
+              isKeyMetric, testDate
+            ]);
+            console.log(`[METRIC INSERTED] ${metric.name} successfully saved`);
+          } else {
+            console.log(`[METRIC SKIPPED] ${metric.name} already exists for this date`);
+          }
+        } catch (metricError) {
+          console.error(`[METRIC ERROR] Failed to save metric ${metric.name}:`, metricError);
+          // Continue with other metrics instead of failing the whole batch
         }
       }
 
       await client.query('COMMIT');
+      console.log(`[SAVE METRICS SUCCESS] Transaction committed for user ${userId}`);
     } catch (error) {
       await client.query('ROLLBACK');
+      console.error(`[SAVE METRICS FAILED] Transaction rolled back for user ${userId}:`, error);
       throw error;
     } finally {
       client.release();
