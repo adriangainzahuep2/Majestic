@@ -588,6 +588,8 @@ class QueueService {
   async processUploadDirectly(data) {
     const { userId, fileName, fileData, uploadType, uploadId } = data;
     
+    console.log(`[DIRECT PROCESSING START] User: ${userId}, Upload: ${uploadId}, File: ${fileName}`);
+    
     try {
       // Update upload status
       if (uploadId) {
@@ -595,10 +597,12 @@ class QueueService {
           'UPDATE uploads SET processing_status = $1 WHERE id = $2',
           ['processing', uploadId]
         );
+        console.log(`[UPLOAD STATUS] Set to processing for upload ${uploadId}`);
       }
 
       let extractedData;
       const fileExtension = fileName.split('.').pop().toLowerCase();
+      console.log(`[FILE PROCESSING] Extension: ${fileExtension}, Processing as lab report`);
 
       // Process based on file type
       if (['jpg', 'jpeg', 'png', 'pdf'].includes(fileExtension)) {
@@ -606,6 +610,8 @@ class QueueService {
         const base64Data = Buffer.isBuffer(fileData) ? 
           fileData.toString('base64') : fileData;
 
+        console.log(`[AI PROCESSING] Calling OpenAI for file: ${fileName}`);
+        
         // Determine processing type based on filename or content
         if (fileName.toLowerCase().includes('lab') || 
             fileName.toLowerCase().includes('blood') ||
@@ -621,13 +627,24 @@ class QueueService {
           // Default to lab report processing
           extractedData = await openaiService.processLabReport(base64Data, fileName);
         }
+        
+        console.log(`[AI PROCESSING COMPLETE] Extracted metrics count: ${extractedData.metrics ? extractedData.metrics.length : 0}`);
+        if (extractedData.metrics) {
+          console.log(`[EXTRACTED METRICS SAMPLE]`, JSON.stringify(extractedData.metrics.slice(0, 2), null, 2));
+        }
       } else {
         throw new Error(`Unsupported file type: ${fileExtension}`);
       }
 
-      // Save extracted metrics to database
+      // Save extracted metrics to database with enhanced logging
       if (extractedData.metrics && uploadId) {
+        console.log(`[METRICS SAVE START] User ${userId}, Upload ${uploadId}, Metrics Count: ${extractedData.metrics.length}`);
         await this.saveMetricsToDatabase(userId, uploadId, extractedData.metrics);
+        console.log(`[METRICS SAVE COMPLETE] Successfully saved metrics for upload ${uploadId}`);
+      } else if (!extractedData.metrics) {
+        console.log(`[METRICS SAVE SKIP] No metrics extracted from file ${fileName}`);
+      } else if (!uploadId) {
+        console.log(`[METRICS SAVE SKIP] No uploadId provided for file ${fileName}`);
       }
 
       // Update upload status
@@ -636,16 +653,19 @@ class QueueService {
           'UPDATE uploads SET processing_status = $1, processed_at = CURRENT_TIMESTAMP WHERE id = $2',
           ['completed', uploadId]
         );
+        console.log(`[UPLOAD STATUS] Set to completed for upload ${uploadId}`);
       }
 
       // Trigger system insights regeneration
+      console.log(`[INSIGHTS REGENERATION] Starting for user ${userId}`);
       await this.regenerateSystemInsights(userId);
 
-      console.log(`Successfully processed upload ${uploadId || 'direct'} for user ${userId}`);
+      console.log(`[DIRECT PROCESSING SUCCESS] Upload ${uploadId || 'direct'} for user ${userId} completed`);
       return { success: true, data: extractedData };
 
     } catch (error) {
-      console.error(`Error processing upload ${uploadId || 'direct'}:`, error);
+      console.error(`[DIRECT PROCESSING ERROR] Upload ${uploadId || 'direct'}:`, error);
+      console.error(`[ERROR STACK]`, error.stack);
       
       if (uploadId) {
         await pool.query(
