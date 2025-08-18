@@ -16,7 +16,6 @@ const authMiddleware = require('./middleware/auth');
 // Import services
 const queueService = require('./services/queue');
 const { initializeDatabase } = require('./database/schema');
-const { db, pool: drizzlePool } = require('./database/connection');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -32,10 +31,9 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Make database available to routes (both legacy and Drizzle)
+// Make database available to routes
 app.use((req, res, next) => {
-  req.db = pool; // Legacy PostgreSQL pool for existing routes
-  req.drizzle = db; // Drizzle ORM instance for new routes
+  req.db = pool;
   next();
 });
 
