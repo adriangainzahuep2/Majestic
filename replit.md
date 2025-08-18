@@ -12,7 +12,7 @@ Preferred communication style: Simple, everyday language.
 Majestic employs a modular, API-driven architecture designed for scalability and maintainability. The system supports a unified ingestion pipeline for various health data types, AI-powered health insights, and a responsive user interface.
 
 ### Backend Architecture
-The backend is built with **Node.js/Express**, featuring a **RESTful API structure** and **PostgreSQL** for data persistence. **Bull/Redis** manages asynchronous processing for uploads and AI tasks. **JWT-based authentication** is integrated with **Google OAuth**. Middleware handles authentication and CORS.
+The backend is built with **Node.js/Express**, featuring a **RESTful API structure** and **PostgreSQL** for data persistence. Database schema is managed through direct SQL initialization without migration frameworks. **Bull/Redis** manages asynchronous processing for uploads and AI tasks. **JWT-based authentication** is integrated with **Google OAuth**. Middleware handles authentication and CORS.
 
 ### Frontend Architecture
 The frontend is a **vanilla JavaScript SPA** leveraging **Bootstrap 5** for responsive UI and **Plotly.js** for data visualization. Client-side routing provides a smooth user experience.
@@ -38,8 +38,13 @@ Health data is organized across **13 body systems**: Cardiovascular, Nervous/Bra
 ### Required Services
 - **OpenAI API**: Core AI processing via GPT-4o.
 - **Google OAuth**: User authentication.
-- **PostgreSQL**: Primary database for all application data.
+- **PostgreSQL**: Primary database for all application data with direct SQL schema management.
 - **Redis**: Queue backend for asynchronous job processing (optional, with local fallback).
+
+### Deployment Architecture
+- **Pure Node.js + PostgreSQL**: No migration frameworks or ORM dependencies for deployment.
+- **Direct Schema Initialization**: Database schema managed through `/database/schema.js` with SQL-based table creation.
+- **Replit Compatible**: Optimized for Replit's deployment infrastructure without migration conflicts.
 
 ### Node.js Libraries
 - **Express**: Web framework.
