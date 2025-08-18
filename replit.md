@@ -33,6 +33,20 @@ Health data is organized across **13 body systems**: Cardiovascular, Nervous/Bra
 - **Cost-Optimized AI**: Smart recomputation system triggers AI calls only when necessary, with batching to prevent excessive API calls.
 - **UI/UX**: Features a high-contrast, modern design with a minimalist aesthetic, consistent branding ("Majestic"), and a "Rising Sun over Horizon" icon.
 
+## Database Architecture
+
+### Migration System
+The application now uses **Drizzle ORM** for robust database migration handling:
+- **Schema Definition**: `database/drizzle-schema.js` - Type-safe schema definitions
+- **Migrations**: Auto-generated SQL migrations in `database/migrations/`
+- **Deployment Safe**: Detects existing tables and preserves data during deployments
+- **Version Tracking**: Proper migration history with rollback capabilities
+
+### Legacy Compatibility
+- Maintains backward compatibility with existing PostgreSQL queries
+- Both `req.db` (raw pool) and `req.drizzle` (ORM) available in routes
+- Gradual migration path from raw SQL to Drizzle ORM
+
 ## External Dependencies
 
 ### Required Services
@@ -46,6 +60,7 @@ Health data is organized across **13 body systems**: Cardiovascular, Nervous/Bra
 - **Bull**: Job queue management.
 - **OpenAI**: Client for OpenAI API.
 - **pg**: PostgreSQL database driver.
+- **Drizzle ORM**: Type-safe database toolkit with migrations.
 - **google-auth-library**: Google OAuth integration.
 - **Multer**: File upload handling.
 - **jsonwebtoken**: JWT token authentication.
