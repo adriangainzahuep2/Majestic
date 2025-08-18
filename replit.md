@@ -39,7 +39,9 @@ Health data is organized across **13 body systems**: Cardiovascular, Nervous/Bra
 The application now uses **Drizzle ORM** for robust database migration handling:
 - **Schema Definition**: `database/drizzle-schema.js` - Type-safe schema definitions
 - **Migrations**: Auto-generated SQL migrations in `database/migrations/`
+- **Production Reset**: One-time reset script for clean Drizzle tracking setup
 - **Deployment Safe**: Detects existing tables and preserves data during deployments
+- **Column-Level Tracking**: Full schema change tracking at the column level
 - **Version Tracking**: Proper migration history with rollback capabilities
 
 ### Legacy Compatibility

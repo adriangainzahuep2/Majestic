@@ -4,7 +4,7 @@ const { Pool } = require('pg');
 
 async function runMigrations() {
   const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || 'postgresql://localhost:5732/health_app',
+    connectionString: process.env.DATABASE_URL || 'postgresql://localhost:5432/health_app',
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
   });
 
@@ -13,7 +13,17 @@ async function runMigrations() {
   console.log('Running database migrations...');
   
   try {
-    // Check if this is a fresh database by looking for the drizzle migrations table
+    // In production, if reset was done, migrations should work normally
+    // In development, handle existing tables gracefully
+    
+    if (process.env.NODE_ENV === 'production') {
+      // Production: Run migrations normally (assumes clean reset was done)
+      await migrate(db, { migrationsFolder: './database/migrations' });
+      console.log('Production migrations completed successfully');
+      return;
+    }
+    
+    // Development: Check if this is a fresh database by looking for the drizzle migrations table
     const result = await pool.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
@@ -35,7 +45,7 @@ async function runMigrations() {
       `);
       
       if (tablesResult.rows[0].exists) {
-        console.log('Existing tables detected, marking as migrated...');
+        console.log('Development: Existing tables detected, marking as migrated...');
         
         // Create the migrations table and mark initial migration as complete
         await pool.query(`
@@ -58,7 +68,7 @@ async function runMigrations() {
           VALUES ($1, $2)
         `, [hash, Date.now()]);
         
-        console.log('Existing schema marked as migrated');
+        console.log('Development: Existing schema marked as migrated');
         return;
       }
     }
