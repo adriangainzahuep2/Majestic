@@ -152,18 +152,48 @@ app.post('/api/webhook/email', express.json(), async (req, res) => {
   }
 });
 
-// Enhanced health check endpoint
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    service: 'Majestic Health Dashboard'
-  });
+// Enhanced health check endpoint for deployment
+app.get('/api/health', async (req, res) => {
+  try {
+    // Basic service health
+    const health = {
+      status: 'OK',
+      timestamp: new Date().toISOString(),
+      service: 'Majestic Health Dashboard',
+      port: PORT,
+      environment: process.env.NODE_ENV || 'development'
+    };
+
+    // Test database connection for deployment readiness
+    if (process.env.NODE_ENV === 'production') {
+      try {
+        await pool.query('SELECT 1');
+        health.database = 'connected';
+      } catch (dbError) {
+        health.database = 'error';
+        health.status = 'DEGRADED';
+      }
+    }
+
+    res.status(200).json(health);
+  } catch (error) {
+    console.error('Health check failed:', error);
+    res.status(503).json({
+      status: 'ERROR',
+      timestamp: new Date().toISOString(),
+      error: error.message
+    });
+  }
 });
 
 // 2. Explicit root route for health checks (must be before static files)
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Simple health check for Cloud Run (faster response) - MUST be before static files
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
 });
 
 // 3. Static assets (CSS, JS, images)
@@ -203,10 +233,21 @@ async function startServer() {
     }
     
     // Start the server
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`Majestic Health Dashboard server running on port ${PORT}`);
-      console.log(`Health check: http://localhost:${PORT}/api/health`);
-      console.log(`Application: http://localhost:${PORT}/`);
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      console.log(`✅ Majestic Health Dashboard server running on port ${PORT}`);
+      console.log(`✅ Health check: http://localhost:${PORT}/api/health`);
+      console.log(`✅ Application: http://localhost:${PORT}/`);
+      console.log(`✅ Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`✅ Server ready for connections`);
+    });
+
+    // Handle server errors gracefully
+    server.on('error', (error) => {
+      console.error('❌ Server error:', error);
+      if (error.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${PORT} is already in use`);
+        process.exit(1);
+      }
     });
   } catch (error) {
     console.error('Failed to start server:', error);
