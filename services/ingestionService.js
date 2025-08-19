@@ -326,31 +326,8 @@ class IngestionService {
   }
 
   async saveMetricsToDatabase(userId, uploadId, metrics) {
-    const healthSystemsService = require('./healthSystems');
-    
-    console.log(`[INGESTION SAVE] Starting to save ${metrics.length} metrics for user ${userId}, upload ${uploadId}`);
-    console.log(`[INGESTION METRICS SAMPLE]`, JSON.stringify(metrics.slice(0, 2), null, 2));
-    
-    for (const [index, metric] of metrics.entries()) {
+    for (const metric of metrics) {
       try {
-        // Normalize metric field names (handle different AI output formats)
-        const metricName = metric.name || metric.metric_name || metric.metricName;
-        const metricValue = metric.value || metric.metric_value || metric.metricValue;
-        const metricUnit = metric.unit || metric.metric_unit || metric.units || metric.metricUnit;
-        const referenceRange = metric.referenceRange || metric.reference_range || metric.referenceRangeText;
-        const testDate = metric.testDate || metric.test_date || new Date().toISOString().split('T')[0];
-        
-        // Map metric to health system using the health systems service
-        const systemId = healthSystemsService.mapMetricToSystem(metricName, metric.category);
-        const isKeyMetric = healthSystemsService.isKeyMetric(systemId, metricName);
-        
-        console.log(`[INGESTION METRIC ${index + 1}/${metrics.length}] ${metricName} = ${metricValue} -> SystemId: ${systemId}, IsKey: ${isKeyMetric}`);
-        
-        if (!metricName || metricValue === undefined || metricValue === null) {
-          console.log(`[INGESTION SKIP] Invalid metric data: name="${metricName}", value="${metricValue}"`);
-          continue;
-        }
-        
         await pool.query(`
           INSERT INTO metrics (user_id, upload_id, system_id, metric_name, metric_value, metric_unit, reference_range, is_key_metric, test_date)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -358,28 +335,22 @@ class IngestionService {
             metric_value = EXCLUDED.metric_value,
             metric_unit = EXCLUDED.metric_unit,
             reference_range = EXCLUDED.reference_range,
-            is_key_metric = EXCLUDED.is_key_metric,
-            system_id = EXCLUDED.system_id
+            is_key_metric = EXCLUDED.is_key_metric
         `, [
           userId,
           uploadId,
-          systemId,
-          metricName,
-          metricValue,
-          metricUnit,
-          referenceRange,
-          isKeyMetric || false,
-          testDate
+          metric.systemId,
+          metric.name,
+          metric.value,
+          metric.unit,
+          metric.referenceRange,
+          metric.isKeyMetric || false,
+          metric.testDate
         ]);
-        
-        console.log(`[INGESTION SUCCESS] Saved metric: ${metricName}`);
-        
       } catch (error) {
-        console.error(`[INGESTION ERROR] Error saving metric ${metric.name || 'unknown'}:`, error);
+        console.error('Error saving metric:', error);
       }
     }
-    
-    console.log(`[INGESTION COMPLETE] Finished saving metrics for user ${userId}, upload ${uploadId}`);
   }
 }
 

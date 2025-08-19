@@ -37,38 +37,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// 1. Public API routes first (no auth required)
+// 1. API routes first (before any static serving)
 app.use('/api/auth', authRoutes);
-
-// Public route for reference metrics data (no auth required - moved before protected routes)
-app.get('/api/metrics/reference', (req, res) => {
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    
-    const metricsPath = path.join(__dirname, 'src/data/metrics.json');
-    
-    if (!fs.existsSync(metricsPath)) {
-      return res.status(404).json({
-        error: 'Reference metrics data not found',
-        message: 'metrics.json file does not exist'
-      });
-    }
-    
-    const metricsData = JSON.parse(fs.readFileSync(metricsPath, 'utf8'));
-    
-    res.json(metricsData);
-    
-  } catch (error) {
-    console.error('Get reference metrics error:', error);
-    res.status(500).json({
-      error: 'Failed to load reference metrics',
-      message: error.message
-    });
-  }
-});
-
-// 2. Protected API routes (auth required)
 app.use('/api/uploads', authMiddleware, uploadRoutes);
 app.use('/api/metrics/custom', authMiddleware, require('./routes/customMetrics'));
 app.use('/api/metrics', authMiddleware, metricsRoutes);
@@ -119,7 +89,33 @@ app.get('/api/__diag/ai_outputs_log_columns', async (req, res) => {
   }
 });
 
-
+// Public route for reference metrics data (no auth required)
+app.get('/api/metrics/reference', (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    
+    const metricsPath = path.join(__dirname, 'src/data/metrics.json');
+    
+    if (!fs.existsSync(metricsPath)) {
+      return res.status(404).json({
+        error: 'Reference metrics data not found',
+        message: 'metrics.json file does not exist'
+      });
+    }
+    
+    const metricsData = JSON.parse(fs.readFileSync(metricsPath, 'utf8'));
+    
+    res.json(metricsData);
+    
+  } catch (error) {
+    console.error('Get reference metrics error:', error);
+    res.status(500).json({
+      error: 'Failed to load reference metrics',
+      message: error.message
+    });
+  }
+});
 
 // Email ingestion webhook (no auth required)
 app.post('/api/webhook/email', express.json(), async (req, res) => {
