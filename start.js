@@ -1,22 +1,20 @@
 #!/usr/bin/env node
 
 // Deployment startup script for Replit
-// Ensures PORT is set correctly for both development and production
+// Ensures proper environment configuration for deployment
 
-// Set PORT to 8000 if not already set (matches .replit port configuration)
-if (!process.env.PORT) {
-  process.env.PORT = '8000';
-  console.log('[STARTUP] PORT not set, defaulting to 8000 for Replit deployment compatibility');
-} else {
-  console.log(`[STARTUP] PORT is set to ${process.env.PORT}`);
-}
+// Force PORT to 8000 for deployment (matches .replit port configuration)
+process.env.PORT = '8000';
+console.log('[DEPLOYMENT] PORT set to 8000 for Replit deployment');
 
-// Set NODE_ENV to production if not set
-if (!process.env.NODE_ENV) {
-  process.env.NODE_ENV = 'production';
-  console.log('[STARTUP] NODE_ENV not set, defaulting to production');
-}
+// Set NODE_ENV to production for deployment
+process.env.NODE_ENV = 'production';
+console.log('[DEPLOYMENT] NODE_ENV set to production');
+
+// Set other production environment variables
+process.env.SKIP_GLOBAL_JOBS = 'true';
+console.log('[DEPLOYMENT] SKIP_GLOBAL_JOBS enabled for deployment');
 
 // Start the main server
-console.log('[STARTUP] Starting Majestic Health Dashboard...');
+console.log('[DEPLOYMENT] Starting Majestic Health Dashboard for production...');
 require('./server.js');
