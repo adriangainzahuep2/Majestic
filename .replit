@@ -27,6 +27,14 @@ args = "DB Seed"
 task = "workflow.run"
 args = "DB Status"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Create DB Snapshot"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "List DB Snapshots"
+
 [[workflows.workflow]]
 name = "Health App Server"
 author = "agent"
@@ -68,6 +76,28 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "node scripts/db-commands.js status"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "Create DB Snapshot"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node scripts/backup-database.js create"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "List DB Snapshots"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node scripts/backup-database.js list"
 
 [workflows.workflow.metadata]
 outputType = "console"
