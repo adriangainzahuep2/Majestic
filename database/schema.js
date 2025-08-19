@@ -27,30 +27,6 @@ async function initializeDatabase() {
   const client = await pool.connect();
   
   try {
-    console.log('Checking database schema...');
-    
-    // Check if tables already exist
-    const tablesResult = await client.query(`
-      SELECT tablename FROM pg_tables 
-      WHERE schemaname = 'public' AND tablename IN ('users', 'metrics', 'uploads', 'health_systems')
-    `);
-    
-    const existingTables = tablesResult.rows.map(row => row.tablename);
-    console.log('Existing tables:', existingTables);
-    
-    if (existingTables.length >= 4) {
-      console.log('Database schema already initialized, skipping table creation');
-      
-      // Just ensure health systems data is populated
-      const healthSystemsCount = await client.query('SELECT COUNT(*) FROM health_systems');
-      if (parseInt(healthSystemsCount.rows[0].count) === 0) {
-        await populateHealthSystems(client);
-      }
-      
-      return;
-    }
-    
-    console.log('Creating database tables...');
     // Create tables
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -199,19 +175,6 @@ async function initializeDatabase() {
     throw error;
   } finally {
     client.release();
-  }
-}
-
-async function populateHealthSystems(client) {
-  console.log('Populating health systems data...');
-  for (const system of HEALTH_SYSTEMS) {
-    await client.query(`
-      INSERT INTO health_systems (id, name, description) 
-      VALUES ($1, $2, $3) 
-      ON CONFLICT (id) DO UPDATE SET 
-        name = EXCLUDED.name, 
-        description = EXCLUDED.description
-    `, [system.id, system.name, system.description]);
   }
 }
 
