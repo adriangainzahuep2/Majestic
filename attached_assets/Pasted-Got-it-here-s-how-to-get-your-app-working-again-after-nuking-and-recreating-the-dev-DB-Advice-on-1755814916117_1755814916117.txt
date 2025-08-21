@@ -1,0 +1,86 @@
+Got it — here’s how to get your app working again after nuking and recreating the dev DB. (Advice only.)
+
+1) Quick diagnosis
+
+When you recreate a DB, the schema, extensions, RLS/permissions, and seed data are gone. Your app boots, but:
+	•	queries hit missing tables/columns
+	•	auth/lookup tables are empty
+	•	your ORM client is out of sync with the new schema
+	•	env vars may point to the wrong DB instance
+
+2) Fix plan (order matters)
+	1.	Point your app and your migration tool to the SAME database
+	•	Check DATABASE_URL (and any read/write URLs) in Replit Secrets.
+	•	Ensure the ORM/migration tool uses that exact URL.
+	2.	Recreate the schema by running migrations
+	•	Drizzle:
+
+# regenerate SQL from current schema (optional if you already have migrations)
+npx drizzle-kit generate
+# apply migrations to the new DB
+npx drizzle-kit migrate
+
+
+	•	Prisma (if you use it):
+
+npx prisma migrate deploy
+npx prisma generate
+
+
+	•	Knex/TypeORM/etc.: run the equivalent “migrate” command.
+
+	3.	Install required DB extensions / enums / policies
+	•	Re-run any scripts that create extensions (e.g., uuid-ossp, pg_trgm, etc.) and custom types.
+	•	Recreate RLS policies, GRANTs, roles, and indexes your app depends on.
+	4.	Seed essential data
+	•	Run your seed script to populate required reference rows (roles, plans, feature flags, test users, etc.).
+	•	Typical:
+
+npm run seed
+
+
+	•	If you don’t have a seed script, create one from a recent dump or export minimal CSV/SQL for lookups.
+
+	5.	Regenerate your ORM client
+	•	Drizzle: ensure the generated types are up to date (e.g., drizzle-kit generate then rebuild).
+	•	Prisma: npx prisma generate.
+	6.	Redeploy / restart the Replit process
+	•	Kill/restart the repl so it picks up the new schema and regenerated client.
+	7.	Clear app caches that assume old IDs
+	•	In-memory caches, edge caches, or build artifacts may still reference old table shapes.
+	8.	Run a drift check
+	•	Drizzle: drizzle-kit check (or inspect the DB) to confirm DB == schema.
+	•	Prisma: prisma migrate status.
+
+3) Common “gotchas” that break features
+	•	Wrong DB target for migrations (tool pointed at DB A; app pointed at DB B).
+	•	Missing seed data (feature flags, default org, admin user).
+	•	Auth tables not recreated (e.g., for email/password or OAuth state).
+	•	Foreign keys to rows that don’t exist (creates silent 0-results).
+	•	Environment variables not updated after you recreated the DB (new host/DB name/password).
+	•	Functions/Triggers not reinstalled.
+
+4) If you previously mixed providers (e.g., migrations → Neon, app → Supabase)
+	•	Pick ONE provider for dev.
+	•	Move migrations to the same DB used by the app.
+	•	Export/import a dump if needed so everything lives together.
+
+5) Replit-specific sanity checks
+	•	Re-check Secrets panel for DATABASE_URL.
+	•	If using a local DB file (SQLite): confirm the file path and that it’s checked into the repl or created on boot.
+	•	Ensure the start command (Procfile/replit.nix/package.json scripts) runs migrations before starting the server in dev.
+
+6) Prevent this next time
+	•	Add a bootstrap script that does, in order: create extensions → run migrations → seed → start app.
+	•	Keep a minimal seed (users, org, roles, config) versioned in the repo.
+	•	Add a prestart hook in package.json:
+
+"scripts": {
+  "prestart": "npx drizzle-kit migrate && npm run seed || true",
+  "start": "node server.js"
+}
+
+
+	•	Periodically dump dev data you care about.
+
+Follow the sequence above and most broken features should come back once schema + seed are restored and both app & migration tool point to the same DB.
