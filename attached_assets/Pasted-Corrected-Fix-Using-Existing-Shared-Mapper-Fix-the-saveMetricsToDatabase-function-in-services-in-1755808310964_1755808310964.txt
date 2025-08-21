@@ -1,0 +1,63 @@
+Corrected Fix Using Existing Shared Mapper
+
+🎯 Fix the saveMetricsToDatabase function in services/ingestionService.js:
+
+// 1. Import the healthSystemsService at the top of the file:
+const healthSystemsService = require('./healthSystems');
+// 2. Update the function call at line 132:
+// BEFORE:
+await this.saveMetricsToDatabase(userId, uploadId, extractedData.metrics);
+// AFTER:
+await this.saveMetricsToDatabase(userId, uploadId, extractedData.metrics, testDate);
+// 3. Replace the existing saveMetricsToDatabase method:
+async saveMetricsToDatabase(userId, uploadId, metrics, testDate) {
+  // Load reference metrics from admin spreadsheet
+  const referenceMetrics = require('../public/data/metrics.json');
+  
+  for (const metric of metrics) {
+    try {
+      // Use existing shared mapper - it handles both metric name AND category
+      const systemId = healthSystemsService.mapMetricToSystem(metric.name, metric.category);
+      
+      // Look up reference range and key metric status from admin spreadsheet
+      const referenceData = referenceMetrics.find(ref => 
+        ref.metric_name.toLowerCase() === metric.name.toLowerCase()
+      );
+      
+      const referenceRange = referenceData ? 
+        `${referenceData.min}-${referenceData.max}` : 
+        metric.reference_range; // Fallback to OpenAI extracted range
+        
+      const isKeyMetric = referenceData ? referenceData.is_key_metric : false;
+      
+      await pool.query(`
+        INSERT INTO metrics (user_id, upload_id, system_id, metric_name, metric_value, metric_unit, reference_range, is_key_metric, test_date)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ON CONFLICT (user_id, metric_name, test_date, upload_id) DO UPDATE SET
+          metric_value = EXCLUDED.metric_value,
+          metric_unit = EXCLUDED.metric_unit,
+          reference_range = EXCLUDED.reference_range,
+          is_key_metric = EXCLUDED.is_key_metric
+      `, [
+        userId,
+        uploadId,
+        systemId,                    // From shared mapper
+        metric.name,
+        metric.value,
+        metric.unit,
+        referenceRange,              // From admin spreadsheet
+        isKeyMetric,                 // From admin spreadsheet
+        testDate                     // From Add Data page input
+      ]);
+    } catch (error) {
+      console.error('Error saving metric:', error);
+    }
+  }
+}
+Key Changes:
+
+Added import for healthSystemsService
+Used existing mapper: healthSystemsService.mapMetricToSystem(metric.name, metric.category)
+No duplicate mapping logic - leverages the comprehensive existing system
+Preserves test date and all other functionality
+This approach uses the shared helper that already handles both exact metric name matching AND category fallback mapping, avoiding code duplication.
