@@ -1,6 +1,7 @@
 const { Pool } = require('pg');
 const path = require('path');
 const fs = require('fs').promises;
+const healthSystemsService = require('./healthSystems');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -129,7 +130,7 @@ class IngestionService {
 
     // Save metrics if extracted
     if (extractedData.metrics) {
-      await this.saveMetricsToDatabase(userId, uploadId, extractedData.metrics);
+      await this.saveMetricsToDatabase(userId, uploadId, extractedData.metrics, testDate);
     }
 
     return {
@@ -325,9 +326,26 @@ class IngestionService {
     return mapping[studyType] || null;
   }
 
-  async saveMetricsToDatabase(userId, uploadId, metrics) {
+  async saveMetricsToDatabase(userId, uploadId, metrics, testDate) {
+    // Load reference metrics from admin spreadsheet
+    const referenceMetrics = require('../public/data/metrics.json');
+    
     for (const metric of metrics) {
       try {
+        // Use existing shared mapper - it handles both metric name AND category
+        const systemId = healthSystemsService.mapMetricToSystem(metric.name, metric.category);
+        
+        // Look up reference range and key metric status from admin spreadsheet
+        const referenceData = referenceMetrics.find(ref => 
+          ref.metric_name.toLowerCase() === metric.name.toLowerCase()
+        );
+        
+        const referenceRange = referenceData ? 
+          `${referenceData.min}-${referenceData.max}` : 
+          metric.reference_range; // Fallback to OpenAI extracted range
+          
+        const isKeyMetric = referenceData ? referenceData.is_key_metric : false;
+        
         await pool.query(`
           INSERT INTO metrics (user_id, upload_id, system_id, metric_name, metric_value, metric_unit, reference_range, is_key_metric, test_date)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -339,13 +357,13 @@ class IngestionService {
         `, [
           userId,
           uploadId,
-          metric.systemId,
+          systemId,                    // From shared mapper
           metric.name,
           metric.value,
           metric.unit,
-          metric.referenceRange,
-          metric.isKeyMetric || false,
-          metric.testDate
+          referenceRange,              // From admin spreadsheet
+          isKeyMetric,                 // From admin spreadsheet
+          testDate                     // From Add Data page input
         ]);
       } catch (error) {
         console.error('Error saving metric:', error);
