@@ -16,7 +16,7 @@ class HealthSystemsService {
       10: ['Dermatology Exam', 'Skin Biopsy'], // Integumentary
       11: ['hs-CRP', 'CRP', 'IL-6', 'TNF-alpha'], // Immune/Inflammation
       12: ['Eye Exam', 'Vision Test', 'Hearing Test'], // Sensory
-      13: ['Epigenetic Age', 'Biological Age', 'Telomere Length'] // Biological Age
+      13: ['Epigenetic Age', 'Biological Age', 'Telomere Length'] // Genetics & Biological Age
     };
 
     // Recency thresholds (in months)
@@ -113,7 +113,7 @@ class HealthSystemsService {
     ];
     sensoryMetrics.forEach(metric => map.set(metric.toLowerCase(), 12));
 
-    // Biological Age metrics
+    // Genetics & Biological Age metrics
     const biologicalAgeMetrics = [
       'Epigenetic Age', 'Biological Age', 'Telomere Length', 'DNA Methylation Age'
     ];

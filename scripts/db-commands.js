@@ -64,7 +64,7 @@ async function seedDatabase() {
     { id: 10, name: 'Integumentary', description: 'Skin, hair, and nail health' },
     { id: 11, name: 'Immune/Inflammation', description: 'Immune system and inflammation markers' },
     { id: 12, name: 'Sensory', description: 'Vision, hearing, and sensory function' },
-    { id: 13, name: 'Biological Age', description: 'Cellular aging and longevity markers' }
+    { id: 13, name: 'Genetics & Biological Age', description: 'Cellular aging and longevity markers' }
   ];
   
   try {

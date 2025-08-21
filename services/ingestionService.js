@@ -72,7 +72,7 @@ class IngestionService {
         Body Systems:
         1: Cardiovascular, 2: Nervous/Brain, 3: Respiratory, 4: Muscular, 5: Skeletal
         6: Digestive, 7: Endocrine, 8: Urinary, 9: Reproductive, 10: Integumentary
-        11: Immune/Inflammation, 12: Sensory, 13: Biological Age
+        11: Immune/Inflammation, 12: Sensory, 13: Genetics & Biological Age
         
         Return JSON only:
         {
