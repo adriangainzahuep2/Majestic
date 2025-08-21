@@ -1,0 +1,91 @@
+
+Here's the revised prompt with all test date references removed:
+
+Corrected Fix for Lab Results Pipeline
+Based on your clarification, here's the accurate fix:
+
+📍 Updated Understanding:
+
+system_id: OpenAI classifies metrics into 13 health systems during extraction
+reference_range: Looked up from admin spreadsheet using metric name
+is_key_metric: Also from admin spreadsheet
+🎯 Revised Fix:
+Fix the saveMetricsToDatabase function in services/ingestionService.js:
+
+async saveMetricsToDatabase(userId, uploadId, metrics) {
+  // Load reference metrics from admin spreadsheet
+  const referenceMetrics = require('../public/data/metrics.json');
+  
+  for (const metric of metrics) {
+    try {
+      // OpenAI already classified to system - map category to system_id
+      const systemId = this.mapCategoryToSystemId(metric.category);
+      
+      // Look up reference range and key metric status from admin spreadsheet
+      const referenceData = referenceMetrics.find(ref => 
+        ref.metric_name.toLowerCase() === metric.name.toLowerCase()
+      );
+      
+      const referenceRange = referenceData ? 
+        `${referenceData.min}-${referenceData.max}` : 
+        metric.reference_range; // Fallback to OpenAI extracted range
+        
+      const isKeyMetric = referenceData ? referenceData.is_key_metric : false;
+      
+      await pool.query(`
+        INSERT INTO metrics (user_id, upload_id, system_id, metric_name, metric_value, metric_unit, reference_range, is_key_metric)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ON CONFLICT (user_id, metric_name, upload_id) DO UPDATE SET
+          metric_value = EXCLUDED.metric_value,
+          metric_unit = EXCLUDED.metric_unit,
+          reference_range = EXCLUDED.reference_range,
+          is_key_metric = EXCLUDED.is_key_metric
+      `, [
+        userId,
+        uploadId,
+        systemId,                    // From OpenAI classification
+        metric.name,
+        metric.value,
+        metric.unit,
+        referenceRange,              // From admin spreadsheet
+        isKeyMetric                  // From admin spreadsheet
+      ]);
+    } catch (error) {
+      console.error('Error saving metric:', error);
+    }
+  }
+}
+// Helper function to map OpenAI categories to system IDs
+mapCategoryToSystemId(category) {
+  const categoryMap = {
+    'cardiovascular': 1,
+    'nervous': 2,
+    'brain': 2, 
+    'respiratory': 3,
+    'muscular': 4,
+    'muscle': 4,
+    'skeletal': 5,
+    'bone': 5,
+    'digestive': 6,
+    'endocrine': 7,
+    'hormone': 7,
+    'urinary': 8,
+    'kidney': 8,
+    'reproductive': 9,
+    'integumentary': 10,
+    'skin': 10,
+    'immune': 11,
+    'inflammation': 11,
+    'sensory': 12,
+    'genetics': 13,
+    'biological age': 13,
+    'aging': 13
+  };
+  return categoryMap[category.toLowerCase()] || null;
+}
+Key Changes:
+
+Updated system count from 12 to 13
+Removed all test date parameters and database fields
+Updated conflict resolution to exclude test date
+Added genetics/biological age mappings (categories: 'genetics', 'biological age', 'aging' → system_id: 13)
