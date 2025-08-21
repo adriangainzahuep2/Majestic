@@ -1,0 +1,95 @@
+What’s wrong (plain English)
+
+Your app is talking to one database while your migration tool (Drizzle) is pointed at a different one. That “cross‑wiring” is why schemas drift (e.g., missing columns in prod), data shows up in one place but not another, and deploys try to drop/recreate the wrong tables.
+
+Why this matters
+	•	Risk of data loss: migrations can run against the wrong DB.
+	•	Broken features: your code expects columns that don’t exist in that DB.
+	•	Confusing debugging: dev works, prod breaks, or vice‑versa.
+
+What we’re doing to fix it
+
+We’ll make Dev use Supabase and Prod use Neon, and ensure Drizzle migrations always target the DB of the current environment (Dev → Supabase, Prod → Neon). We’ll stop hard‑coding URLs, set environment variables correctly in both places, add a startup log to confirm which DB is in use, and verify schemas match.
+
+⸻
+
+Replit Agent Prompt (do exactly this)
+
+Goal: Fix database config so Dev (Editor) uses Supabase and Prod (Deployment) uses Neon, and ensure Drizzle migrations target the correct DB in each environment.
+
+Do the following steps, in order:
+	1.	Stop hard‑coding DB URLs
+
+	•	Open drizzle.config.js and replace any hardcoded URL with env‑based config:
+
+// drizzle.config.js
+export default {
+  schema: "./src/db/schema.ts",
+  out: "./drizzle",
+  dialect: "postgresql",
+  dbCredentials: {
+    url: process.env.DRIZZLE_DATABASE_URL ?? process.env.DATABASE_URL,
+  },
+};
+
+	•	Search the repo for any other hardcoded Postgres URLs and remove them. All code must read from env vars only.
+
+	2.	Set environment variables (DEV — Editor runtime)
+In Replit → Secrets (the editor, not Deploy):
+
+	•	DATABASE_URL = Supabase connection string
+	•	DRIZZLE_DATABASE_URL = Supabase connection string (same as above)
+
+	3.	Set environment variables (PROD — Deployment runtime)
+In Replit → Deploy → Environment variables:
+
+	•	DATABASE_URL = Neon connection string
+	•	DRIZZLE_DATABASE_URL = Neon connection string (same as above)
+
+	4.	Add a startup sanity log (masked)
+In server.js (or your entry file), log which DB you’re hitting (mask credentials):
+
+const url = process.env.DATABASE_URL || "";
+const masked = url.replace(/:\/\/.*@/, "://****:****@");
+console.log("[BOOT] DATABASE_URL ->", masked);
+
+	5.	Run migrations against the right DB
+
+	•	DEV (Supabase): in the editor runtime
+	•	npx drizzle-kit generate
+	•	npx drizzle-kit push  (or your project’s migration command)
+	•	Verify tables exist (including system_id, is_current, updated_at) in dev.
+	•	PROD (Neon): during Deploy, run the same migration command inside the deployment environment (so it targets Neon via prod env vars). Use a deploy hook/step if available, or run once via the deployment shell.
+
+	6.	Verification checks (both envs)
+
+	•	On app start, confirm [BOOT] DATABASE_URL -> shows:
+	•	Supabase in Editor (Dev)
+	•	Neon in Deployment (Prod)
+	•	Schema check (pick one):
+	•	npx drizzle-kit introspect and confirm schemas match, or
+	•	Run:
+
+SELECT column_name 
+FROM information_schema.columns 
+WHERE table_name='metrics';
+
+Ensure system_id, is_current, updated_at appear in both environments.
+
+	7.	Guardrails
+
+	•	Back up Neon before the first prod migration.
+	•	Never run dev migrations with prod env vars (and vice‑versa).
+	•	Remove any CI/commands that could auto‑migrate the wrong DB.
+
+Success Criteria
+	•	Editor (Dev) writes to Supabase; Deploy (Prod) writes to Neon.
+	•	Drizzle migrations apply to the DB of the current environment (no cross‑wiring).
+	•	Schemas match; the three columns exist in both dev and prod.
+	•	No more mismatched writes.
+
+Report back with:
+	•	The updated drizzle.config.js diff,
+	•	The masked [BOOT] DATABASE_URL line from both environments,
+	•	Output of the column check showing system_id, is_current, updated_at in metrics (or relevant tables) in both dev and prod,
+	•	Confirmation that migrations ran in the correct environment.
