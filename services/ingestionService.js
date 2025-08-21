@@ -337,14 +337,14 @@ class IngestionService {
         
         // Look up reference range and key metric status from admin spreadsheet
         const referenceData = referenceMetrics.find(ref => 
-          ref.metric_name.toLowerCase() === metric.name.toLowerCase()
+          ref.metric.toLowerCase() === metric.name.toLowerCase()
         );
         
         const referenceRange = referenceData ? 
-          `${referenceData.min}-${referenceData.max}` : 
+          `${referenceData.normalRangeMin}-${referenceData.normalRangeMax}` : 
           metric.reference_range; // Fallback to OpenAI extracted range
           
-        const isKeyMetric = referenceData ? referenceData.is_key_metric : false;
+        const isKeyMetric = false; // Admin spreadsheet doesn't have is_key_metric field
         
         await pool.query(`
           INSERT INTO metrics (user_id, upload_id, system_id, metric_name, metric_value, metric_unit, reference_range, is_key_metric, test_date)
