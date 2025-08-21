@@ -1,0 +1,36 @@
+# Metrics Export Summary - Pre-Neon Switch
+Generated: August 21, 2025
+
+## Overview
+Total metrics exported: 445 records from Supabase database
+Export format: CSV with complete metadata
+
+## Data Breakdown by Source File:
+1. Blood Test Sample 8 21 25.pdf - 20 metrics (most recent, system_id = NULL)
+2. Echocardiogram 1-31-2025.pdf - 38 cardiovascular metrics (system_id = NULL) 
+3. CT_Calcium_Score_Report.pdf - 1 calcium score (system_id = NULL)
+4. Sample_Coronary_Calcium_Score_Report.pdf - 5 cardiac metrics (system_id = NULL)
+5. quest dec 2023.pdf - 42 lab metrics (system_id = NULL)
+6. lipid panel feb 2025.pdf - Multiple lipid metrics (some with proper system_id assignments)
+
+## System Assignment Issues:
+- Most recent uploads (163 metrics): Missing system_id assignments
+- Older processed data: Has proper system_id mappings
+- Root cause: Missing system mapping in current ingestion pipeline
+
+## Key Metrics Included:
+- Complete Blood Count (CBC) data
+- Comprehensive Metabolic Panel (CMP)
+- Lipid panels with advanced markers
+- Cardiovascular imaging metrics
+- Calcium scoring data
+- Hormone levels (testosterone)
+
+## Data Quality:
+- All metric values and units preserved
+- Reference ranges included where available
+- Source file tracking maintained
+- Timestamps preserved for audit trail
+
+This export preserves all metrics before database migration to Neon.
+The file is ready for potential re-import or analysis after the switch.
