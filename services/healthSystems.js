@@ -166,6 +166,7 @@ class HealthSystemsService {
         'vision': 12,
         'hearing': 12,
         'sensory': 12,
+        'genetics': 13,
         'aging': 13,
         'longevity': 13
       };

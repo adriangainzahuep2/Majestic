@@ -20,7 +20,7 @@ Core AI functionality is powered by **OpenAI GPT-4o**. This includes processing 
 ### Key Components
 
 #### Health Systems Framework
-The application categorizes health data into 13 distinct body systems (e.g., Cardiovascular, Nervous, Digestive), each with key metrics, recency thresholds, and automatic metric categorization.
+The application categorizes health data into 13 distinct body systems (e.g., Cardiovascular, Nervous, Digestive, Genetics & Biological Age), each with key metrics, recency thresholds, and automatic metric categorization.
 
 #### Core Services
 -   **Authentication Service**: Handles Google OAuth, JWT, and user profile management.

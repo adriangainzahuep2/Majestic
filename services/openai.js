@@ -94,7 +94,7 @@ class OpenAIService {
   }
 }
 
-Extract every numerical health metric you can find. For test_date, use the collection date or report date if available. For category, classify each metric into one of these health areas: cardiovascular, brain, respiratory, muscle, bone, digestive, hormone, kidney, reproductive, skin, immune, sensory, or aging.`
+Extract every numerical health metric you can find. For test_date, use the collection date or report date if available. For category, classify each metric into one of these health areas: cardiovascular, brain, respiratory, muscle, bone, digestive, hormone, kidney, reproductive, skin, immune, sensory, or genetics.`
               },
               contentData
             ]
@@ -167,7 +167,7 @@ Extract every numerical health metric you can find. For test_date, use the colle
   }
 }
 
-Extract every numerical health metric you can find. For test_date, use the collection date or report date if available. For category, classify each metric into one of these health areas: cardiovascular, brain, respiratory, muscle, bone, digestive, hormone, kidney, reproductive, skin, immune, sensory, or aging.`
+Extract every numerical health metric you can find. For test_date, use the collection date or report date if available. For category, classify each metric into one of these health areas: cardiovascular, brain, respiratory, muscle, bone, digestive, hormone, kidney, reproductive, skin, immune, sensory, or genetics.`
               },
               {
                 type: "file",
