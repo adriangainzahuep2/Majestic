@@ -4,7 +4,7 @@ export default {
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
-    url: "postgresql://neondb_owner:npg_EIi12BMkpafF@ep-curly-dew-ae0gu1st.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require",
+    url: process.env.DATABASE_URL || "postgresql://localhost:5432/health_app",
   },
   verbose: true,
   strict: true,

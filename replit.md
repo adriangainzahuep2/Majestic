@@ -39,7 +39,7 @@ The system supports a unified ingestion pipeline for various file types. Files a
 ### Required Services
 -   **OpenAI API**: For AI processing.
 -   **Google OAuth**: For user authentication.
--   **PostgreSQL**: Primary database.
+-   **Supabase PostgreSQL**: Primary database (Cloud PostgreSQL).
 -   **Redis**: Optional queue backend (with local fallback).
 
 ### Node.js Dependencies
