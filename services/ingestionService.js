@@ -337,7 +337,7 @@ class IngestionService {
         
         // Look up reference range and key metric status from admin spreadsheet
         const referenceData = referenceMetrics.find(ref => 
-          ref.metric_name.toLowerCase() === metric.name.toLowerCase()
+          ref.metric.toLowerCase() === metric.name.toLowerCase()
         );
         
         const referenceRange = referenceData ? 

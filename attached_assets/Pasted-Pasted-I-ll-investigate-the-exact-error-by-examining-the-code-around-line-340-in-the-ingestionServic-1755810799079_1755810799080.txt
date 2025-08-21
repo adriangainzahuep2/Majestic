@@ -1,0 +1,27 @@
+Pasted-I-ll-investigate-the-exact-error-by-examining-the-code-around-line-340-in-the-ingestionService-js-fi-1755809684144_1755809684145.txt
+I'll investigate the exact error by examining the code around line 340 in the ingestionService.js file and the data structure to understand what's causing the undefined reference.
+
+Opened services/ingestionService.js
+
+Opened public/data/metrics.json
+Now I can see the exact problem! Let me check if there are any entries in the JSON that might have undefined metric_name fields:
+
+Executed cd /home/runner/workspace && node -e " const referenceMetrics = require('./public/data/metrics.json'); console.log('📋 Admin spreadsheet data structure analysis:'); console.log('Total entries:', referenceMetrics.length); // Check field names in first entry console.log('\\nFirst entry fields:'); Object.keys(referenceMetrics[0]).forEach(key => console.log(\- \${key}: \${typeof referenceMetrics[0][key]}\)); // Check for entries without the expected field name let missingFieldCount = 0; let sampleEntries = []; referenceMetrics.forEach((entry, index) => { if (!entry.metric_name && !entry.metric) { missingFieldCount++; if (sampleEntries.length < 3) { sampleEntries.push({index, entry}); } } }); console.log(\\\n❌ Entries missing 'metric_name' field: \${missingFieldCount}\); if (sampleEntries.length > 0) { console.log('\\nSample problematic entries:'); sampleEntries.forEach(sample => { console.log(\Entry \${sample.index}:\, sample.entry); }); } // Show what fields actually exist console.log('\\n📊 The JSON uses field name \"metric\" not \"metric_name\"!'); console.log('Sample metric names:'); referenceMetrics.slice(0, 5).forEach((entry, i) => { console.log(\\${i+1}. \${entry.metric}\); }); "
+Found the Root Cause!
+
+The issue is clear now. In line 340 of ingestionService.js, the code is looking for ref.metric_name.toLowerCase(), but the admin spreadsheet JSON file actually uses the field name "metric", not "metric_name".
+
+The Problem:
+
+// Line 340: Looking for "metric_name" field
+const referenceData = referenceMetrics.find(ref => 
+  ref.metric_name.toLowerCase() === metric.name.toLowerCase()  // ❌ ref.metric_name is undefined
+);
+The Admin Spreadsheet Actually Has:
+
+{
+  "system": "Cardiovascular",
+  "metric": "Resting Heart Rate",  // ← It's "metric", not "metric_name"
+  "normalRangeMin": 60,
+  "normalRangeMax": 100,
+  "units": "beats/min (bpm)",
