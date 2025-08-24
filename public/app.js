@@ -403,7 +403,7 @@ class HealthDashboard {
                     <div class="card mb-4 insights-panel">
                         <div class="card-header">
                             <h6 class="mb-0" style="color: #FFFFFF;">
-                                <div class="ai-insights-icon" style="display: inline-block; width: 20px; height: 20px; margin-right: 8px; font-size: 10px;"></div>AI Insights
+                                <div class="ai-insights-icon"></div>AI Insights
                             </h6>
                         </div>
                         <div class="card-body">
