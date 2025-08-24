@@ -391,7 +391,7 @@ class IngestionService {
     
     for (const metric of metrics) {
       // Use the same mapping logic as saveMetricsToDatabase
-      const systemId = require('./healthSystemsService').mapMetricToSystem(metric.name, metric.category);
+      const systemId = healthSystemsService.mapMetricToSystem(metric.name, metric.category);
       if (systemId) {
         affectedSystems.add(systemId);
       }
