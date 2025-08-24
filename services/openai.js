@@ -17,7 +17,9 @@ class OpenAIService {
             {
               type: 'image_url',
               image_url: {
-                url: `data:image/jpeg;base64,${base64Data}`,
+                url: fileName && fileName.toLowerCase().endsWith('.pdf') 
+                  ? `data:application/pdf;base64,${base64Data}`
+                  : `data:image/jpeg;base64,${base64Data}`,
                 detail: 'high'
               }
             }

@@ -131,6 +131,12 @@ class IngestionService {
     // Save metrics if extracted
     if (extractedData.metrics) {
       await this.saveMetricsToDatabase(userId, uploadId, extractedData.metrics, testDate);
+      
+      // Trigger system insights generation after saving metrics
+      const insightsRefreshService = require('./insightsRefresh');
+      const affectedSystems = this.getAffectedSystems(userId, extractedData.metrics);
+      await insightsRefreshService.processUploadRefresh(require('../database/schema').pool, userId, affectedSystems);
+      console.log(`[INSIGHTS TRIGGERED] Lab file processing completed, insights refresh queued for ${affectedSystems.size} systems`);
     }
 
     return {
@@ -177,6 +183,15 @@ class IngestionService {
 
     // Generate comparison with previous studies
     await this.generateStudyComparison(studyId, userId, studyData.studyType);
+    
+    // Trigger system insights generation for the linked system
+    if (studyData.studyType && this.mapStudyTypeToSystem(studyData.studyType || classification.studyType)) {
+      const insightsRefreshService = require('./insightsRefresh');
+      const linkedSystemId = this.mapStudyTypeToSystem(studyData.studyType || classification.studyType);
+      const affectedSystems = new Set([linkedSystemId]);
+      await insightsRefreshService.processUploadRefresh(require('../database/schema').pool, userId, affectedSystems);
+      console.log(`[INSIGHTS TRIGGERED] Visual study processing completed, insights refresh queued for system ${linkedSystemId}`);
+    }
 
     return {
       status: 'processed',
@@ -369,6 +384,21 @@ class IngestionService {
         console.error('Error saving metric:', error);
       }
     }
+  }
+
+  getAffectedSystems(userId, metrics) {
+    const affectedSystems = new Set();
+    
+    for (const metric of metrics) {
+      // Use the same mapping logic as saveMetricsToDatabase
+      const systemId = require('./healthSystemsService').mapMetricToSystem(metric.name, metric.category);
+      if (systemId) {
+        affectedSystems.add(systemId);
+      }
+    }
+    
+    console.log(`[AFFECTED SYSTEMS] userId=${userId} systems=[${Array.from(affectedSystems)}]`);
+    return affectedSystems;
   }
 }
 
