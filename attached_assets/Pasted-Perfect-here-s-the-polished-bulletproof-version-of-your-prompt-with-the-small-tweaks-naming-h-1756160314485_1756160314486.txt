@@ -1,0 +1,85 @@
+Perfect 👌 — here’s the polished, bulletproof version of your prompt with the small tweaks (naming hedge + rollback clarity + keep-style emphasis):
+
+⸻
+
+Task: Remove “Trend Analysis” captions from Studies & Imaging; keep trend charts only for key metrics (lab + visual) on System pages
+
+⸻
+
+Objective
+	•	Delete the “Trend Analysis” section/captions inside the Studies & Imaging table (e.g., “Comparison analysis unavailable”, “No previous studies to compare”).
+	•	Do NOT render any trend/comparison text inside Studies & Imaging.
+	•	Trend charts live only on System pages and are rendered only for key metrics (lab and visual) when there are ≥ 2 data points.
+	•	⚠️ This chart feature already exists per the Trend Analysis spec — do not modify it here.
+
+⸻
+
+Frontend changes
+	1.	Studies & Imaging list/table
+	•	Locate the component(s) that render imaging study rows (e.g., StudiesImagingList, ImagingRow, or their equivalent).
+	•	Remove the Trend Analysis sub-section entirely (header + caption text + icon if present).
+	•	Delete strings:
+	•	“Trend Analysis:”
+	•	“Comparison analysis unavailable”
+	•	“No previous studies to compare.”
+	•	Remove any tooltips/badges tied to those captions.
+	•	Adjust layout so rows remain aligned: keep thumbnail, title, date, key values, and View Details button.
+	•	Ensure no empty placeholders or dead space remain after removal.
+	2.	System page (reference only; no changes here unless required for layout)
+	•	Charts remain below the Key Metrics table.
+	•	Charts render only for metrics where is_key_metric = true and points_count ≥ 2, regardless of source type (lab or visual).
+	•	No captions like “no previous studies” anywhere.
+
+Design note: Keep all existing Majestic styling. No new animations or layout reworks. Just remove the Trend Analysis block.
+
+⸻
+
+Backend changes
+	•	If the Studies & Imaging list API currently computes or returns any “previous studies count” / “comparison available” flags, stop requesting/consuming those in the UI.
+	•	You may leave the fields in API responses for now (ignored), or remove them if trivial.
+	•	Prioritize not making extra DB calls to compute comparison info for the Studies & Imaging list.
+	•	Do not change the Trend charts endpoint or logic in this task.
+
+⸻
+
+Acceptance criteria
+	•	AC1: In Studies & Imaging, there is no “Trend Analysis” header or caption text on any row.
+	•	AC2: No empty space/placeholders remain — rows stay visually balanced (thumbnail, title, date, key values, View Details).
+	•	AC3: On System pages, Trend charts still render only for key metrics with ≥ 2 points (lab + visual). Non-key metrics never render charts.
+	•	AC4: No “No previous studies…” or “Comparison analysis unavailable” text appears anywhere in the app.
+	•	AC5: No regressions in mobile/tablet layouts.
+
+⸻
+
+QA checklist
+	•	Open Studies & Imaging with:
+	•	Rows that previously showed “No previous studies…” → now no Trend Analysis section visible.
+	•	Rows that previously showed “Comparison analysis unavailable” → now no Trend Analysis section visible.
+	•	Open a System page where a key visual metric has 2+ points → chart renders.
+	•	Open a System page where a key lab metric has 2+ points → chart renders.
+	•	Verify a key metric with 0–1 point → no chart rendered on System page.
+	•	Verify non-key metrics never produce charts.
+	•	Confirm View Details still works on Studies & Imaging rows.
+
+⸻
+
+Non-goals (not in scope for this task)
+	•	Do not add/remove System-page Trend charts.
+	•	Do not add US↔SI unit toggling.
+	•	Do not rework Trend charts API.
+	•	Do not remove other legacy Trend Analysis blocks outside Studies & Imaging (separate task).
+
+⸻
+
+Rollback
+	•	Revert the component diffs that removed the Trend Analysis block.
+	•	Restore the JSX/HTML markup, plus any i18n string references tied to the removed captions.
+	•	Ensure layout and translations go back to their prior state if rolled back.
+
+⸻
+
+✅ This version is crystal clear: it tells Replit Agent (or a dev) exactly what to remove, what to leave, and how to keep the app looking clean.
+
+⸻
+
+Do you want me to also write the separate prompt for Replit Agent that handles the new Trend Analysis charts for key metrics only, so you can queue these tasks one after another?

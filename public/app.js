@@ -1404,7 +1404,6 @@ class HealthDashboard {
         const studiesList = studies.map(study => {
             const testDate = study.test_date ? new Date(study.test_date).toLocaleDateString() : 'Unknown date';
             const keyMetricsText = this.formatStudyKeyMetrics(study.metrics_json);
-            const trendText = study.comparison_summary || 'No previous studies to compare';
             
             return `
                 <div class="study-item mb-3 p-3" style="background: #2C2C2E; border-radius: 8px; border: 1px solid #3A3A3C;">
@@ -1414,7 +1413,7 @@ class HealthDashboard {
                         </div>
                         <div class="col-md-10">
                             <div class="row">
-                                <div class="col-md-6">
+                                <div class="col-md-8">
                                     <h6 style="color: #FFFFFF; margin-bottom: 8px;">
                                         ${this.formatStudyType(study.study_type)}
                                     </h6>
@@ -1427,14 +1426,10 @@ class HealthDashboard {
                                         </p>
                                     ` : ''}
                                 </div>
-                                <div class="col-md-6">
-                                    <div class="trend-summary">
-                                        <p style="color: #8E8E93; font-size: 12px; margin-bottom: 4px;">Trend Analysis:</p>
-                                        <p style="color: #EBEBF5; font-size: 13px; margin-bottom: 8px;">${trendText}</p>
-                                        <button class="btn btn-sm btn-outline-primary" onclick="app.showStudyDetails(${study.id})">
-                                            <i class="fas fa-eye me-1"></i>View Details
-                                        </button>
-                                    </div>
+                                <div class="col-md-4 text-end">
+                                    <button class="btn btn-sm btn-outline-primary" onclick="app.showStudyDetails(${study.id})">
+                                        <i class="fas fa-eye me-1"></i>View Details
+                                    </button>
                                 </div>
                             </div>
                         </div>
