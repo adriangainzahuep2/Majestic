@@ -373,6 +373,23 @@ class HealthDashboard {
                         </div>
                     </div>
 
+                    <!-- Trends -->
+                    <div id="trends-section" class="card mb-4" style="display: none;">
+                        <div class="card-header" style="background: #007AFF; color: #FFFFFF;">
+                            <h6 class="mb-0" style="color: #FFFFFF;">
+                                <i class="fas fa-chart-line me-2"></i>Trends
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="trends-container">
+                                <div class="text-center py-3">
+                                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                    <span>Loading trend data...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Additional Metrics (Non-Key + Custom) -->
                     <div class="card mb-4">
                         <div class="card-header">
@@ -414,15 +431,21 @@ class HealthDashboard {
                         </div>
                     </div>
 
-                    <!-- Trends Preview -->
+                    <!-- System Status -->
                     <div class="card mb-4">
                         <div class="card-header">
                             <h6 class="mb-0" style="color: #FFFFFF;">
-                                <i class="fas fa-chart-line me-2"></i>Trends
+                                <i class="fas fa-heartbeat me-2"></i>System Status
                             </h6>
                         </div>
                         <div class="card-body">
-                            <p style="color: #EBEBF5; font-size: 13px;">Trend graphs for key metrics will appear here.</p>
+                            <div class="d-flex align-items-center">
+                                <div class="status-indicator status-${colorClass} me-2"></div>
+                                <span class="text-capitalize">${systemData.color}</span>
+                            </div>
+                            <small class="text-muted">
+                                ${systemData.keyMetrics.length} key metrics • ${systemData.nonKeyMetrics ? systemData.nonKeyMetrics.length : 0} additional metrics
+                            </small>
                         </div>
                     </div>
                 </div>
@@ -432,10 +455,163 @@ class HealthDashboard {
         const modalInstance = new bootstrap.Modal(modal);
         modalInstance.show();
         
-        // Initialize tooltips after modal is shown
-        modal.addEventListener('shown.bs.modal', () => {
+        // Load trends data after modal is shown
+        modal.addEventListener('shown.bs.modal', async () => {
             const tooltipTriggerList = modal.querySelectorAll('[data-bs-toggle="tooltip"]');
             const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+            
+            // Load trends for this system
+            await this.loadSystemTrends(systemData.system.id);
+        });
+    }
+
+    async loadSystemTrends(systemId) {
+        try {
+            const trendsData = await this.apiCall(`/metrics/system/${systemId}/trends`, 'GET');
+            
+            if (trendsData && trendsData.length > 0) {
+                this.renderTrendsCharts(trendsData);
+                document.getElementById('trends-section').style.display = 'block';
+            } else {
+                // Hide trends section if no data
+                document.getElementById('trends-section').style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error loading trends:', error);
+            const trendsContainer = document.getElementById('trends-container');
+            if (trendsContainer) {
+                trendsContainer.innerHTML = '<p class="text-muted">Unable to load trend data.</p>';
+            }
+        }
+    }
+
+    renderTrendsCharts(trendsData) {
+        const container = document.getElementById('trends-container');
+        if (!container) return;
+
+        // Clear loading state
+        container.innerHTML = '';
+
+        // Create a chart for each metric trend
+        trendsData.forEach((trend, index) => {
+            const chartId = `trend-chart-${trend.metric_id}`;
+            
+            // Create chart container
+            const chartDiv = document.createElement('div');
+            chartDiv.id = chartId;
+            chartDiv.className = 'trend-chart mb-4';
+            chartDiv.style.height = '300px';
+            container.appendChild(chartDiv);
+
+            // Prepare data for Plotly
+            const xValues = trend.series.map(point => new Date(point.t));
+            const yValues = trend.series.map(point => point.v);
+
+            const traces = [{
+                x: xValues,
+                y: yValues,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: trend.metric_name,
+                line: {
+                    color: '#007AFF',
+                    width: 3
+                },
+                marker: {
+                    color: '#007AFF',
+                    size: 8,
+                    symbol: 'circle'
+                }
+            }];
+
+            // Add reference range band if available
+            if (trend.range_band) {
+                traces.push({
+                    x: [xValues[0], xValues[xValues.length - 1]],
+                    y: [trend.range_band.min, trend.range_band.min],
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Lower Normal',
+                    line: {
+                        color: '#34C759',
+                        width: 1,
+                        dash: 'dash'
+                    },
+                    showlegend: false,
+                    hoverinfo: 'skip'
+                });
+
+                traces.push({
+                    x: [xValues[0], xValues[xValues.length - 1]],
+                    y: [trend.range_band.max, trend.range_band.max],
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Upper Normal',
+                    line: {
+                        color: '#34C759',
+                        width: 1,
+                        dash: 'dash'
+                    },
+                    showlegend: false,
+                    hoverinfo: 'skip'
+                });
+
+                // Add shaded area between normal range
+                traces.push({
+                    x: [...xValues, ...xValues.slice().reverse()],
+                    y: [...new Array(xValues.length).fill(trend.range_band.min), 
+                        ...new Array(xValues.length).fill(trend.range_band.max).reverse()],
+                    type: 'scatter',
+                    mode: 'lines',
+                    fill: 'tonexty',
+                    fillcolor: 'rgba(52, 199, 89, 0.1)',
+                    line: { color: 'transparent' },
+                    name: 'Normal Range',
+                    showlegend: true,
+                    hoverinfo: 'skip'
+                });
+            }
+
+            const layout = {
+                title: {
+                    text: `${trend.metric_name} Trend (${trend.points_count} data points)`,
+                    font: { 
+                        color: '#FFFFFF',
+                        size: 16
+                    }
+                },
+                xaxis: {
+                    title: 'Date',
+                    color: '#EBEBF5',
+                    gridcolor: '#2C2C2E',
+                    tickfont: { color: '#EBEBF5' },
+                    titlefont: { color: '#EBEBF5' }
+                },
+                yaxis: {
+                    title: 'Value',
+                    color: '#EBEBF5',
+                    gridcolor: '#2C2C2E',
+                    tickfont: { color: '#EBEBF5' },
+                    titlefont: { color: '#EBEBF5' }
+                },
+                plot_bgcolor: '#1C1C1E',
+                paper_bgcolor: '#1C1C1E',
+                font: { color: '#FFFFFF' },
+                margin: { l: 60, r: 40, t: 60, b: 60 },
+                legend: {
+                    font: { color: '#EBEBF5' },
+                    bgcolor: 'transparent'
+                }
+            };
+
+            const config = {
+                responsive: true,
+                displayModeBar: false,
+                displaylogo: false
+            };
+
+            // Render the chart
+            Plotly.newPlot(chartId, traces, layout, config);
         });
     }
 

@@ -385,6 +385,165 @@ class HealthSystemsService {
     }
   }
 
+  async getSystemTrends(userId, systemId) {
+    const { pool } = require('../database/schema');
+    
+    try {
+      // Get key lab metrics for this system
+      const labMetricsResult = await pool.query(`
+        SELECT m.id, m.metric_name, m.metric_value, m.metric_unit, 
+               m.test_date, m.created_at, m.reference_range,
+               'lab' as source
+        FROM metrics m
+        WHERE m.user_id = $1 AND m.system_id = $2 AND m.is_key_metric = true
+        ORDER BY m.metric_name, m.test_date ASC, m.created_at ASC
+      `, [userId, systemId]);
+
+      // Get visual study data for this system
+      const visualStudiesResult = await pool.query(`
+        SELECT i.id, i.test_date, i.created_at, i.metrics_json
+        FROM imaging_studies i
+        WHERE i.user_id = $1 AND i.linked_system_id = $2 
+        AND i.metrics_json IS NOT NULL
+        ORDER BY i.test_date ASC, i.created_at ASC
+      `, [userId, systemId]);
+
+      // Process lab metrics
+      const metricData = {};
+      const referenceMetrics = require('../public/data/metrics.json');
+
+      // Add lab data points
+      for (const row of labMetricsResult.rows) {
+        const metricName = row.metric_name;
+        
+        if (!metricData[metricName]) {
+          metricData[metricName] = {
+            metric_name: metricName,
+            series: [],
+            range_band: null,
+            points_count: 0
+          };
+        }
+
+        metricData[metricName].series.push({
+          t: row.test_date ? new Date(row.test_date).toISOString() : new Date(row.created_at).toISOString(),
+          v: parseFloat(row.metric_value),
+          source: 'lab'
+        });
+      }
+
+      // Process visual study data and extract relevant measurements
+      for (const study of visualStudiesResult.rows) {
+        try {
+          const measurements = JSON.parse(study.metrics_json || '[]');
+          
+          for (const measurement of measurements) {
+            const measurementName = measurement.name;
+            
+            // Check if this measurement corresponds to a key metric for this system
+            if (this.isKeyMetric(systemId, measurementName)) {
+              if (!metricData[measurementName]) {
+                metricData[measurementName] = {
+                  metric_name: measurementName,
+                  series: [],
+                  range_band: null,
+                  points_count: 0
+                };
+              }
+
+              metricData[measurementName].series.push({
+                t: study.test_date ? new Date(study.test_date).toISOString() : new Date(study.created_at).toISOString(),
+                v: parseFloat(measurement.value),
+                source: 'visual'
+              });
+            }
+          }
+        } catch (parseError) {
+          console.warn('Error parsing metrics_json for study', study.id, parseError);
+        }
+      }
+
+      // Process each metric: deduplicate, add reference ranges, filter by minimum points
+      const trendsResponse = [];
+      
+      for (const [metricName, data] of Object.entries(metricData)) {
+        // Sort by timestamp
+        data.series.sort((a, b) => new Date(a.t) - new Date(b.t));
+        
+        // Deduplicate same-day entries (keep latest)
+        const deduplicatedSeries = [];
+        const seenDates = new Set();
+        
+        for (let i = data.series.length - 1; i >= 0; i--) {
+          const point = data.series[i];
+          const dateKey = new Date(point.t).toDateString();
+          
+          if (!seenDates.has(dateKey)) {
+            seenDates.add(dateKey);
+            deduplicatedSeries.unshift(point);
+          }
+        }
+        
+        // Only include metrics with ≥ 2 data points
+        if (deduplicatedSeries.length >= 2) {
+          // Look up reference range from metrics.json
+          let rangeBand = null;
+          const referenceData = referenceMetrics.find(ref => 
+            ref.metric && ref.metric.toLowerCase() === metricName.toLowerCase()
+          );
+          
+          if (referenceData && referenceData.normalRangeMin !== undefined && referenceData.normalRangeMax !== undefined) {
+            rangeBand = {
+              min: referenceData.normalRangeMin,
+              max: referenceData.normalRangeMax,
+              source: "Baseline"
+            };
+          }
+
+          trendsResponse.push({
+            metric_id: `${systemId}_${metricName.replace(/[^a-zA-Z0-9]/g, '_')}`,
+            metric_name: metricName,
+            series: deduplicatedSeries,
+            range_band: rangeBand,
+            points_count: deduplicatedSeries.length
+          });
+        }
+      }
+
+      return trendsResponse;
+      
+    } catch (error) {
+      console.error('Error getting system trends:', error);
+      throw error;
+    }
+  }
+
+  isKeyMetric(systemId, metricName) {
+    // Check if a metric name (from visual studies) corresponds to a key metric for this system
+    // This is a simple implementation - could be enhanced with more sophisticated mapping
+    
+    const keyMetricPatterns = {
+      1: ['cholesterol', 'ldl', 'hdl', 'triglyceride'], // Cardiovascular
+      2: ['glucose', 'hba1c', 'insulin'], // Endocrine  
+      3: ['creatinine', 'bun', 'egfr'], // Renal
+      4: ['alt', 'ast', 'bilirubin'], // Hepatic
+      5: ['wbc', 'rbc', 'hemoglobin', 'hematocrit', 'platelet'], // Hematologic
+      6: ['tsh', 'testosterone', 'estrogen'], // Reproductive
+      7: ['cortisol', 'vitamin'], // Nutritional
+      8: ['calcium', 'phosphorus', 'vitamin d'], // Skeletal
+      9: ['crp', 'esr', 'il-6'], // Immune
+      10: [], // Nervous - typically no visual study metrics
+      11: [], // Respiratory - typically chest X-rays, not quantitative
+      12: [], // Digestive - typically endoscopy, not quantitative  
+      13: [] // Genetics - typically genetic testing, not visual studies
+    };
+
+    const patterns = keyMetricPatterns[systemId] || [];
+    const lowerMetricName = metricName.toLowerCase();
+    
+    return patterns.some(pattern => lowerMetricName.includes(pattern.toLowerCase()));
+  }
+
   async getTrendData(userId, metricNames) {
     const { pool } = require('../database/schema');
     

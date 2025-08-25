@@ -1,0 +1,98 @@
+Feature: Trend Analysis (Key Metrics Only) — MVP
+
+Goal
+
+Show time-series charts for key metrics only (Lab + Visual Study) on each System page, directly below the Key Metrics table.
+
+Scope
+• Include metrics where is_key_metric = true.
+• Include both lab data (from metrics table) and visual study data (from imaging_studies table).
+• Render a chart only if there are ≥ 2 data points for that metric.
+• If 0 or 1 point → do not render (no card, no helper text).
+• The old "Trend Analysis" block stays (separate removal task).
+
+API
+
+Endpoint
+
+GET /api/users/:userId/systems/:systemId/trends
+
+Response (per metric)
+
+{
+  "metric_id": 101,
+  "metric_name": "LDL Cholesterol",
+  "series": [
+    { "t": "2024-02-10T08:00:00Z", "v": 112.3, "source": "lab" },
+    { "t": "2024-05-22T08:00:00Z", "v": 97.1,  "source": "visual" }
+  ],
+  "range_band": { "min": 0, "max": 99, "source": "Baseline" },
+  "points_count": 2
+  // FUTURE: "display_unit": "mg/dL" (add when US↔SI toggle is implemented)
+}
+Backend notes
+• Filter to key metrics within :systemId.
+• Include lab data from metrics table where is_key_metric = true.
+• Include visual study measurements from imaging_studies.metrics_json where the study is linked to :systemId.
+• Extract relevant measurements from visual studies that correspond to key metrics for the system.
+• De-duplicate same-day entries for the same metric: keep the row with latest created_at/test_date.
+• Values are stored/returned in canonical units (MVP).
+• Always include range_band when derivable (Baseline / Approved / User).
+• // FUTURE: enforce precedence User > Approved > Baseline when full override logic is live.
+• When to compute: endpoint is called on System page load; client can refetch on upload complete events.
+
+Frontend
+
+Placement
+• System page → below Key Metrics table.
+• Section header: "Trends".
+• Render one card per metric only when series.length ≥ 2.
+
+Chart spec
+• Single line (X = date, Y = value).
+• Shaded band for range_band when present.
+• Tooltip: date, value, unit (canonical), source (Lab/Visual).
+• No captions, no helper text, no animations.
+
+Aesthetic
+• Match Majestic: calm, minimalist (Apple Health / Calm vibe).
+• Soft neutrals, subtle shadows, rounded cards, generous spacing.
+• Clean, readable typography; no clutter.
+
+Acceptance Criteria
+
+Only is_key_metric = true metrics can render trend cards.
+Lab points (from metrics) + visual points (from imaging_studies) appear in the same series (same canonical units).
+Render only with ≥ 2 points; otherwise no card.
+Reference band shown whenever derivable (independent of point count).
+Legacy "no previous study" text never appears.
+Charts render smoothly for MVP scale (100 users).
+Edge Cases
+• Do not merge clinically distinct variants (e.g., CRP vs hs-CRP are different metrics).
+• Exclude points marked Needs Review (invalid unit / implausible value).
+• Sort by UTC, display dates in user's local time.
+• No interpolation of gaps.
+• Visual study measurements may have different JSON structure than lab metrics - normalize during extraction.
+
+QA Fixtures
+• Key lab metric with 3 points → chart + baseline band (if available).
+• Key visual metric with 2 points → chart + band (if available).
+• Key metric combining lab + visual points → unified chart.
+• Key metric with 1 point → no card.
+• Metric with approved/user override → band reflects the current applied range.
+• Non-key metric with many points → no card.
+• Same-day duplicates → only latest used.
+
+De-scopes (MVP)
+• No multi-metric combined charts.
+• No predictive lines/statistics.
+• No per-point range changes (band = most recent applicable range snapshot).
+• US↔SI toggle excluded.
+• No performance optimization beyond basic data handling.
+
+Backlog / FUTURE (comments for later prompts)
+• US↔SI toggle: unitSystem=US|SI param; return display_unit; convert both series values and range bands consistently.
+• Range precedence: compute range_band via User > Approved > Baseline with context matching (profile/upload).
+
+Separate Cleanup Task (not in this prompt)
+• Removal of the legacy "Trend Analysis" block, routes, and tests, once the new charts are verified.

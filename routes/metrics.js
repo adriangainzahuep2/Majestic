@@ -151,7 +151,25 @@ router.get('/types', async (req, res) => {
   }
 });
 
-// Get trend data for specific metrics
+// New Trend Analysis API - Get trends for key metrics by system
+router.get('/system/:systemId/trends', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const systemId = req.params.systemId;
+
+    const trendsData = await healthSystemsService.getSystemTrends(userId, systemId);
+    res.json(trendsData);
+
+  } catch (error) {
+    console.error('Get system trends error:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch system trends',
+      message: error.message 
+    });
+  }
+});
+
+// Legacy trend endpoint (keeping for backward compatibility)
 router.get('/trends', async (req, res) => {
   try {
     const userId = req.user.userId;
