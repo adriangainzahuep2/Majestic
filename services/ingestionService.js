@@ -359,7 +359,7 @@ class IngestionService {
           `${referenceData.min}-${referenceData.max}` : 
           metric.reference_range; // Fallback to OpenAI extracted range
           
-        const isKeyMetric = referenceData ? referenceData.is_key_metric : false;
+        const isKeyMetric = healthSystemsService.isKeyMetric(systemId, metric.name);
         
         await pool.query(`
           INSERT INTO metrics (user_id, upload_id, system_id, metric_name, metric_value, metric_unit, reference_range, is_key_metric, test_date)
