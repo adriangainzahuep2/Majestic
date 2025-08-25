@@ -306,11 +306,15 @@ class HealthSystemsService {
 
       // Get official metrics for this system
       const metricsResult = await pool.query(`
-        SELECT m.*, u.filename, u.created_at as upload_date
+        SELECT m.*, u.filename, u.created_at as upload_date,
+               CASE 
+                 WHEN m.test_date IS NOT NULL THEN TO_CHAR(m.test_date, 'YYYY-MM-DD')
+                 ELSE NULL 
+               END as formatted_test_date
         FROM metrics m
         LEFT JOIN uploads u ON m.upload_id = u.id
         WHERE m.user_id = $1 AND m.system_id = $2
-        ORDER BY m.test_date DESC, m.is_key_metric DESC
+        ORDER BY m.test_date DESC NULLS LAST, m.is_key_metric DESC
       `, [userId, systemId]);
 
       // Get custom metrics for this system (user's private + approved global)

@@ -336,8 +336,14 @@ router.put('/:id', async (req, res) => {
 
     for (const [key, value] of Object.entries(updates)) {
       if (allowedUpdates.includes(key)) {
-        setClause.push(`${key} = $${paramCount}`);
-        values.push(value);
+        // Special handling for test_date - convert empty string to null
+        if (key === 'test_date' && (value === '' || value === undefined)) {
+          setClause.push(`${key} = $${paramCount}`);
+          values.push(null);
+        } else {
+          setClause.push(`${key} = $${paramCount}`);
+          values.push(value);
+        }
         paramCount++;
       }
     }
