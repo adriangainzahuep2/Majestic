@@ -329,6 +329,29 @@
 
             <div class="row">
                 <div class="col-lg-8 mx-auto">
+                    <!-- Unit System Toggle -->
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Unit System</label>
+                                    <div class="btn-group w-100" role="group" id="unitSystemToggle">
+                                        <input type="radio" class="btn-check" name="unitSystem" id="unitUS" value="US" autocomplete="off" checked>
+                                        <label class="btn btn-outline-primary" for="unitUS">US</label>
+                                        <input type="radio" class="btn-check" name="unitSystem" id="unitSI" value="SI" autocomplete="off">
+                                        <label class="btn btn-outline-primary" for="unitSI">SI (metric)</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Country of Residence</label>
+                                    <select class="form-select" id="countryOfResidence">
+                                        <option value="">Loading countries...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <form id="profileForm">
                         <!-- Demographics -->
                         <div class="card mb-4">
@@ -338,7 +361,7 @@
                                     <i class="fas fa-chevron-down ms-auto float-end"></i>
                                 </h6>
                             </div>
-                            <div class="collapse show" id="demographicsCollapse">
+                            <div class="collapse" id="demographicsCollapse">
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-md-6 mb-3">
@@ -360,22 +383,29 @@
                                     <div class="row">
                                         <div class="col-md-6 mb-3">
                                             <label class="form-label">Height</label>
-                                            <div class="input-group">
-                                                <input type="number" class="form-control" id="heightFeet" placeholder="Feet" min="0" max="8">
+                                            <!-- US Height Input -->
+                                            <div class="input-group" id="heightUS">
+                                                <input type="number" class="form-control" id="heightFeet" placeholder="Feet" min="4" max="7">
                                                 <span class="input-group-text">'</span>
                                                 <input type="number" class="form-control" id="heightInches" placeholder="Inches" min="0" max="11">
                                                 <span class="input-group-text">"</span>
-                                                <span class="input-group-text">or</span>
-                                                <input type="number" class="form-control" id="heightCm" placeholder="cm" min="0" max="250">
+                                            </div>
+                                            <!-- SI Height Input -->
+                                            <div class="input-group d-none" id="heightSI">
+                                                <input type="number" class="form-control" id="heightCm" placeholder="cm" min="120" max="230">
                                                 <span class="input-group-text">cm</span>
                                             </div>
                                         </div>
                                         <div class="col-md-6 mb-3">
                                             <label class="form-label">Weight</label>
-                                            <div class="input-group">
-                                                <input type="number" class="form-control" id="weightLbs" placeholder="lbs" min="0" max="1000" step="0.1">
-                                                <span class="input-group-text">lbs or</span>
-                                                <input type="number" class="form-control" id="weightKg" placeholder="kg" min="0" max="500" step="0.1">
+                                            <!-- US Weight Input -->
+                                            <div class="input-group" id="weightUS">
+                                                <input type="number" class="form-control" id="weightLbs" placeholder="lbs" min="66" max="660" step="0.1">
+                                                <span class="input-group-text">lbs</span>
+                                            </div>
+                                            <!-- SI Weight Input -->
+                                            <div class="input-group d-none" id="weightSI">
+                                                <input type="number" class="form-control" id="weightKg" placeholder="kg" min="30" max="300" step="0.1">
                                                 <span class="input-group-text">kg</span>
                                             </div>
                                         </div>
@@ -396,12 +426,6 @@
                                                 <option value="Prefer not to say">Prefer not to say</option>
                                             </select>
                                         </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label">Country of Residence</label>
-                                            <select class="form-select" id="countryOfResidence">
-                                                <option value="">Loading countries...</option>
-                                            </select>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -415,7 +439,7 @@
                                     <i class="fas fa-chevron-down ms-auto float-end"></i>
                                 </h6>
                             </div>
-                            <div class="collapse show" id="conditionsCollapse">
+                            <div class="collapse" id="conditionsCollapse">
                                 <div class="card-body">
                                     <div id="chronicConditionsList">
                                         <div class="chronic-condition-item mb-3">
@@ -455,7 +479,7 @@
                                     <i class="fas fa-chevron-down ms-auto float-end"></i>
                                 </h6>
                             </div>
-                            <div class="collapse show" id="allergiesCollapse">
+                            <div class="collapse" id="allergiesCollapse">
                                 <div class="card-body">
                                     <div class="mb-3">
                                         <label class="form-label">Food Allergies</label>
@@ -581,7 +605,7 @@
                                     <i class="fas fa-chevron-down ms-auto float-end"></i>
                                 </h6>
                             </div>
-                            <div class="collapse show" id="lifestyleCollapse">
+                            <div class="collapse" id="lifestyleCollapse">
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-md-6 mb-3">
@@ -613,7 +637,7 @@
                                     <i class="fas fa-chevron-down ms-auto float-end"></i>
                                 </h6>
                             </div>
-                            <div class="collapse show" id="reproductiveCollapse">
+                            <div class="collapse" id="reproductiveCollapse">
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-md-6 mb-3">

@@ -270,6 +270,7 @@ class HealthDashboard {
         document.getElementById('profileSection').classList.remove('d-none');
         this.loadProfileData();
         this.loadCountries();
+        this.setupUnitSystemToggle();
     }
 
     updateUserAvatar() {
@@ -2545,16 +2546,39 @@ class HealthDashboard {
     populateProfileForm(profile) {
         if (!profile) return;
         
+        // Set unit system preference
+        const unitSystem = profile.preferred_unit_system || 'US';
+        document.getElementById(`unit${unitSystem}`).checked = true;
+        this.toggleUnitSystem(unitSystem);
+        
         // Demographics
         if (profile.sex) document.getElementById('sex').value = profile.sex;
         if (profile.dateOfBirth) document.getElementById('dateOfBirth').value = profile.dateOfBirth;
-        if (profile.heightFeet) document.getElementById('heightFeet').value = profile.heightFeet;
-        if (profile.heightInches) document.getElementById('heightInches').value = profile.heightInches;
-        if (profile.heightCm) document.getElementById('heightCm').value = profile.heightCm;
-        if (profile.weightLbs) document.getElementById('weightLbs').value = profile.weightLbs;
-        if (profile.weightKg) document.getElementById('weightKg').value = profile.weightKg;
+        
+        // Height and weight from canonical storage
+        if (profile.height_in !== null && profile.height_in !== undefined) {
+            if (unitSystem === 'US') {
+                const feet = Math.floor(profile.height_in / 12);
+                const inches = profile.height_in % 12;
+                document.getElementById('heightFeet').value = feet;
+                document.getElementById('heightInches').value = inches;
+            } else {
+                const cm = Math.round(profile.height_in * 2.54);
+                document.getElementById('heightCm').value = cm;
+            }
+        }
+        
+        if (profile.weight_lb !== null && profile.weight_lb !== undefined) {
+            if (unitSystem === 'US') {
+                document.getElementById('weightLbs').value = profile.weight_lb;
+            } else {
+                const kg = (profile.weight_lb / 2.2046226218).toFixed(1);
+                document.getElementById('weightKg').value = parseFloat(kg);
+            }
+        }
+        
         if (profile.ethnicity) document.getElementById('ethnicity').value = profile.ethnicity;
-        if (profile.countryOfResidence) document.getElementById('countryOfResidence').value = profile.countryOfResidence;
+        if (profile.country_of_residence) document.getElementById('countryOfResidence').value = profile.country_of_residence;
         
         // Lifestyle
         if (profile.smoker !== null) {
@@ -2603,19 +2627,138 @@ class HealthDashboard {
         }
     }
 
+    setupUnitSystemToggle() {
+        const unitToggle = document.querySelectorAll('input[name="unitSystem"]');
+        unitToggle.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.handleUnitSystemChange(e.target.value);
+            });
+        });
+    }
+
+    handleUnitSystemChange(newSystem) {
+        const currentSystem = newSystem === 'US' ? 'SI' : 'US';
+        
+        // Get current values
+        let currentHeight = null;
+        let currentWeight = null;
+        
+        if (currentSystem === 'US') {
+            const feet = parseInt(document.getElementById('heightFeet').value) || 0;
+            const inches = parseInt(document.getElementById('heightInches').value) || 0;
+            if (feet > 0 || inches > 0) {
+                currentHeight = feet * 12 + inches; // total inches
+            }
+            currentWeight = parseFloat(document.getElementById('weightLbs').value) || null;
+        } else {
+            const cm = parseInt(document.getElementById('heightCm').value) || 0;
+            if (cm > 0) {
+                currentHeight = Math.round(cm / 2.54); // convert to inches for storage
+            }
+            const kg = parseFloat(document.getElementById('weightKg').value) || 0;
+            if (kg > 0) {
+                currentWeight = kg * 2.2046226218; // convert to lbs
+            }
+        }
+        
+        // Clear all inputs
+        document.getElementById('heightFeet').value = '';
+        document.getElementById('heightInches').value = '';
+        document.getElementById('heightCm').value = '';
+        document.getElementById('weightLbs').value = '';
+        document.getElementById('weightKg').value = '';
+        
+        // Convert and populate in new system
+        if (currentHeight !== null) {
+            if (newSystem === 'US') {
+                const feet = Math.floor(currentHeight / 12);
+                const inches = currentHeight % 12;
+                document.getElementById('heightFeet').value = feet;
+                document.getElementById('heightInches').value = inches;
+            } else {
+                const cm = Math.round(currentHeight * 2.54);
+                document.getElementById('heightCm').value = cm;
+            }
+        }
+        
+        if (currentWeight !== null) {
+            if (newSystem === 'US') {
+                document.getElementById('weightLbs').value = currentWeight.toFixed(1);
+            } else {
+                const kg = (currentWeight / 2.2046226218).toFixed(1);
+                document.getElementById('weightKg').value = parseFloat(kg);
+            }
+        }
+        
+        // Toggle UI visibility
+        this.toggleUnitSystem(newSystem);
+    }
+
+    toggleUnitSystem(system) {
+        const heightUS = document.getElementById('heightUS');
+        const heightSI = document.getElementById('heightSI');
+        const weightUS = document.getElementById('weightUS');
+        const weightSI = document.getElementById('weightSI');
+        
+        if (system === 'US') {
+            heightUS.classList.remove('d-none');
+            heightSI.classList.add('d-none');
+            weightUS.classList.remove('d-none');
+            weightSI.classList.add('d-none');
+        } else {
+            heightUS.classList.add('d-none');
+            heightSI.classList.remove('d-none');
+            weightUS.classList.add('d-none');
+            weightSI.classList.remove('d-none');
+        }
+    }
+
     async saveProfile(e) {
         e.preventDefault();
         
+        // Get current unit system
+        const unitSystem = document.querySelector('input[name="unitSystem"]:checked').value;
+        
+        // Convert to canonical US units
+        let heightIn = null;
+        let weightLb = null;
+        
+        if (unitSystem === 'US') {
+            const feet = parseInt(document.getElementById('heightFeet').value) || 0;
+            const inches = parseInt(document.getElementById('heightInches').value) || 0;
+            if (feet > 0 || inches > 0) {
+                heightIn = feet * 12 + inches;
+            }
+            weightLb = parseFloat(document.getElementById('weightLbs').value) || null;
+        } else {
+            const cm = parseInt(document.getElementById('heightCm').value) || 0;
+            if (cm > 0) {
+                heightIn = Math.round(cm / 2.54);
+            }
+            const kg = parseFloat(document.getElementById('weightKg').value) || 0;
+            if (kg > 0) {
+                weightLb = kg * 2.2046226218;
+            }
+        }
+        
+        // Validate height and weight bounds
+        if (heightIn !== null && (heightIn < 48 || heightIn > 90)) {
+            this.showToast('error', 'Validation Error', 'Height must be between 4\'0" and 7\'6" (48-90 inches)');
+            return;
+        }
+        if (weightLb !== null && (weightLb < 66 || weightLb > 660)) {
+            this.showToast('error', 'Validation Error', 'Weight must be between 66-660 lbs');
+            return;
+        }
+        
         const profileData = {
+            preferred_unit_system: unitSystem,
             sex: document.getElementById('sex').value,
             dateOfBirth: document.getElementById('dateOfBirth').value,
-            heightFeet: parseInt(document.getElementById('heightFeet').value) || null,
-            heightInches: parseInt(document.getElementById('heightInches').value) || null,
-            heightCm: parseInt(document.getElementById('heightCm').value) || null,
-            weightLbs: parseFloat(document.getElementById('weightLbs').value) || null,
-            weightKg: parseFloat(document.getElementById('weightKg').value) || null,
+            height_in: heightIn,
+            weight_lb: weightLb,
             ethnicity: document.getElementById('ethnicity').value,
-            countryOfResidence: document.getElementById('countryOfResidence').value,
+            country_of_residence: document.getElementById('countryOfResidence').value,
             smoker: document.getElementById('smoker').value ? document.getElementById('smoker').value === 'true' : null,
             packsPerWeek: parseFloat(document.getElementById('packsPerWeek').value) || null,
             alcoholDrinksPerWeek: parseInt(document.getElementById('alcoholDrinksPerWeek').value) || null,
@@ -2652,6 +2795,15 @@ class HealthDashboard {
         }
         if (profileData.pregnancyStartDate === '') {
             profileData.pregnancyStartDate = null;
+        }
+        
+        // Validate inches field if in US mode
+        if (unitSystem === 'US') {
+            const inches = parseInt(document.getElementById('heightInches').value) || 0;
+            if (inches > 11) {
+                this.showToast('error', 'Validation Error', 'Inches must be between 0-11');
+                return;
+            }
         }
         
         // Ensure numeric fields are properly validated

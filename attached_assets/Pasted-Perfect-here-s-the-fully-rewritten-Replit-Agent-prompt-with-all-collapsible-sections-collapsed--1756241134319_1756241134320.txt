@@ -1,0 +1,110 @@
+Perfect 👍 — here’s the fully rewritten Replit Agent prompt with all collapsible sections collapsed by default (including Reproductive Context). Everything else stays intact.
+
+⸻
+
+REPLIT AGENT PROMPT: Profile-page US/SI Toggle (store canonically in US, ISO alpha-2 country)
+
+⸻
+
+Task
+
+Add a single unit toggle on the Profile page only (“US / SI (metric)”) that controls how height and weight inputs are shown:
+	•	US → height in ft/in, weight in lb
+	•	SI → height in cm, weight in kg
+
+All values must be stored canonically in US units in the database. Country must be ISO alpha-2 (e.g., US, CA, GB).
+
+⸻
+
+Requirements
+
+UI (Profile page only)
+	•	Add a UnitSystemToggle control near the top of the Profile page (not global).
+	•	Place Country of Residence dropdown directly below the toggle (ISO alpha-2 list).
+	•	Toggle options: US / SI (metric).
+	•	When toggled:
+	•	Show either ft/in or cm (not both).
+	•	Show either lb or kg (not both).
+	•	Inputs use placeholders only (no defaults). Allow clearing to empty (NULL).
+	•	Keep Majestic aesthetic: calm, modern, no animations.
+	•	All profile sections (Demographics, Chronic Conditions, Allergies & Intolerances, Lifestyle, Reproductive Context) must be collapsible and collapsed by default.
+
+⸻
+
+Behavior
+	•	On load: read preferred_unit_system from /api/profile and render fields accordingly.
+	•	On toggle: convert current in-memory values and re-render inputs in the selected system.
+	•	On save:
+	•	Convert SI inputs → US on the client.
+	•	Send canonical fields only:
+
+{
+  "preferred_unit_system": "US" | "SI",  // string enum
+  "height_in": 69,                       // INT (total inches) or null
+  "weight_lb": 165.00,                   // DECIMAL(6,2) or null
+  "country_of_residence": "US"           // ISO alpha-2
+}
+
+	•	Height in US mode: height_in = ft * 12 + in (in constrained 0–11).
+	•	Height in SI mode: height_in = round(cm / 2.54).
+	•	Weight in SI mode: weight_lb = kg * 2.2046226218.
+
+⸻
+
+API / Storage
+	•	GET /api/profile returns:
+
+{
+  "preferred_unit_system": "US",
+  "height_in": 69,
+  "weight_lb": 165.0,
+  "country_of_residence": "US"
+}
+
+	•	PUT /api/profile accepts canonical US fields + unit preference + country.
+	•	DB schema additions:
+
+users.preferred_unit_system VARCHAR(2) NOT NULL DEFAULT 'US',
+users.height_in INT NULL,
+users.weight_lb DECIMAL(6,2) NULL,
+users.country_of_residence VARCHAR(2)  -- ISO alpha-2
+
+
+⸻
+
+Validation (MVP)
+	•	height_in hard bounds: 48–90 (4’0”–7’6”); soft-warn outside 55–80.
+	•	Inches field: constrained 0–11 (no auto-carry).
+	•	weight_lb hard bounds: 66–660; soft-warn outside 90–440.
+	•	Allow NULL (cleared field). Never store 0.
+	•	Ensure country_of_residence is valid ISO alpha-2 code.
+	•	Use exact conversion constants; rounding only for UI display, not for stored values.
+
+⸻
+
+Constraints
+	•	Affect Profile page only (no global header toggle).
+	•	Do not add analytics or extra fields.
+	•	Preserve input labels/focus when toggling unit system.
+	•	All sections collapsed by default: Demographics, Chronic Conditions, Allergies & Intolerances, Lifestyle, Reproductive Context.
+
+⸻
+
+QA Checklist
+	•	Toggle US ⇄ SI: inputs switch correctly, values converted without drift.
+	•	Enter 175 cm → Save → reload in US → ≈ 5 ft 9 in.
+	•	Enter 154 lb → Save → toggle to SI → ≈ 69.9 kg.
+	•	Clearing values saves NULL; reload shows empty placeholders.
+	•	Inches field rejects >11; no auto-carry.
+	•	Invalid country code cannot be saved; dropdown only shows valid ISO alpha-2.
+	•	Out-of-range entries trigger gentle warning and block save.
+	•	All collapsible sections load collapsed by default, expand smoothly on click.
+	•	No styling regressions; Profile page retains Majestic aesthetic.
+
+⸻
+
+✅ This is now airtight: one toggle, canonical US storage, ISO alpha-2 countries, and every profile section collapsed by default.
+
+⸻
+
+Would you like me to also adjust the Profile navigation flow so that when the user opens Profile for the first time, Demographics auto-expands once (to encourage completion), but defaults to collapsed on later visits?
