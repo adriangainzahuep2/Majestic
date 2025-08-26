@@ -283,13 +283,28 @@ router.get('/', authMiddleware, async (req, res) => {
             [userId]
         );
         
+        // Return flat profile object with snake_case keys and null-safe values
+        const user = userResult.rows[0];
         const profile = {
-            ...userResult.rows[0],
+            sex: user.sex ?? null,
+            date_of_birth: user.date_of_birth ?? null,
+            height_in: user.height_in ?? null,
+            weight_lb: user.weight_lb ?? null,
+            preferred_unit_system: user.preferred_unit_system ?? 'US',
+            country_of_residence: user.country_of_residence ?? null,
+            ethnicity: user.ethnicity ?? null,
+            smoker: user.smoker ?? null,
+            packs_per_week: user.packs_per_week ?? null,
+            alcohol_drinks_per_week: user.alcohol_drinks_per_week ?? null,
+            pregnant: user.pregnant ?? null,
+            pregnancy_start_date: user.pregnancy_start_date ?? null,
+            cycle_phase: user.cycle_phase ?? null,
             chronicConditions: chronicConditionsResult.rows,
             allergies: allergiesResult.rows
         };
         
-        res.json({ success: true, profile });
+        res.setHeader('Content-Type', 'application/json');
+        res.json(profile);
     } catch (error) {
         console.error('Failed to get profile:', error);
         res.status(500).json({ success: false, message: 'Failed to get profile' });
@@ -305,12 +320,12 @@ router.put('/', authMiddleware, async (req, res) => {
         // Extract allergies and chronic conditions from the main data
         const { allergies = [], chronicConditions = [], ...userUpdates } = profileData;
         
-        // Build the SQL update query dynamically
+        // Build the SQL update query dynamically - expect snake_case input
         const updateFields = [];
         const values = [];
         let paramIndex = 1;
         
-        // Add profile fields to update
+        // Add profile fields to update - input should be snake_case
         const profileFields = [
             'preferred_unit_system', 'sex', 'date_of_birth', 'height_in', 'weight_lb', 
             'ethnicity', 'country_of_residence', 'smoker', 'packs_per_week', 
@@ -318,14 +333,35 @@ router.put('/', authMiddleware, async (req, res) => {
         ];
         
         profileFields.forEach(field => {
-            const camelCaseField = field.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-            if (userUpdates[camelCaseField] !== undefined) {
+            if (userUpdates[field] !== undefined) {
                 updateFields.push(`${field} = $${paramIndex}`);
-                // Handle empty strings for date fields
-                let value = userUpdates[camelCaseField];
-                if ((field === 'date_of_birth' || field === 'pregnancy_start_date') && value === '') {
+                
+                // Normalize input values
+                let value = userUpdates[field];
+                
+                // Handle empty strings -> null
+                if (value === '') {
                     value = null;
                 }
+                // Parse numbers for numeric fields
+                else if (['height_in', 'weight_lb', 'packs_per_week', 'alcohol_drinks_per_week'].includes(field) && value !== null) {
+                    value = Number(value);
+                }
+                // Parse booleans for boolean fields
+                else if (['smoker', 'pregnant'].includes(field) && value !== null) {
+                    if (value === 'true') value = true;
+                    else if (value === 'false') value = false;
+                    else if (value === true || value === false) value = value;
+                    else value = null;
+                }
+                // Validate ISO dates
+                else if (['date_of_birth', 'pregnancy_start_date'].includes(field) && value !== null) {
+                    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+                    if (!dateRegex.test(value)) {
+                        value = null; // Invalid date format
+                    }
+                }
+                
                 values.push(value);
                 paramIndex++;
             }
@@ -384,11 +420,26 @@ router.put('/', authMiddleware, async (req, res) => {
             `);
         }
         
-        res.json({ 
-            success: true, 
-            message: 'Profile updated successfully',
-            user: updatedUser.rows[0]
-        });
+        // Return flat updated profile object with snake_case keys
+        const updatedUserData = updatedUser.rows[0];
+        const updatedProfile = {
+            sex: updatedUserData.sex ?? null,
+            date_of_birth: updatedUserData.date_of_birth ?? null,
+            height_in: updatedUserData.height_in ?? null,
+            weight_lb: updatedUserData.weight_lb ?? null,
+            preferred_unit_system: updatedUserData.preferred_unit_system ?? 'US',
+            country_of_residence: updatedUserData.country_of_residence ?? null,
+            ethnicity: updatedUserData.ethnicity ?? null,
+            smoker: updatedUserData.smoker ?? null,
+            packs_per_week: updatedUserData.packs_per_week ?? null,
+            alcohol_drinks_per_week: updatedUserData.alcohol_drinks_per_week ?? null,
+            pregnant: updatedUserData.pregnant ?? null,
+            pregnancy_start_date: updatedUserData.pregnancy_start_date ?? null,
+            cycle_phase: updatedUserData.cycle_phase ?? null
+        };
+        
+        res.setHeader('Content-Type', 'application/json');
+        res.json(updatedProfile);
     } catch (error) {
         console.error('Failed to update profile:', error);
         res.status(500).json({ success: false, message: 'Failed to update profile' });

@@ -2560,11 +2560,52 @@ class HealthDashboard {
         new bootstrap.Toast(toast).show();
     }
 
+    // Helper function to normalize profile response with null safety
+    normalizeProfileResponse(p = {}) {
+        return {
+            sex: p.sex ?? null,
+            dateOfBirth: p.date_of_birth ?? null,
+            heightIn: p.height_in ?? null,
+            weightLb: p.weight_lb ?? null,
+            preferredUnitSystem: p.preferred_unit_system ?? 'US',
+            countryOfResidence: p.country_of_residence ?? null,
+            ethnicity: p.ethnicity ?? null,
+            smoker: (p.smoker === true ? true : p.smoker === false ? false : null),
+            packsPerWeek: p.packs_per_week ?? null,
+            alcoholDrinksPerWeek: p.alcohol_drinks_per_week ?? null,
+            pregnant: (p.pregnant === true ? true : p.pregnant === false ? false : null),
+            pregnancyStartDate: p.pregnancy_start_date ?? null,
+            cyclePhase: p.cycle_phase ?? null
+        };
+    }
+
+    // Helper function to build profile payload in snake_case
+    buildProfilePayload(state) {
+        return {
+            sex: state.sex ?? null,
+            date_of_birth: state.dateOfBirth ?? null,
+            height_in: state.heightIn ? Number(state.heightIn) : null,
+            weight_lb: state.weightLb ? Number(state.weightLb) : null,
+            preferred_unit_system: state.preferredUnitSystem ?? 'US',
+            country_of_residence: state.countryOfResidence ?? null,
+            ethnicity: state.ethnicity ?? null,
+            smoker: (state.smoker === true ? true : state.smoker === false ? false : null),
+            packs_per_week: state.packsPerWeek === '' ? null : Number(state.packsPerWeek),
+            alcohol_drinks_per_week: state.alcoholDrinksPerWeek === '' ? null : Number(state.alcoholDrinksPerWeek),
+            pregnant: (state.pregnant === true ? true : state.pregnant === false ? false : null),
+            pregnancy_start_date: state.pregnancyStartDate ?? null,
+            cycle_phase: state.cyclePhase ?? null
+        };
+    }
+
     // Profile Methods
     async loadProfileData() {
         try {
-            const profile = await this.apiCall('/profile', 'GET');
-            this.populateProfileForm(profile);
+            const response = await this.apiCall('/profile', 'GET');
+            // Handle both flat response and wrapped response for backwards compatibility
+            const profileData = response.profile || response;
+            const normalizedProfile = this.normalizeProfileResponse(profileData);
+            this.populateProfileForm(normalizedProfile);
         } catch (error) {
             console.error('Failed to load profile:', {
                 message: error.message,
@@ -2584,58 +2625,64 @@ class HealthDashboard {
         if (!profile) return;
         
         // Set unit system preference
-        const unitSystem = profile.preferred_unit_system || 'US';
+        const unitSystem = profile.preferredUnitSystem || 'US';
         document.getElementById(`unit${unitSystem}`).checked = true;
         this.toggleUnitSystem(unitSystem);
         
-        // Demographics
-        if (profile.sex) document.getElementById('sex').value = profile.sex;
-        if (profile.dateOfBirth) document.getElementById('dateOfBirth').value = profile.dateOfBirth;
+        // Demographics - use null-safe values
+        document.getElementById('sex').value = profile.sex || '';
+        document.getElementById('dateOfBirth').value = profile.dateOfBirth || '';
         
         // Height and weight from canonical storage
-        if (profile.height_in !== null && profile.height_in !== undefined) {
+        if (profile.heightIn !== null && profile.heightIn !== undefined) {
             if (unitSystem === 'US') {
-                const feet = Math.floor(profile.height_in / 12);
-                const inches = profile.height_in % 12;
+                const feet = Math.floor(profile.heightIn / 12);
+                const inches = profile.heightIn % 12;
                 document.getElementById('heightFeet').value = feet;
                 document.getElementById('heightInches').value = inches;
             } else {
-                const cm = Math.round(profile.height_in * 2.54);
+                const cm = Math.round(profile.heightIn * 2.54);
                 document.getElementById('heightCm').value = cm;
             }
         }
         
-        if (profile.weight_lb !== null && profile.weight_lb !== undefined) {
+        if (profile.weightLb !== null && profile.weightLb !== undefined) {
             if (unitSystem === 'US') {
-                document.getElementById('weightLbs').value = profile.weight_lb;
+                document.getElementById('weightLbs').value = profile.weightLb;
             } else {
-                const kg = (profile.weight_lb / 2.2046226218).toFixed(1);
+                const kg = (profile.weightLb / 2.2046226218).toFixed(1);
                 document.getElementById('weightKg').value = parseFloat(kg);
             }
         }
         
-        if (profile.ethnicity) document.getElementById('ethnicity').value = profile.ethnicity;
-        if (profile.country_of_residence) document.getElementById('countryOfResidence').value = profile.country_of_residence;
+        document.getElementById('ethnicity').value = profile.ethnicity || '';
+        document.getElementById('countryOfResidence').value = profile.countryOfResidence || '';
         
-        // Lifestyle
-        if (profile.smoker !== null) {
+        // Lifestyle - null-safe boolean handling
+        if (profile.smoker === true || profile.smoker === false) {
             document.getElementById('smoker').value = profile.smoker.toString();
             if (profile.smoker && profile.packsPerWeek) {
                 document.getElementById('packsPerWeek').value = profile.packsPerWeek;
                 document.getElementById('packsPerWeekContainer').classList.remove('d-none');
             }
+        } else {
+            document.getElementById('smoker').value = '';
         }
-        if (profile.alcoholDrinksPerWeek) document.getElementById('alcoholDrinksPerWeek').value = profile.alcoholDrinksPerWeek;
         
-        // Reproductive context
-        if (profile.pregnant !== null) {
+        document.getElementById('alcoholDrinksPerWeek').value = profile.alcoholDrinksPerWeek || '';
+        
+        // Reproductive context - null-safe boolean handling
+        if (profile.pregnant === true || profile.pregnant === false) {
             document.getElementById('pregnant').value = profile.pregnant.toString();
             if (profile.pregnant && profile.pregnancyStartDate) {
                 document.getElementById('pregnancyStartDate').value = profile.pregnancyStartDate;
                 document.getElementById('pregnancyDateContainer').classList.remove('d-none');
             }
+        } else {
+            document.getElementById('pregnant').value = '';
         }
-        if (profile.cyclePhase) document.getElementById('cyclePhase').value = profile.cyclePhase;
+        
+        document.getElementById('cyclePhase').value = profile.cyclePhase || '';
         
         // Calculate age if DOB exists
         if (profile.dateOfBirth) {
@@ -2807,21 +2854,25 @@ class HealthDashboard {
             return;
         }
         
-        const profileData = {
-            preferred_unit_system: unitSystem,
-            sex: document.getElementById('sex').value,
-            dateOfBirth: document.getElementById('dateOfBirth').value,
-            height_in: heightIn,
-            weight_lb: weightLb,
-            ethnicity: document.getElementById('ethnicity').value,
-            country_of_residence: document.getElementById('countryOfResidence').value,
-            smoker: document.getElementById('smoker').value ? document.getElementById('smoker').value === 'true' : null,
-            packsPerWeek: parseFloat(document.getElementById('packsPerWeek').value) || null,
-            alcoholDrinksPerWeek: parseInt(document.getElementById('alcoholDrinksPerWeek').value) || null,
-            pregnant: document.getElementById('pregnant').value ? document.getElementById('pregnant').value === 'true' : null,
-            pregnancyStartDate: document.getElementById('pregnancyStartDate').value,
-            cyclePhase: document.getElementById('cyclePhase').value
+        // Build profile state in camelCase for processing
+        const profileState = {
+            preferredUnitSystem: unitSystem,
+            sex: document.getElementById('sex').value || null,
+            dateOfBirth: document.getElementById('dateOfBirth').value || null,
+            heightIn: heightIn,
+            weightLb: weightLb,
+            ethnicity: document.getElementById('ethnicity').value || null,
+            countryOfResidence: document.getElementById('countryOfResidence').value || null,
+            smoker: document.getElementById('smoker').value ? (document.getElementById('smoker').value === 'true') : null,
+            packsPerWeek: document.getElementById('packsPerWeek').value || null,
+            alcoholDrinksPerWeek: document.getElementById('alcoholDrinksPerWeek').value || null,
+            pregnant: document.getElementById('pregnant').value ? (document.getElementById('pregnant').value === 'true') : null,
+            pregnancyStartDate: document.getElementById('pregnancyStartDate').value || null,
+            cyclePhase: document.getElementById('cyclePhase').value || null
         };
+        
+        // Convert to snake_case payload for API
+        const profileData = this.buildProfilePayload(profileState);
 
         // Collect allergies
         const allergies = [];
@@ -2845,13 +2896,7 @@ class HealthDashboard {
             }
         });
 
-        // Validate data before sending
-        if (profileData.dateOfBirth === '') {
-            profileData.dateOfBirth = null;
-        }
-        if (profileData.pregnancyStartDate === '') {
-            profileData.pregnancyStartDate = null;
-        }
+        // Data is already normalized by buildProfilePayload
         
         // Validate inches field if in US mode
         if (unitSystem === 'US') {
@@ -2868,7 +2913,7 @@ class HealthDashboard {
         }
         
         // Ensure numeric fields are properly validated
-        if (profileData.packsPerWeek !== null && profileData.packsPerWeek < 0) {
+        if (profileData.packs_per_week !== null && profileData.packs_per_week < 0) {
             // Reset button state on validation error
             saveBtn.disabled = false;
             saveText.classList.remove('d-none');
@@ -2877,7 +2922,7 @@ class HealthDashboard {
             this.showToast('error', 'Validation Error', 'Packs per week cannot be negative');
             return;
         }
-        if (profileData.alcoholDrinksPerWeek !== null && profileData.alcoholDrinksPerWeek < 0) {
+        if (profileData.alcohol_drinks_per_week !== null && profileData.alcohol_drinks_per_week < 0) {
             // Reset button state on validation error
             saveBtn.disabled = false;
             saveText.classList.remove('d-none');

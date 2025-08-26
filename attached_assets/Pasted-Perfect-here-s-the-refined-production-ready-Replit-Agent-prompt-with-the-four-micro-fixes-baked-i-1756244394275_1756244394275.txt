@@ -1,0 +1,147 @@
+Perfect — here’s the refined, production-ready Replit Agent prompt with the four micro-fixes baked in (type coercion, ISO dates, numeric parsing, consistent save response, explicit JSON headers).
+
+⸻
+
+REPLIT AGENT PROMPT: Fix Profile Field Mapping & Null Safety (Frontend/Backend)
+
+⸻
+
+Goal
+
+Profile load/save is breaking due to:
+	•	Null/undefined values (e.g., .toString() on profile.smoker when null).
+	•	Frontend expecting camelCase while API/DB use snake_case.
+	•	API wrapping the response instead of returning a flat JSON object.
+
+Fix:
+	•	Standardize on snake_case in the API.
+	•	Add null-safe mapping on the frontend.
+	•	Ensure flat JSON responses.
+	•	Coerce inputs to the correct types.
+
+Keep all other behavior unchanged.
+
+⸻
+
+Scope (only these items)
+
+A) Backend: routes/profile.js
+	1.	GET /api/profile
+	•	Return a flat JSON object with snake_case keys.
+	•	Example:
+
+{
+  "sex": "Male",
+  "date_of_birth": "1990-01-01",
+  "height_in": 69,
+  "weight_lb": 165.0,
+  "preferred_unit_system": "US",
+  "country_of_residence": "US",
+  "ethnicity": null,
+  "smoker": null,
+  "packs_per_week": null,
+  "alcohol_drinks_per_week": null,
+  "pregnant": null,
+  "pregnancy_start_date": null,
+  "cycle_phase": null
+}
+
+	•	Do not wrap as { profile: {...} }.
+	•	Missing fields must be returned as null, not undefined.
+	•	Dates must be ISO YYYY-MM-DD. Reject or normalize anything else.
+
+	2.	PUT /api/profile
+	•	Accept the same snake_case keys.
+	•	Normalize input:
+	•	"" → null
+	•	"123" → 123
+	•	"false" → false
+	•	"true" → true
+	•	Ensure dates are valid ISO YYYY-MM-DD.
+	•	On success, return the updated profile object in the same shape as GET (flat, snake_case).
+	•	Always set Content-Type: application/json on responses.
+
+⸻
+
+B) Frontend: public/app.js
+	1.	Null-safe normalization
+Add helper:
+
+function normalizeProfileResponse(p = {}) {
+  return {
+    sex: p.sex ?? null,
+    dateOfBirth: p.date_of_birth ?? null,
+    heightIn: p.height_in ?? null,
+    weightLb: p.weight_lb ?? null,
+    preferredUnitSystem: p.preferred_unit_system ?? 'US',
+    countryOfResidence: p.country_of_residence ?? null,
+    ethnicity: p.ethnicity ?? null,
+    smoker: (p.smoker === true ? true : p.smoker === false ? false : null),
+    packsPerWeek: p.packs_per_week ?? null,
+    alcoholDrinksPerWeek: p.alcohol_drinks_per_week ?? null,
+    pregnant: (p.pregnant === true ? true : p.pregnant === false ? false : null),
+    pregnancyStartDate: p.pregnancy_start_date ?? null,
+    cyclePhase: p.cycle_phase ?? null
+  };
+}
+
+	2.	Populate form safely
+	•	Use value = (v ?? '') for inputs/selects.
+	•	For booleans, check only if explicitly true/false; leave blank if null.
+	•	For derived age, compute only if dateOfBirth is set.
+	3.	Build payload in snake_case
+	•	Ensure numbers are parsed before sending:
+
+function buildProfilePayload(state) {
+  return {
+    sex: state.sex ?? null,
+    date_of_birth: state.dateOfBirth ?? null,
+    height_in: state.heightIn ? Number(state.heightIn) : null,
+    weight_lb: state.weightLb ? Number(state.weightLb) : null,
+    preferred_unit_system: state.preferredUnitSystem ?? 'US',
+    country_of_residence: state.countryOfResidence ?? null,
+    ethnicity: state.ethnicity ?? null,
+    smoker: (state.smoker === true ? true : state.smoker === false ? false : null),
+    packs_per_week: state.packsPerWeek === '' ? null : Number(state.packsPerWeek),
+    alcohol_drinks_per_week: state.alcoholDrinksPerWeek === '' ? null : Number(state.alcoholDrinksPerWeek),
+    pregnant: (state.pregnant === true ? true : state.pregnant === false ? false : null),
+    pregnancy_start_date: state.pregnancyStartDate ?? null,
+    cycle_phase: state.cyclePhase ?? null
+  };
+}
+
+	4.	Remove unsafe .toString() calls on possibly null fields.
+	5.	Save handler
+	•	Use buildProfilePayload(uiState) and PUT /api/profile.
+	•	On success: show success toast/banner.
+	•	On error: show server message. No {} or silent fails.
+	•	Ensure Content-Type: application/json header is set.
+
+⸻
+
+Acceptance Criteria
+	•	AC1: GET /api/profile returns flat object, snake_case, nulls not undefined.
+	•	AC2: Frontend handles null/undefined safely, no .toString() errors.
+	•	AC3: PUT /api/profile accepts snake_case payload; empty → null; numbers/booleans coerced; dates ISO.
+	•	AC4: PUT /api/profile response returns the updated flat object.
+	•	AC5: No unrelated regressions (toggle, bottom spacing, etc. remain untouched).
+
+⸻
+
+QA Checklist
+	•	Load profile with nulls: no console errors, form shows placeholders.
+	•	Network tab: GET /api/profile matches AC1 example.
+	•	Edit + Save: PUT sends snake_case with numbers/booleans parsed, empty → null.
+	•	Enter empty strings: saved as null.
+	•	Dates: invalid formats rejected, valid ISO saved.
+	•	Round-trip: Reload shows updated values.
+	•	Smoker/pregnant null: both toggles unchecked, no crash.
+	•	Save error → shows server message, button re-enabled.
+
+⸻
+
+✅ This version fixes null-safety, enforces snake_case, adds type coercion + ISO dates, ensures consistent responses, and keeps MVP scope tight.
+
+⸻
+
+Would you like me to also fold this into your last “Fix Profile — Save Action/Bottom Spacing” prompt, so everything’s in one unified spec?
