@@ -34,6 +34,14 @@ class HealthDashboard {
         document.getElementById('googleLoginBtn').addEventListener('click', () => this.googleLogin());
         document.getElementById('logoutBtn').addEventListener('click', () => this.logout());
         
+        // Profile navigation
+        document.getElementById('profileLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showProfile();
+        });
+        document.getElementById('backToApp').addEventListener('click', () => this.showApp());
+        document.getElementById('cancelProfile').addEventListener('click', () => this.showApp());
+        
         // Tab navigation
         document.getElementById('dashboard-tab').addEventListener('click', () => this.loadDashboard());
         document.getElementById('daily-plan-tab').addEventListener('click', () => this.loadDailyPlan());
@@ -51,6 +59,21 @@ class HealthDashboard {
             e.stopPropagation();
             document.getElementById('fileUpload').click();
         });
+
+        // Profile form
+        document.getElementById('profileForm').addEventListener('submit', (e) => this.saveProfile(e));
+        
+        // Profile field interactions
+        document.getElementById('dateOfBirth').addEventListener('change', this.calculateAge);
+        document.getElementById('heightFeet').addEventListener('input', this.convertHeight);
+        document.getElementById('heightInches').addEventListener('input', this.convertHeight);
+        document.getElementById('heightCm').addEventListener('input', this.convertHeight);
+        document.getElementById('weightLbs').addEventListener('input', this.convertWeight);
+        document.getElementById('weightKg').addEventListener('input', this.convertWeight);
+        document.getElementById('sex').addEventListener('change', this.toggleReproductiveSection);
+        document.getElementById('smoker').addEventListener('change', this.toggleSmokingFields);
+        document.getElementById('pregnant').addEventListener('change', this.togglePregnancyFields);
+        document.getElementById('pregnancyStartDate').addEventListener('change', this.calculateTrimester);
 
         // Setup drag and drop
         this.setupDragAndDrop();
@@ -230,9 +253,32 @@ class HealthDashboard {
     showApp() {
         document.getElementById('loginSection').classList.add('d-none');
         document.getElementById('appSection').classList.remove('d-none');
+        document.getElementById('profileSection').classList.add('d-none');
         document.getElementById('userSection').classList.remove('d-none');
         document.getElementById('loginBtn').classList.add('d-none');
+        
+        // Update user avatar
+        if (this.user) {
+            this.updateUserAvatar();
+        }
+        
         this.loadDashboard();
+    }
+
+    showProfile() {
+        document.getElementById('appSection').classList.add('d-none');
+        document.getElementById('profileSection').classList.remove('d-none');
+        this.loadProfileData();
+        this.loadCountries();
+    }
+
+    updateUserAvatar() {
+        const userInitials = document.getElementById('userInitials');
+        if (userInitials && this.user) {
+            const name = this.user.name || this.user.email;
+            const initials = name.split(' ').map(part => part.charAt(0)).join('').substring(0, 2).toUpperCase();
+            userInitials.textContent = initials;
+        }
     }
 
     showLoading(show) {
@@ -2485,6 +2531,287 @@ class HealthDashboard {
 
         new bootstrap.Toast(toast).show();
     }
+
+    // Profile Methods
+    async loadProfileData() {
+        try {
+            const profile = await this.apiCall('/profile', 'GET');
+            this.populateProfileForm(profile);
+        } catch (error) {
+            console.error('Failed to load profile:', error);
+        }
+    }
+
+    populateProfileForm(profile) {
+        if (!profile) return;
+        
+        // Demographics
+        if (profile.sex) document.getElementById('sex').value = profile.sex;
+        if (profile.dateOfBirth) document.getElementById('dateOfBirth').value = profile.dateOfBirth;
+        if (profile.heightFeet) document.getElementById('heightFeet').value = profile.heightFeet;
+        if (profile.heightInches) document.getElementById('heightInches').value = profile.heightInches;
+        if (profile.heightCm) document.getElementById('heightCm').value = profile.heightCm;
+        if (profile.weightLbs) document.getElementById('weightLbs').value = profile.weightLbs;
+        if (profile.weightKg) document.getElementById('weightKg').value = profile.weightKg;
+        if (profile.ethnicity) document.getElementById('ethnicity').value = profile.ethnicity;
+        if (profile.countryOfResidence) document.getElementById('countryOfResidence').value = profile.countryOfResidence;
+        
+        // Lifestyle
+        if (profile.smoker !== null) {
+            document.getElementById('smoker').value = profile.smoker.toString();
+            if (profile.smoker && profile.packsPerWeek) {
+                document.getElementById('packsPerWeek').value = profile.packsPerWeek;
+                document.getElementById('packsPerWeekContainer').classList.remove('d-none');
+            }
+        }
+        if (profile.alcoholDrinksPerWeek) document.getElementById('alcoholDrinksPerWeek').value = profile.alcoholDrinksPerWeek;
+        
+        // Reproductive context
+        if (profile.pregnant !== null) {
+            document.getElementById('pregnant').value = profile.pregnant.toString();
+            if (profile.pregnant && profile.pregnancyStartDate) {
+                document.getElementById('pregnancyStartDate').value = profile.pregnancyStartDate;
+                document.getElementById('pregnancyDateContainer').classList.remove('d-none');
+            }
+        }
+        if (profile.cyclePhase) document.getElementById('cyclePhase').value = profile.cyclePhase;
+        
+        // Calculate age if DOB exists
+        if (profile.dateOfBirth) {
+            this.calculateAge();
+        }
+        
+        // Show reproductive section if sex is female
+        this.toggleReproductiveSection();
+    }
+
+    async loadCountries() {
+        try {
+            const response = await this.apiCall('/profile/countries', 'GET');
+            const select = document.getElementById('countryOfResidence');
+            select.innerHTML = '<option value="">Select country...</option>';
+            
+            response.countries.forEach(country => {
+                const option = document.createElement('option');
+                option.value = country.code;
+                option.textContent = country.name;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Failed to load countries:', error);
+            document.getElementById('countryOfResidence').innerHTML = '<option value="">Error loading countries</option>';
+        }
+    }
+
+    async saveProfile(e) {
+        e.preventDefault();
+        
+        const profileData = {
+            sex: document.getElementById('sex').value,
+            dateOfBirth: document.getElementById('dateOfBirth').value,
+            heightFeet: parseInt(document.getElementById('heightFeet').value) || null,
+            heightInches: parseInt(document.getElementById('heightInches').value) || null,
+            heightCm: parseInt(document.getElementById('heightCm').value) || null,
+            weightLbs: parseFloat(document.getElementById('weightLbs').value) || null,
+            weightKg: parseFloat(document.getElementById('weightKg').value) || null,
+            ethnicity: document.getElementById('ethnicity').value,
+            countryOfResidence: document.getElementById('countryOfResidence').value,
+            smoker: document.getElementById('smoker').value ? document.getElementById('smoker').value === 'true' : null,
+            packsPerWeek: parseFloat(document.getElementById('packsPerWeek').value) || null,
+            alcoholDrinksPerWeek: parseInt(document.getElementById('alcoholDrinksPerWeek').value) || null,
+            pregnant: document.getElementById('pregnant').value ? document.getElementById('pregnant').value === 'true' : null,
+            pregnancyStartDate: document.getElementById('pregnancyStartDate').value,
+            cyclePhase: document.getElementById('cyclePhase').value
+        };
+
+        // Collect allergies
+        const allergies = [];
+        document.querySelectorAll('#allergiesCollapse input[type="checkbox"]:checked').forEach(checkbox => {
+            allergies.push({
+                allergyType: checkbox.dataset.type,
+                allergenName: checkbox.value
+            });
+        });
+
+        // Collect chronic conditions
+        const chronicConditions = [];
+        document.querySelectorAll('#chronicConditionsList .chronic-condition-item').forEach(item => {
+            const conditionSelect = item.querySelector('select:first-child');
+            const statusSelect = item.querySelector('select:last-child');
+            if (conditionSelect.value && statusSelect.value) {
+                chronicConditions.push({
+                    conditionName: conditionSelect.value,
+                    status: statusSelect.value
+                });
+            }
+        });
+
+        try {
+            this.showLoading(true);
+            await this.apiCall('/profile', 'PUT', {
+                ...profileData,
+                allergies,
+                chronicConditions
+            });
+            
+            this.showToast('success', 'Profile Saved', 'Your profile has been updated successfully');
+            this.showApp();
+        } catch (error) {
+            console.error('Failed to save profile:', error);
+            this.showToast('error', 'Save Failed', 'Failed to save profile. Please try again.');
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    calculateAge() {
+        const dob = document.getElementById('dateOfBirth').value;
+        const ageSpan = document.getElementById('calculatedAge');
+        
+        if (dob) {
+            const birthDate = new Date(dob);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            
+            ageSpan.textContent = `${age} years old`;
+        } else {
+            ageSpan.textContent = '-';
+        }
+    }
+
+    convertHeight() {
+        const feet = parseInt(document.getElementById('heightFeet').value) || 0;
+        const inches = parseInt(document.getElementById('heightInches').value) || 0;
+        const cm = parseInt(document.getElementById('heightCm').value) || 0;
+        
+        if ((feet || inches) && !cm) {
+            // Convert ft/in to cm
+            const totalInches = feet * 12 + inches;
+            const convertedCm = Math.round(totalInches * 2.54);
+            document.getElementById('heightCm').value = convertedCm;
+        } else if (cm && !feet && !inches) {
+            // Convert cm to ft/in
+            const totalInches = Math.round(cm / 2.54);
+            const convertedFeet = Math.floor(totalInches / 12);
+            const convertedInches = totalInches % 12;
+            document.getElementById('heightFeet').value = convertedFeet;
+            document.getElementById('heightInches').value = convertedInches;
+        }
+    }
+
+    convertWeight() {
+        const lbs = parseFloat(document.getElementById('weightLbs').value) || 0;
+        const kg = parseFloat(document.getElementById('weightKg').value) || 0;
+        
+        if (lbs && !kg) {
+            // Convert lbs to kg
+            const convertedKg = (lbs * 0.453592).toFixed(1);
+            document.getElementById('weightKg').value = convertedKg;
+        } else if (kg && !lbs) {
+            // Convert kg to lbs
+            const convertedLbs = (kg * 2.20462).toFixed(1);
+            document.getElementById('weightLbs').value = convertedLbs;
+        }
+    }
+
+    toggleReproductiveSection() {
+        const sex = document.getElementById('sex').value;
+        const reproductiveSection = document.getElementById('reproductiveSection');
+        
+        if (sex === 'Female') {
+            reproductiveSection.style.display = 'block';
+        } else {
+            reproductiveSection.style.display = 'none';
+        }
+    }
+
+    toggleSmokingFields() {
+        const smoker = document.getElementById('smoker').value;
+        const container = document.getElementById('packsPerWeekContainer');
+        
+        if (smoker === 'true') {
+            container.classList.remove('d-none');
+        } else {
+            container.classList.add('d-none');
+            document.getElementById('packsPerWeek').value = '';
+        }
+    }
+
+    togglePregnancyFields() {
+        const pregnant = document.getElementById('pregnant').value;
+        const container = document.getElementById('pregnancyDateContainer');
+        
+        if (pregnant === 'true') {
+            container.classList.remove('d-none');
+        } else {
+            container.classList.add('d-none');
+            document.getElementById('pregnancyStartDate').value = '';
+        }
+    }
+
+    calculateTrimester() {
+        const startDate = document.getElementById('pregnancyStartDate').value;
+        const trimesterSpan = document.getElementById('calculatedTrimester');
+        
+        if (startDate) {
+            const start = new Date(startDate);
+            const today = new Date();
+            const weeks = Math.floor((today - start) / (7 * 24 * 60 * 60 * 1000));
+            
+            let trimester;
+            if (weeks <= 13) {
+                trimester = '1st Trimester';
+            } else if (weeks <= 26) {
+                trimester = '2nd Trimester';
+            } else if (weeks <= 40) {
+                trimester = '3rd Trimester';
+            } else {
+                trimester = 'Full Term+';
+            }
+            
+            trimesterSpan.textContent = `${trimester} (${weeks} weeks)`;
+        } else {
+            trimesterSpan.textContent = '-';
+        }
+    }
+}
+
+// Global functions for chronic conditions
+function addChronicCondition() {
+    const container = document.getElementById('chronicConditionsList');
+    const newItem = document.createElement('div');
+    newItem.className = 'chronic-condition-item mb-3';
+    newItem.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <select class="form-select">
+                    <option value="">Select condition (list updating soon)</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <select class="form-select">
+                    <option value="">Status</option>
+                    <option value="Active">Active</option>
+                    <option value="In Remission">In Remission</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="removeChronicCondition(this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    container.appendChild(newItem);
+}
+
+function removeChronicCondition(button) {
+    button.closest('.chronic-condition-item').remove();
 }
 
 // Utility Functions

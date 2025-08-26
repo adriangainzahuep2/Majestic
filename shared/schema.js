@@ -8,6 +8,24 @@ export const users = pgTable('users', {
   googleId: varchar('google_id', { length: 255 }).unique(),
   name: varchar('name', { length: 255 }),
   avatarUrl: text('avatar_url'),
+  // Profile fields
+  sex: varchar('sex', { length: 50 }),
+  dateOfBirth: date('date_of_birth'),
+  heightFeet: integer('height_feet'),
+  heightInches: integer('height_inches'),
+  heightCm: integer('height_cm'),
+  weightLbs: decimal('weight_lbs', { precision: 5, scale: 2 }),
+  weightKg: decimal('weight_kg', { precision: 5, scale: 2 }),
+  ethnicity: varchar('ethnicity', { length: 100 }),
+  countryOfResidence: varchar('country_of_residence', { length: 3 }),
+  smoker: boolean('smoker'),
+  packsPerWeek: decimal('packs_per_week', { precision: 3, scale: 1 }),
+  alcoholDrinksPerWeek: integer('alcohol_drinks_per_week'),
+  pregnant: boolean('pregnant'),
+  pregnancyStartDate: date('pregnancy_start_date'),
+  cyclePhase: varchar('cycle_phase', { length: 50 }),
+  profileCompleted: boolean('profile_completed').default(false),
+  profileUpdatedAt: timestamp('profile_updated_at'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -133,6 +151,24 @@ export const userCustomMetrics = pgTable('user_custom_metrics', {
   };
 });
 
+// User Chronic Conditions table
+export const userChronicConditions = pgTable('user_chronic_conditions', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  conditionName: varchar('condition_name', { length: 200 }).notNull(),
+  status: varchar('status', { length: 20 }).notNull(), // Active, In Remission
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// User Allergies table
+export const userAllergies = pgTable('user_allergies', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  allergyType: varchar('allergy_type', { length: 40 }).notNull(), // food, medication, environmental, intolerance
+  allergenName: varchar('allergen_name', { length: 200 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   uploads: many(uploads),
@@ -142,6 +178,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   dailyPlans: many(dailyPlans),
   imagingStudies: many(imagingStudies),
   userCustomMetrics: many(userCustomMetrics),
+  chronicConditions: many(userChronicConditions),
+  allergies: many(userAllergies),
 }));
 
 export const healthSystemsRelations = relations(healthSystems, ({ many }) => ({
@@ -223,5 +261,19 @@ export const userCustomMetricsRelations = relations(userCustomMetrics, ({ one })
   healthSystem: one(healthSystems, {
     fields: [userCustomMetrics.systemId],
     references: [healthSystems.id],
+  }),
+}));
+
+export const userChronicConditionsRelations = relations(userChronicConditions, ({ one }) => ({
+  user: one(users, {
+    fields: [userChronicConditions.userId],
+    references: [users.id],
+  }),
+}));
+
+export const userAllergiesRelations = relations(userAllergies, ({ one }) => ({
+  user: one(users, {
+    fields: [userAllergies.userId],
+    references: [users.id],
   }),
 }));

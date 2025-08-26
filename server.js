@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const uploadRoutes = require('./routes/uploads');
 const metricsRoutes = require('./routes/metrics');
 const dashboardRoutes = require('./routes/dashboard');
+const profileRoutes = require('./routes/profile');
 
 // Import middleware
 const authMiddleware = require('./middleware/auth');
@@ -42,6 +43,7 @@ app.use('/api/uploads', authMiddleware, uploadRoutes);
 app.use('/api/metrics/custom', authMiddleware, require('./routes/customMetrics'));
 app.use('/api/metrics', authMiddleware, metricsRoutes);
 app.use('/api/dashboard', authMiddleware, dashboardRoutes);
+app.use('/api/profile', authMiddleware, profileRoutes);
 
 // Phase 1 Unified Ingestion Pipeline Routes
 app.use('/api/ingestFile', authMiddleware, require('./routes/ingestFile'));

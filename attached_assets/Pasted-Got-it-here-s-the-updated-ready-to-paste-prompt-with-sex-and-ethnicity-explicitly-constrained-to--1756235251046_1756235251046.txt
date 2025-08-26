@@ -1,0 +1,147 @@
+Got it — here’s the updated, ready-to-paste prompt with sex and ethnicity explicitly constrained to fixed dropdown options, plus a QA checklist at the end.
+
+⸻
+
+REPLIT AGENT PROMPT: Build MVP Profile & Minimal UI
+
+Task
+
+Implement the MVP Profile UI and Minimal UI navigation for Majestic, with fields and options as specified below.
+Keep everything lightweight, dropdown-driven where possible, and styled in Majestic’s calm/Apple-like aesthetic.
+
+Minimal UI (Navigation)
+	•	Top right corner: circular avatar with user initials.
+	•	On click → dropdown with “Profile” option.
+	•	Clicking Profile opens a full page (not a modal).
+
+Profile Page Fields
+
+Demographics (collapsible — expanded by default)
+	•	Sex (dropdown; required; constrained to these values only):
+	•	Male / Female / Other / Prefer not to say
+	•	Date of Birth (required; derive Age automatically on client)
+	•	Height (ft/in or cm; store both forms if provided)
+	•	Weight (lbs or kg; store both forms if provided)
+	•	Ethnicity (dropdown; optional; constrained to these values only):
+	•	White
+	•	Black / African American
+	•	Hispanic / Latino
+	•	Asian
+	•	Middle Eastern / North African
+	•	Native American / Alaska Native
+	•	Pacific Islander
+	•	Mixed / Other
+	•	Prefer not to say
+	•	Country of Residence (dropdown; full ISO country list; optional)
+
+Chronic Conditions (time-bounded, collapsible — expanded by default)
+
+Each entry:
+	•	Condition: dropdown UI scaffold only (leave options empty for now)
+Placeholder: “Select condition (list updating soon)”
+	•	Status: dropdown → Active / In Remission
+
+Allergies & Intolerances (collapsible — expanded by default)
+	•	Food Allergies: Milk, Eggs, Peanuts, Tree nuts, Soy, Wheat/Gluten, Fish, Shellfish
+	•	Medication Allergies/Sensitivities: Penicillin, Sulfa drugs, NSAIDs, Contrast dye, Anesthetics
+	•	Environmental Allergies: Pollen, Dust mites, Mold, Animal dander, Insect stings
+	•	Other Intolerances: Lactose, Yeast, Additives (MSG, dyes, sulfites)
+	•	MVP: no “reaction” detail field
+
+Lifestyle (rolling, collapsible — expanded by default)
+	•	Smoker: Y/N. If Y → ask “# of packs per week.”
+	•	Alcohol: “# of drinks per week.”
+
+Reproductive Context (for female users, collapsible — expanded by default)
+	•	Pregnant? Y/N
+	•	If Yes → pregnancy_start_date (auto-infer trimester on client)
+	•	cycle_phase: dropdown only → Menstrual / Follicular / Ovulation / Luteal / Irregular-Unsure
+
+Constraints
+	•	Minimal, modern styling consistent with Majestic (Apple Health / Calm vibe).
+	•	Use dropdowns/toggles wherever possible (no free text for sex/ethnicity/cycle phase/status).
+	•	Sections are collapsible but expanded by default.
+	•	Do not add analytics, unit conversion, or HealthKit integration yet.
+	•	Chronic conditions dropdown is scaffolded but empty with placeholder until a config file is provided later.
+
+Database Schema Requirements
+
+Extend users table:
+
+sex VARCHAR(50)                         -- constrained by dropdown
+date_of_birth DATE
+height_feet INTEGER, height_inches INTEGER   -- imperial (nullable)
+height_cm INTEGER                            -- metric (nullable)
+weight_lbs DECIMAL(5,2), weight_kg DECIMAL(5,2)
+ethnicity VARCHAR(100)                   -- constrained by dropdown
+country_of_residence VARCHAR(3)          -- ISO-3166-1 alpha-3 (or alpha-2 if your codebase prefers)
+smoker BOOLEAN, packs_per_week DECIMAL(3,1)
+alcohol_drinks_per_week INTEGER
+pregnant BOOLEAN, pregnancy_start_date DATE
+cycle_phase VARCHAR(50)                  -- constrained by dropdown
+profile_completed BOOLEAN DEFAULT false
+profile_updated_at TIMESTAMP
+
+New tables:
+
+user_chronic_conditions (
+  user_id UUID NOT NULL,
+  condition_name VARCHAR(200) NOT NULL,  -- will map to config list later
+  status VARCHAR(20) NOT NULL CHECK (status IN ('Active','In Remission')),
+  created_at TIMESTAMP DEFAULT NOW()
+)
+
+user_allergies (
+  user_id UUID NOT NULL,
+  allergy_type VARCHAR(40) NOT NULL,     -- 'food' | 'medication' | 'environmental' | 'intolerance'
+  allergen_name VARCHAR(200) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+)
+
+API Endpoints
+
+GET  /api/profile                -- Fetch user profile
+PUT  /api/profile                -- Update user profile
+GET  /api/profile/countries      -- ISO country list (for dropdown)
+GET  /api/profile/conditions     -- Conditions list (scaffold; returns empty array for now)
+
+
+⸻
+
+QA Checklist
+
+Navigation
+	•	Avatar appears top-right with initials; clicking shows Profile; navigating opens a full page.
+
+Demographics
+	•	Sex and Ethnicity are dropdowns only with exactly the specified options; cannot type arbitrary values.
+	•	DOB saves; age displays correctly.
+	•	Height/Weight accept either unit set; saving preserves entered values.
+	•	Country dropdown loads ISO list; selection saves.
+
+Chronic Conditions
+	•	Section renders with empty dropdown and placeholder “Select condition (list updating soon)”.
+	•	Status dropdown shows only Active / In Remission.
+	•	Add/remove entries works; saved rows appear on reload.
+
+Allergies & Intolerances
+	•	Each category supports adding multiple items.
+	•	Saved selections persist on reload.
+
+Lifestyle
+	•	Smoker Y/N works; if Y, packs/week appears and persists.
+	•	Alcohol drinks/week persists.
+
+Reproductive Context
+	•	Cycle phase is a dropdown with the five fixed values only.
+	•	If Pregnant = Yes, date picker for pregnancy_start_date appears; trimester is inferred (client).
+
+General
+	•	Sections are collapsible, default to expanded; toggling doesn’t lose unsaved state.
+	•	PUT /api/profile updates the correct fields; GET returns the same values.
+	•	No free-text inputs exist for sex/ethnicity/cycle_phase/status.
+	•	Mobile layout remains readable; no overflowing inputs.
+
+⸻
+
+This version locks sex and ethnicity to dropdowns, keeps the chronic conditions list deferable, and gives you a concrete QA script to verify the build.

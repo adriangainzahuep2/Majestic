@@ -24,10 +24,18 @@
                         <i class="fas fa-sign-in-alt me-2"></i>Sign In
                     </button>
                     <div id="userSection" class="d-none">
-                        <span id="userName" class="text-small me-3"></span>
-                        <button id="logoutBtn" class="btn btn-outline-primary">
-                            <i class="fas fa-sign-out-alt me-2"></i>Sign Out
-                        </button>
+                        <div class="dropdown">
+                            <button class="btn p-0 border-0 bg-transparent dropdown-toggle-no-caret" type="button" id="userDropdown" data-bs-toggle="dropdown">
+                                <div id="userAvatar" class="user-avatar">
+                                    <span id="userInitials"></span>
+                                </div>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" style="min-width: 150px;">
+                                <li><a class="dropdown-item" href="#" id="profileLink"><i class="fas fa-user me-2"></i>Profile</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#" id="logoutBtn"><i class="fas fa-sign-out-alt me-2"></i>Sign Out</a></li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -299,6 +307,349 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Page -->
+        <div id="profileSection" class="d-none">
+            <div class="row mb-4">
+                <div class="col">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2>Profile</h2>
+                            <p class="text-small">Complete your health profile for personalized insights</p>
+                        </div>
+                        <button id="backToApp" class="btn btn-outline-primary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <form id="profileForm">
+                        <!-- Demographics -->
+                        <div class="card mb-4">
+                            <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#demographicsCollapse">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-user me-2"></i>Demographics
+                                    <i class="fas fa-chevron-down ms-auto float-end"></i>
+                                </h6>
+                            </div>
+                            <div class="collapse show" id="demographicsCollapse">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Sex *</label>
+                                            <select class="form-select" id="sex" required>
+                                                <option value="">Select...</option>
+                                                <option value="Male">Male</option>
+                                                <option value="Female">Female</option>
+                                                <option value="Other">Other</option>
+                                                <option value="Prefer not to say">Prefer not to say</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Date of Birth *</label>
+                                            <input type="date" class="form-control" id="dateOfBirth" required>
+                                            <div class="form-text">Age: <span id="calculatedAge">-</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Height</label>
+                                            <div class="input-group">
+                                                <input type="number" class="form-control" id="heightFeet" placeholder="Feet" min="0" max="8">
+                                                <span class="input-group-text">'</span>
+                                                <input type="number" class="form-control" id="heightInches" placeholder="Inches" min="0" max="11">
+                                                <span class="input-group-text">"</span>
+                                                <span class="input-group-text">or</span>
+                                                <input type="number" class="form-control" id="heightCm" placeholder="cm" min="0" max="250">
+                                                <span class="input-group-text">cm</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Weight</label>
+                                            <div class="input-group">
+                                                <input type="number" class="form-control" id="weightLbs" placeholder="lbs" min="0" max="1000" step="0.1">
+                                                <span class="input-group-text">lbs or</span>
+                                                <input type="number" class="form-control" id="weightKg" placeholder="kg" min="0" max="500" step="0.1">
+                                                <span class="input-group-text">kg</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Ethnicity</label>
+                                            <select class="form-select" id="ethnicity">
+                                                <option value="">Select...</option>
+                                                <option value="White">White</option>
+                                                <option value="Black / African American">Black / African American</option>
+                                                <option value="Hispanic / Latino">Hispanic / Latino</option>
+                                                <option value="Asian">Asian</option>
+                                                <option value="Middle Eastern / North African">Middle Eastern / North African</option>
+                                                <option value="Native American / Alaska Native">Native American / Alaska Native</option>
+                                                <option value="Pacific Islander">Pacific Islander</option>
+                                                <option value="Mixed / Other">Mixed / Other</option>
+                                                <option value="Prefer not to say">Prefer not to say</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Country of Residence</label>
+                                            <select class="form-select" id="countryOfResidence">
+                                                <option value="">Loading countries...</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chronic Conditions -->
+                        <div class="card mb-4">
+                            <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#conditionsCollapse">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-stethoscope me-2"></i>Chronic Conditions
+                                    <i class="fas fa-chevron-down ms-auto float-end"></i>
+                                </h6>
+                            </div>
+                            <div class="collapse show" id="conditionsCollapse">
+                                <div class="card-body">
+                                    <div id="chronicConditionsList">
+                                        <div class="chronic-condition-item mb-3">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <select class="form-select">
+                                                        <option value="">Select condition (list updating soon)</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <select class="form-select">
+                                                        <option value="">Status</option>
+                                                        <option value="Active">Active</option>
+                                                        <option value="In Remission">In Remission</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="removeChronicCondition(this)">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="addChronicCondition()">
+                                        <i class="fas fa-plus me-2"></i>Add Condition
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Allergies & Intolerances -->
+                        <div class="card mb-4">
+                            <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#allergiesCollapse">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>Allergies & Intolerances
+                                    <i class="fas fa-chevron-down ms-auto float-end"></i>
+                                </h6>
+                            </div>
+                            <div class="collapse show" id="allergiesCollapse">
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Food Allergies</label>
+                                        <div class="form-check-container">
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="Milk" data-type="food">
+                                                <label class="form-check-label">Milk</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="Eggs" data-type="food">
+                                                <label class="form-check-label">Eggs</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="Peanuts" data-type="food">
+                                                <label class="form-check-label">Peanuts</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="Tree nuts" data-type="food">
+                                                <label class="form-check-label">Tree nuts</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="Soy" data-type="food">
+                                                <label class="form-check-label">Soy</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="Wheat/Gluten" data-type="food">
+                                                <label class="form-check-label">Wheat/Gluten</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="Fish" data-type="food">
+                                                <label class="form-check-label">Fish</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="Shellfish" data-type="food">
+                                                <label class="form-check-label">Shellfish</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Medication Allergies/Sensitivities</label>
+                                        <div class="form-check-container">
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="Penicillin" data-type="medication">
+                                                <label class="form-check-label">Penicillin</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="Sulfa drugs" data-type="medication">
+                                                <label class="form-check-label">Sulfa drugs</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="NSAIDs" data-type="medication">
+                                                <label class="form-check-label">NSAIDs</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="Contrast dye" data-type="medication">
+                                                <label class="form-check-label">Contrast dye</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="Anesthetics" data-type="medication">
+                                                <label class="form-check-label">Anesthetics</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Environmental Allergies</label>
+                                        <div class="form-check-container">
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="Pollen" data-type="environmental">
+                                                <label class="form-check-label">Pollen</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="Dust mites" data-type="environmental">
+                                                <label class="form-check-label">Dust mites</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="Mold" data-type="environmental">
+                                                <label class="form-check-label">Mold</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="Animal dander" data-type="environmental">
+                                                <label class="form-check-label">Animal dander</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="Insect stings" data-type="environmental">
+                                                <label class="form-check-label">Insect stings</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Other Intolerances</label>
+                                        <div class="form-check-container">
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="Lactose" data-type="intolerance">
+                                                <label class="form-check-label">Lactose</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="Yeast" data-type="intolerance">
+                                                <label class="form-check-label">Yeast</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="MSG" data-type="intolerance">
+                                                <label class="form-check-label">MSG</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="Dyes" data-type="intolerance">
+                                                <label class="form-check-label">Dyes</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" value="Sulfites" data-type="intolerance">
+                                                <label class="form-check-label">Sulfites</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Lifestyle -->
+                        <div class="card mb-4">
+                            <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#lifestyleCollapse">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-heart me-2"></i>Lifestyle
+                                    <i class="fas fa-chevron-down ms-auto float-end"></i>
+                                </h6>
+                            </div>
+                            <div class="collapse show" id="lifestyleCollapse">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Smoker</label>
+                                            <select class="form-select" id="smoker">
+                                                <option value="">Select...</option>
+                                                <option value="true">Yes</option>
+                                                <option value="false">No</option>
+                                            </select>
+                                            <div class="mt-2 d-none" id="packsPerWeekContainer">
+                                                <label class="form-label">Packs per week</label>
+                                                <input type="number" class="form-control" id="packsPerWeek" min="0" max="50" step="0.5">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Alcohol (drinks per week)</label>
+                                            <input type="number" class="form-control" id="alcoholDrinksPerWeek" min="0" max="100">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Reproductive Context (for female users) -->
+                        <div class="card mb-4" id="reproductiveSection" style="display: none;">
+                            <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#reproductiveCollapse">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-venus me-2"></i>Reproductive Context
+                                    <i class="fas fa-chevron-down ms-auto float-end"></i>
+                                </h6>
+                            </div>
+                            <div class="collapse show" id="reproductiveCollapse">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Pregnant</label>
+                                            <select class="form-select" id="pregnant">
+                                                <option value="">Select...</option>
+                                                <option value="true">Yes</option>
+                                                <option value="false">No</option>
+                                            </select>
+                                            <div class="mt-2 d-none" id="pregnancyDateContainer">
+                                                <label class="form-label">Pregnancy start date</label>
+                                                <input type="date" class="form-control" id="pregnancyStartDate">
+                                                <div class="form-text">Trimester: <span id="calculatedTrimester">-</span></div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Cycle Phase</label>
+                                            <select class="form-select" id="cyclePhase">
+                                                <option value="">Select...</option>
+                                                <option value="Menstrual">Menstrual</option>
+                                                <option value="Follicular">Follicular</option>
+                                                <option value="Ovulation">Ovulation</option>
+                                                <option value="Luteal">Luteal</option>
+                                                <option value="Irregular-Unsure">Irregular-Unsure</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-outline-secondary" id="cancelProfile">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Profile</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>

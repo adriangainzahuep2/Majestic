@@ -39,13 +39,13 @@ args = "List DB Snapshots"
 name = "Health App Server"
 author = "agent"
 
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "PORT=8000 npm install && SKIP_GLOBAL_JOBS=true PORT=8000 node server.js"
 waitForPort = 8000
-
-[workflows.workflow.metadata]
-outputType = "webview"
 
 [[workflows.workflow]]
 name = "DB Sync"

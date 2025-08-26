@@ -212,6 +212,82 @@ p {
     border-color: #1D1D1F !important;
 }
 
+/* User Avatar */
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #007AFF, #5AC8FA);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.user-avatar:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+}
+
+.dropdown-toggle-no-caret::after {
+    display: none;
+}
+
+/* Profile Form Styles */
+.form-check-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 8px;
+}
+
+.form-check-inline {
+    margin-right: 0;
+}
+
+.card-header[role="button"] {
+    cursor: pointer;
+    user-select: none;
+}
+
+.card-header[role="button"]:hover {
+    background-color: rgba(0, 122, 255, 0.1);
+}
+
+.card-header .fas.fa-chevron-down {
+    transition: transform 0.2s ease;
+}
+
+.collapsed .fas.fa-chevron-down {
+    transform: rotate(-90deg);
+}
+
+/* Profile specific input group styling */
+.input-group .form-control {
+    border-right: 0;
+}
+
+.input-group .form-control:not(:last-child) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.input-group .form-control:not(:first-child) {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left: 0;
+}
+
+.input-group-text {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-light);
+    color: var(--text-secondary);
+}
+
 /* Cards - Elevated and clean */
 .card {
     background: var(--bg-card);
