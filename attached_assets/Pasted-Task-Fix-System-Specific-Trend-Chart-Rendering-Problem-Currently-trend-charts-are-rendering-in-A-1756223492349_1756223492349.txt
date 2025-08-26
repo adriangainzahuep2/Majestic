@@ -1,0 +1,38 @@
+Task: Fix System-Specific Trend Chart Rendering
+
+Problem: Currently, trend charts are rendering in ALL system drill-down modals if any key metric has ≥2 data points, regardless of which system the metric actually belongs to. For example, cardiovascular metrics like "LDL" are appearing in the Sensory system modal.
+
+Root Cause: The getSystemTrends(userId, systemId) method in services/healthSystems.js filters metrics by system_id in the database query, but it doesn't validate that each metric actually belongs to the requested system before including it in the trend response. This affects both lab metrics and visual study metrics.
+
+Objective: Ensure trend charts only render for metrics that actually belong to the specific system being viewed.
+
+Changes Needed:
+
+Add system validation for lab metrics in getSystemTrends():
+Currently processes all lab metrics from the database query without validating system ownership
+Before adding any lab metric to metricData, validate using this.isKeyMetric(systemId, metricName)
+Only include lab metrics that are actually key metrics for the requested system
+Add system validation for visual study metrics in getSystemTrends():
+Currently processes ALL visual study measurements without validating metric ownership
+Before adding any visual study measurement to metricData, validate using this.isKeyMetric(systemId, measurementName)
+Only include measurements that are actually key metrics for the requested system
+System validation logic:
+Before adding ANY metric (lab or visual) to trendsResponse, verify it belongs to the current system
+Use the existing isKeyMetric(systemId, metricName) function to validate system ownership
+Only include metrics where this.isKeyMetric(systemId, metricName) returns true
+Expected Behavior After Fix:
+
+Cardiovascular system: Shows only LDL, HDL, Blood Pressure trends
+Sensory system: Shows only eye/hearing-related metric trends
+Each system: Shows only its own relevant key metrics with ≥2 data points
+Empty trend section: Hidden when no system-specific metrics have ≥2 data points
+Technical Details:
+
+The database query filters by system_id but doesn't guarantee metric ownership validation
+Both lab metrics processing AND visual studies processing need system validation
+Frontend trend rendering logic is correct - just receiving wrong data from backend
+The issue occurs for both normal lab tests and visual studies
+Files to modify:
+
+services/healthSystems.js - Add system validation in both lab metrics and visual studies processing within getSystemTrends()
+This ensures trends are system-specific and eliminates cross-system metric bleeding for all metric types.
