@@ -362,21 +362,6 @@ class HealthDashboard {
         body.innerHTML = `
             <div class="row">
                 <div class="col-lg-8">
-                    <!-- Key Metrics -->
-                    <div class="card mb-4">
-                        <div class="card-header" style="background: #007AFF; color: #FFFFFF;">
-                            <h6 class="mb-0" style="color: #FFFFFF;">
-                                <i class="fas fa-star me-2"></i>Key Metrics
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            ${systemData.keyMetrics.length > 0 ? 
-                                this.renderMetricsTable(systemData.keyMetrics, systemData.system) :
-                                '<p style="color: #EBEBF5;">No key metrics available</p>'
-                            }
-                        </div>
-                    </div>
-
                     <!-- Trends -->
                     <div id="trends-section" class="card mb-4" style="display: none;">
                         <div class="card-header" style="background: #007AFF; color: #FFFFFF;">
@@ -391,6 +376,21 @@ class HealthDashboard {
                                     <span>Loading trend data...</span>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Key Metrics -->
+                    <div class="card mb-4">
+                        <div class="card-header" style="background: #007AFF; color: #FFFFFF;">
+                            <h6 class="mb-0" style="color: #FFFFFF;">
+                                <i class="fas fa-star me-2"></i>Key Metrics
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            ${systemData.keyMetrics.length > 0 ? 
+                                this.renderMetricsTable(systemData.keyMetrics, systemData.system) :
+                                '<p style="color: #EBEBF5;">No key metrics available</p>'
+                            }
                         </div>
                     </div>
 
