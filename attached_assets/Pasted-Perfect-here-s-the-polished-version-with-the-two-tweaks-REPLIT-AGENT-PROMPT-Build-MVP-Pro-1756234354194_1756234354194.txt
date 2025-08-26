@@ -1,0 +1,87 @@
+Perfect 👍 — here’s the polished version with the two tweaks:
+
+⸻
+
+REPLIT AGENT PROMPT: Build MVP Profile & Minimal UI
+
+⸻
+
+Task
+
+Implement the MVP Profile UI and Minimal UI navigation for Majestic, with fields and options as specified below.
+Keep everything lightweight, dropdown-driven where possible, and styled in Majestic’s calm/Apple-like aesthetic.
+
+⸻
+
+Minimal UI (Navigation)
+	•	Top right corner: circular avatar with user initials.
+	•	On click → dropdown with “Profile” option.
+	•	Clicking “Profile” opens the Profile as a full page (not a modal).
+
+⸻
+
+Profile Page Fields
+
+Demographics (collapsible section — expanded by default)
+	•	Sex: Male / Female / Other / Prefer not to say
+	•	Date of Birth (derive Age automatically)
+	•	Height (ft/in OR cm)
+	•	Weight (lbs OR kg)
+	•	Ethnicity (optional):
+	•	White
+	•	Black / African American
+	•	Hispanic / Latino
+	•	Asian
+	•	Middle Eastern / North African
+	•	Native American / Alaska Native
+	•	Pacific Islander
+	•	Mixed / Other
+	•	Prefer not to say
+	•	Country of Residence: dropdown (full ISO country list)
+
+⸻
+
+Chronic Conditions (time-bounded, collapsible section — expanded by default)
+Each entry:
+	•	Condition: dropdown (scaffold only, leave blank for now)
+	•	Show placeholder text: “Select condition (list updating soon)”
+	•	Status: Active / Resolved
+
+⸻
+
+Allergies & Intolerances (collapsible section — expanded by default)
+	•	Food Allergies: Milk, Eggs, Peanuts, Tree nuts, Soy, Wheat/Gluten, Fish, Shellfish
+	•	Medication Allergies/Sensitivities: Penicillin, Sulfa drugs, NSAIDs, Contrast dye, Anesthetics
+	•	Environmental Allergies: Pollen, Dust mites, Mold, Animal dander, Insect stings
+	•	Other Intolerances: Lactose, Yeast, Additives (MSG, dyes, sulfites)
+	•	[For MVP: no “reaction” detail required]
+
+⸻
+
+Lifestyle (rolling, collapsible section — expanded by default)
+	•	Smoker: Y/N. If Y → ask “# of packs per week.”
+	•	Alcohol: “# of drinks per week.”
+
+⸻
+
+Reproductive Context (for Female users, collapsible section — expanded by default)
+	•	Pregnant? Y/N
+	•	If Yes → pregnancy_start_date (infers trimester automatically)
+	•	Cycle phase: Menstrual / Follicular / Ovulation / Luteal / Irregular-Unsure
+
+⸻
+
+Constraints
+	•	Keep styling minimal, modern, Majestic aesthetic (Apple Health / Calm style).
+	•	Use dropdowns/toggles wherever possible, not free text.
+	•	Profile sections should be collapsible but expanded by default for usability.
+	•	Do not add analytics, unit conversion, or HealthKit integration yet.
+	•	Scaffold chronic conditions dropdown but leave empty with placeholder text until config file is added later.
+
+⸻
+
+✅ With this spec, Replit Agent builds the full Profile UI + navigation now, with collapsible (but expanded) sections for a clean MVP flow, and a ready placeholder for conditions until the full list is provided.
+
+⸻
+
+Would you like me to also draft the companion conditions.json file structure (just the schema, not all 100 entries) so you can hand that to Replit Agent later when you’re ready to load the list?
