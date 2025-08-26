@@ -1,0 +1,84 @@
+Here’s a tight, copy-pasteable prompt for Replit Agent that fixes the color/contrast bugs on focused inputs and the “Failed to Save Profile” error—without changing any unrelated logic or layout.
+
+⸻
+
+REPLIT AGENT PROMPT: Fix Profile Page Input Styles + Save Error
+
+Goal
+	1.	Fix visual bugs where input text turns black on black (DOB segments, Height, Weight, Packs/Week, Alcohol/Week) on focus/interaction.
+	2.	Fix “Failed to Save Profile” on Save Profile (ensure PUT /api/profile works and surfaces real validation errors).
+
+Scope (do ONLY this)
+	•	Profile page inputs styling (focus/active/hover/disabled states) for:
+	•	Date of Birth segmented inputs (MM / DD / YYYY)
+	•	Height (ft/in or cm)
+	•	Weight (lbs or kg)
+	•	Packs Per Week
+	•	Alcohol (Drinks Per Week)
+	•	Save Profile handler & API call to PUT /api/profile.
+	•	Do not alter field list, layout, or data model.
+
+Styling Fixes (apply consistently)
+	•	Ensure all inputs (text, number, segmented date parts) have:
+	•	Text color: text-neutral-900 (light mode) / dark:text-neutral-100 (dark mode)
+	•	Background: bg-white (light) / dark:bg-neutral-900 (dark)
+	•	Placeholder: placeholder-neutral-400 (visible against bg)
+	•	Border: border-neutral-300 focus:border-neutral-500 focus:ring-2 focus:ring-neutral-300 (light)
+dark:border-neutral-700 dark:focus:border-neutral-400 dark:focus:ring-neutral-700
+	•	Do not switch text to black on focus if background is also dark. Maintain contrast ≥ WCAG AA.
+	•	For segmented inputs (DOB, ft/in), non-focused segments must retain normal text color (no “fade to black on black”). Only the border/ring should change on focus.
+	•	For number inputs, prevent arrow interactions from flipping text color:
+	•	If using native <input type="number">, override WebKit spin button styles so focus/active state doesn’t change text color to black:
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button { 
+  opacity: 1;
+  background: transparent;
+}
+input[type="number"]:focus {
+  color: inherit; /* keep current text color */
+}
+
+
+	•	If custom steppers exist, ensure their hover/active classes don’t set text-black on a black/dark background.
+
+	•	Disabled/readonly states: keep text-neutral-600 on bg-neutral-100 (light) / dark:text-neutral-400 on dark:bg-neutral-800 (dark) for readability.
+
+Save Profile Fix
+	•	Confirm PUT /api/profile is the endpoint (not /api/auth/profile).
+	•	On Save:
+	•	Serialize only allowed fields; send application/json.
+	•	Handle optional fields as null (not empty strings) to satisfy server schema.
+	•	On non-2xx, parse JSON body for message/errors and show helpful toast (“Couldn’t save: {reason}”). Do not show generic “Failed to Save Profile” without details.
+	•	Log request/response to console in dev only.
+	•	Common pitfalls to handle:
+	•	Validation: enforce min/max (e.g., packs per week ≥ 0; drinks per week ≥ 0).
+	•	Type coercion: numbers must be numbers; empty → null.
+	•	DOB: send ISO YYYY-MM-DD.
+	•	Dropdowns (sex, ethnicity, cycle_phase, status) must use the constrained values.
+	•	Ensure API helper uses existing auth (headers/cookies). Do not change auth flow.
+
+Acceptance Criteria
+	1.	DOB segmented fields: when focusing or selecting any segment, text remains visible (no black-on-black). Non-focused segments remain readable.
+	2.	Height/Weight inputs: clicking arrows or focusing never causes text to turn black on dark backgrounds.
+	3.	Packs Per Week / Alcohol Per Week: same as above; arrows & focus keep text readable; values validate (no negatives).
+	4.	Light & Dark modes: all inputs meet contrast guidelines in both themes.
+	5.	Save Profile:
+	•	Success: shows success toast; subsequent GET /api/profile returns updated values; UI reflects saved values after reload.
+	•	Failure: shows specific reason from server (e.g., “DOB invalid”); no generic “Failed to Save Profile” unless server provides no detail.
+	6.	No layout shifts, no changes to field list, and no regressions in other pages.
+
+QA Checklist (manual)
+	•	Light + Dark mode:
+	•	Focus each DOB segment (MM, DD, YYYY) → text stays visible.
+	•	Height ft/in, Weight lbs/kg: click spinner arrows rapidly → text remains readable throughout.
+	•	Packs/Week, Alcohol/Week: same spinner test; try negative → blocked or validated with friendly error.
+	•	Save Profile:
+	•	Change Sex, Ethnicity, Country, DOB, Height, Weight, smoker/alcohol fields → Save → reload page: values persist.
+	•	Force a server validation error (e.g., DOB empty) → see specific error in toast.
+	•	Keyboard navigation: tab through all inputs; focus rings appear; no color inversion on text.
+	•	Mobile viewport: inputs remain readable and tappable; no overlapping labels.
+
+⸻
+
+Do not introduce new components, analytics, or redesigns. Fix only the color/contrast behavior for these inputs and the save error handling.

@@ -2646,19 +2646,62 @@ class HealthDashboard {
             }
         });
 
+        // Validate data before sending
+        if (profileData.dateOfBirth === '') {
+            profileData.dateOfBirth = null;
+        }
+        if (profileData.pregnancyStartDate === '') {
+            profileData.pregnancyStartDate = null;
+        }
+        
+        // Ensure numeric fields are properly validated
+        if (profileData.packsPerWeek !== null && profileData.packsPerWeek < 0) {
+            this.showToast('error', 'Validation Error', 'Packs per week cannot be negative');
+            return;
+        }
+        if (profileData.alcoholDrinksPerWeek !== null && profileData.alcoholDrinksPerWeek < 0) {
+            this.showToast('error', 'Validation Error', 'Drinks per week cannot be negative');
+            return;
+        }
+
         try {
             this.showLoading(true);
-            await this.apiCall('/profile', 'PUT', {
+            console.log('Sending profile data:', JSON.stringify({...profileData, allergies, chronicConditions}, null, 2));
+            
+            const response = await this.apiCall('/profile', 'PUT', {
                 ...profileData,
                 allergies,
                 chronicConditions
             });
             
+            console.log('Profile save response:', response);
             this.showToast('success', 'Profile Saved', 'Your profile has been updated successfully');
             this.showApp();
         } catch (error) {
             console.error('Failed to save profile:', error);
-            this.showToast('error', 'Save Failed', 'Failed to save profile. Please try again.');
+            
+            let errorMessage = 'Failed to save profile. Please try again.';
+            
+            // Try to extract specific error details
+            if (error && error.response) {
+                try {
+                    const errorData = typeof error.response === 'string' ? JSON.parse(error.response) : error.response;
+                    if (errorData.message) {
+                        errorMessage = `Save failed: ${errorData.message}`;
+                    } else if (errorData.error) {
+                        errorMessage = `Save failed: ${errorData.error}`;
+                    }
+                } catch (e) {
+                    // If JSON parsing fails, use the original response
+                    errorMessage = `Save failed: ${error.response}`;
+                }
+            } else if (error && error.message) {
+                errorMessage = `Save failed: ${error.message}`;
+            } else if (error && error.error) {
+                errorMessage = `Save failed: ${error.error}`;
+            }
+            
+            this.showToast('error', 'Save Failed', errorMessage);
         } finally {
             this.showLoading(false);
         }

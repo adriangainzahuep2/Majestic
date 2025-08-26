@@ -288,6 +288,82 @@ p {
     color: var(--text-secondary);
 }
 
+/* Fix input contrast and focus states */
+.form-control,
+.form-select {
+    color: var(--text-primary) !important;
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-light) !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+    color: var(--text-primary) !important;
+    background-color: var(--bg-card) !important;
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 0.2rem rgba(0, 122, 255, 0.25) !important;
+}
+
+.form-control::placeholder {
+    color: var(--text-muted) !important;
+}
+
+/* Fix number input spinner contrast */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    opacity: 1;
+    background: transparent;
+}
+
+input[type="number"]:focus,
+input[type="number"]:active {
+    color: var(--text-primary) !important;
+}
+
+/* Ensure input group inputs maintain proper contrast */
+.input-group .form-control {
+    color: var(--text-primary) !important;
+    background-color: var(--bg-card) !important;
+}
+
+.input-group .form-control:focus {
+    color: var(--text-primary) !important;
+    background-color: var(--bg-card) !important;
+    border-color: var(--primary-color) !important;
+    z-index: 3;
+}
+
+/* Dark mode overrides */
+@media (prefers-color-scheme: dark) {
+    .form-control,
+    .form-select {
+        color: #ffffff !important;
+        background-color: #2c2c2e !important;
+        border-color: #3a3a3c !important;
+    }
+    
+    .form-control:focus,
+    .form-select:focus {
+        color: #ffffff !important;
+        background-color: #2c2c2e !important;
+        border-color: #007AFF !important;
+    }
+    
+    .form-control::placeholder {
+        color: #8e8e93 !important;
+    }
+    
+    .input-group .form-control {
+        color: #ffffff !important;
+        background-color: #2c2c2e !important;
+    }
+    
+    .input-group .form-control:focus {
+        color: #ffffff !important;
+        background-color: #2c2c2e !important;
+    }
+}
+
 /* Cards - Elevated and clean */
 .card {
     background: var(--bg-card);

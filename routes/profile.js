@@ -94,7 +94,12 @@ router.put('/', authMiddleware, async (req, res) => {
             const camelCaseField = field.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
             if (userUpdates[camelCaseField] !== undefined) {
                 updateFields.push(`${field} = $${paramIndex}`);
-                values.push(userUpdates[camelCaseField]);
+                // Handle empty strings for date fields
+                let value = userUpdates[camelCaseField];
+                if ((field === 'date_of_birth' || field === 'pregnancy_start_date') && value === '') {
+                    value = null;
+                }
+                values.push(value);
                 paramIndex++;
             }
         });
