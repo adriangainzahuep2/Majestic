@@ -16,14 +16,19 @@ class HealthDashboard {
         this.setupEventListeners();
         
         if (this.token) {
+            console.log('[INIT] Found token, attempting to load user profile...');
             try {
                 await this.loadUserProfile();
                 this.showApp();
             } catch (error) {
-                console.error('Failed to load user profile:', error);
-                this.logout();
+                console.error('Failed to load user profile on init:', error);
+                // Clear invalid token and show login
+                localStorage.removeItem('authToken');
+                this.token = null;
+                this.showLogin();
             }
         } else {
+            console.log('[INIT] No token found, showing login');
             this.showLogin();
         }
     }
@@ -2504,11 +2509,33 @@ class HealthDashboard {
         const response = await fetch(`${this.apiBase}${endpoint}`, config);
         
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || `HTTP ${response.status}`);
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            
+            // Handle 401 specifically for session expiry
+            if (response.status === 401) {
+                this.handleSessionExpiry();
+                throw new Error(errorData.message || 'Session expired - please sign in again');
+            }
+            
+            throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
         }
 
         return await response.json();
+    }
+    
+    handleSessionExpiry() {
+        // Clear stored token
+        localStorage.removeItem('authToken');
+        this.token = null;
+        this.user = null;
+        
+        // Show sign-in prompt
+        this.showToast('warning', 'Session Expired', 'Please sign in again to continue');
+        
+        // Redirect to login after a short delay
+        setTimeout(() => {
+            this.showLogin();
+        }, 2000);
     }
 
     showToast(type, title, message) {
@@ -2539,7 +2566,17 @@ class HealthDashboard {
             const profile = await this.apiCall('/profile', 'GET');
             this.populateProfileForm(profile);
         } catch (error) {
-            console.error('Failed to load profile:', error);
+            console.error('Failed to load profile:', {
+                message: error.message,
+                status: error.status,
+                endpoint: '/profile'
+            });
+            
+            // Don't show error toast for 401 (handled by handleSessionExpiry)
+            if (!error.message.includes('Session expired')) {
+                this.showToast('error', 'Profile Load Failed', 
+                    error.message || 'Unable to load profile data. Please try again.');
+            }
         }
     }
 

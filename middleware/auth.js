@@ -4,9 +4,14 @@ const authMiddleware = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     
+    // Debug logging for development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[AUTH] ${req.method} ${req.path} - Has Auth Header: ${!!authHeader}`);
+    }
+    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ 
-        error: 'Unauthorized',
+        error: 'unauthorized',
         message: 'No valid authorization token provided' 
       });
     }
@@ -15,6 +20,11 @@ const authMiddleware = async (req, res, next) => {
     
     // Verify and decode token
     const decoded = authService.verifyToken(token);
+    
+    // Debug logging for development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[AUTH] Token valid for user: ${decoded.email || decoded.userId}`);
+    }
     
     // Add user info to request
     req.user = {
@@ -29,7 +39,7 @@ const authMiddleware = async (req, res, next) => {
     
     if (error.message === 'Invalid token') {
       return res.status(401).json({ 
-        error: 'Unauthorized',
+        error: 'unauthorized',
         message: 'Invalid or expired token' 
       });
     }

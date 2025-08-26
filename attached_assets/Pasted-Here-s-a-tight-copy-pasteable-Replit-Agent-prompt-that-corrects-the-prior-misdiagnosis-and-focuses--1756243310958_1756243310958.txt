@@ -1,0 +1,82 @@
+Here’s a tight, copy-pasteable Replit Agent prompt that corrects the prior misdiagnosis and focuses the investigation on auth/token handling, with precise steps, minimal code changes, and clear acceptance tests.
+
+⸻
+
+REPLIT AGENT PROMPT: Diagnose & Fix Profile Save/Load Failures (Auth/Token Handling)
+
+Goal
+
+User cannot load/save Profile. Prior assumption about route mounting was incorrect. Routes are mounted correctly:
+
+app.use('/api/profile', authMiddleware, profileRoutes);
+
+Issue is likely missing/expired/bad JWT or frontend not sending Authorization header. Diagnose and implement the smallest fix so /api/profile GET/PUT work reliably.
+
+⸻
+
+Scope (ONLY these items)
+	1.	Verify backend wiring (read-only):
+
+	•	authMiddleware actually runs for /api/profile.
+	•	req.user is set when a valid token is present; 401 when missing/invalid.
+
+	2.	Inspect frontend requests:
+
+	•	Confirm Authorization: Bearer <token> is included for both GET /api/profile and PUT /api/profile.
+	•	If token is stored (e.g., localStorage.getItem('token')), ensure it’s attached by the API client (fetch/axios interceptor).
+
+	3.	Improve error surfacing:
+
+	•	On 401, show a clear message and route to login (or show “Session expired — please sign in”); don’t fail silently.
+	•	Log actual error details (status/text) instead of {}.
+
+	4.	Minimal fixes:
+
+	•	If the header is missing → add centralized interceptor/helper to always include Authorization for /api/**.
+	•	If token can expire and there is no refresh flow → treat 401 as “sign in again” (non-blocking MVP fix).
+	•	If a refresh token exists → implement/repair minimal refresh logic; otherwise don’t add new flows.
+
+⸻
+
+Concrete Tasks
+
+A. Backend confirmation (no functional change)
+	•	In authMiddleware, add temporary debug log (guarded by ENV) to confirm:
+	•	path, hasAuthHeader, jwtDecodeSuccess/failure
+	•	Ensure 401 response body is JSON with a short message: { "error": "unauthorized" }
+
+B. Frontend API client
+	•	Centralize API calls (or update existing):
+	•	Ensure Authorization: Bearer ${token} is attached to all /api/profile requests.
+	•	On response:
+	•	If status === 401: show toast/banner “Session expired — please sign in” and redirect to login (or open sign-in modal). Remove silent catch blocks.
+
+C. Profile page behaviors
+	•	Load: If GET /api/profile 401 → show sign-in prompt, do not log empty {}.
+	•	Save: Disable button during PUT, show success on 2xx, show error on non-2xx (render server message if present).
+
+Do not change validation ranges, page layout, or schema in this task.
+
+⸻
+
+Acceptance Criteria
+	•	AC1: Network tab shows Authorization: Bearer <token> on both GET /api/profile and PUT /api/profile.
+	•	AC2: With invalid/missing token, both requests return 401 and the UI shows a visible prompt to sign in (no silent failure, no empty {} logs).
+	•	AC3: With valid token, profile loads and saves successfully (success toast on save).
+	•	AC4: Error logs display status and message; not an empty {}.
+	•	AC5: No regressions to other routes or pages.
+
+⸻
+
+QA Checklist
+	•	No token in storage → GET /api/profile 401; UI shows “Session expired — please sign in”; user can navigate to login.
+	•	Valid token → profile data loads; “Save Profile” sends PUT with Authorization; success toast shown.
+	•	Expired token (simulate by tampering) → 401; UI shows sign-in message; no silent failure.
+	•	Console shows meaningful error messages; Network tab confirms headers on both GET and PUT.
+
+⸻
+
+Out of Scope
+	•	Adding a full refresh-token flow (unless already present and trivially fixable).
+	•	Changing profile fields/validation/layout.
+	•	Global navigation changes.
