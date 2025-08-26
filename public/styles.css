@@ -1592,4 +1592,25 @@ input[type="number"]:active {
     margin: 0;
 }
 
+/* Unit System Toggle Styling */
+.btn-group .btn-check:checked + .btn-outline-primary {
+    background-color: var(--secondary-color) !important;
+    border-color: var(--secondary-color) !important;
+    color: var(--text-on-color) !important;
+}
+
+.btn-group .btn-outline-primary {
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+.btn-group .btn-outline-primary:hover {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+/* Profile section with proper bottom spacing */
+#profileSection {
+    padding-bottom: 96px;
 }

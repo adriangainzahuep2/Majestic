@@ -2716,6 +2716,15 @@ class HealthDashboard {
     async saveProfile(e) {
         e.preventDefault();
         
+        // Show saving state
+        const saveBtn = document.getElementById('saveProfileBtn');
+        const saveText = document.getElementById('saveButtonText');
+        const savingSpinner = document.getElementById('savingSpinner');
+        
+        saveBtn.disabled = true;
+        saveText.classList.add('d-none');
+        savingSpinner.classList.remove('d-none');
+        
         // Get current unit system
         const unitSystem = document.querySelector('input[name="unitSystem"]:checked').value;
         
@@ -2743,10 +2752,20 @@ class HealthDashboard {
         
         // Validate height and weight bounds
         if (heightIn !== null && (heightIn < 48 || heightIn > 90)) {
+            // Reset button state on validation error
+            saveBtn.disabled = false;
+            saveText.classList.remove('d-none');
+            savingSpinner.classList.add('d-none');
+            
             this.showToast('error', 'Validation Error', 'Height must be between 4\'0" and 7\'6" (48-90 inches)');
             return;
         }
         if (weightLb !== null && (weightLb < 66 || weightLb > 660)) {
+            // Reset button state on validation error
+            saveBtn.disabled = false;
+            saveText.classList.remove('d-none');
+            savingSpinner.classList.add('d-none');
+            
             this.showToast('error', 'Validation Error', 'Weight must be between 66-660 lbs');
             return;
         }
@@ -2801,6 +2820,11 @@ class HealthDashboard {
         if (unitSystem === 'US') {
             const inches = parseInt(document.getElementById('heightInches').value) || 0;
             if (inches > 11) {
+                // Reset button state on validation error
+                saveBtn.disabled = false;
+                saveText.classList.remove('d-none');
+                savingSpinner.classList.add('d-none');
+                
                 this.showToast('error', 'Validation Error', 'Inches must be between 0-11');
                 return;
             }
@@ -2808,16 +2832,25 @@ class HealthDashboard {
         
         // Ensure numeric fields are properly validated
         if (profileData.packsPerWeek !== null && profileData.packsPerWeek < 0) {
+            // Reset button state on validation error
+            saveBtn.disabled = false;
+            saveText.classList.remove('d-none');
+            savingSpinner.classList.add('d-none');
+            
             this.showToast('error', 'Validation Error', 'Packs per week cannot be negative');
             return;
         }
         if (profileData.alcoholDrinksPerWeek !== null && profileData.alcoholDrinksPerWeek < 0) {
+            // Reset button state on validation error
+            saveBtn.disabled = false;
+            saveText.classList.remove('d-none');
+            savingSpinner.classList.add('d-none');
+            
             this.showToast('error', 'Validation Error', 'Drinks per week cannot be negative');
             return;
         }
 
         try {
-            this.showLoading(true);
             console.log('Sending profile data:', JSON.stringify({...profileData, allergies, chronicConditions}, null, 2));
             
             const response = await this.apiCall('/profile', 'PUT', {
@@ -2826,11 +2859,30 @@ class HealthDashboard {
                 chronicConditions
             });
             
+            // Reset button state on success
+            saveBtn.disabled = false;
+            saveText.classList.remove('d-none');
+            savingSpinner.classList.add('d-none');
+            
             console.log('Profile save response:', response);
             this.showToast('success', 'Profile Saved', 'Your profile has been updated successfully');
-            this.showApp();
+            
+            // Auto-dismiss success toast after 3 seconds
+            setTimeout(() => {
+                const toastElement = document.getElementById('alertToast');
+                const toast = bootstrap.Toast.getInstance(toastElement);
+                if (toast) toast.hide();
+            }, 3000);
+            
+            // Keep unit system toggle highlight by not navigating away
+            
         } catch (error) {
             console.error('Failed to save profile:', error);
+            
+            // Reset button state on error
+            saveBtn.disabled = false;
+            saveText.classList.remove('d-none');
+            savingSpinner.classList.add('d-none');
             
             let errorMessage = 'Failed to save profile. Please try again.';
             
@@ -2854,8 +2906,6 @@ class HealthDashboard {
             }
             
             this.showToast('error', 'Save Failed', errorMessage);
-        } finally {
-            this.showLoading(false);
         }
     }
 

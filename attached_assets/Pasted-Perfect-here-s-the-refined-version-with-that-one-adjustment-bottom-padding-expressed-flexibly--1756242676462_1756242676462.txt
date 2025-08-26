@@ -1,0 +1,79 @@
+Perfect 👍 — here’s the refined version with that one adjustment (bottom padding expressed flexibly as ≥96px, not Tailwind-specific):
+
+⸻
+
+REPLIT AGENT PROMPT: Fix Profile — Unit Toggle Highlight, Page Cut-off, Save Action (+ bottom spacing)
+
+⸻
+
+Scope (only these fixes)
+	•	Persist/reflect selected Unit System (US / SI) with a highlighted state that remains after selection and on reload.
+	•	Remove the page cut-off/freeze below Save Profile and ensure visible space continues after the button.
+	•	Wire Save Profile so it performs the PUT request, shows success/failure, and doesn’t silently fail.
+
+⸻
+
+Requirements
+	1.	Unit System toggle (persist + highlight)
+
+	•	Profile page only (not global).
+	•	Selecting US or SI (metric):
+	•	Visually highlight the active option (selected style) and keep it on reload (read from /api/profile).
+	•	Update local state immediately; include preferred_unit_system on save.
+	•	Styling: keep Majestic aesthetic; if no selected style exists, use a minimal border or background shade.
+
+	2.	Page should scroll past “Save Profile” with visible bottom space
+
+	•	Fix layout so the page fully scrolls; remove any clipping (overflow: hidden) or fixed heights causing cutoff.
+	•	Add bottom padding/spacing on the scroll container of at least 96px or equivalent so there is comfortable space below the Save button.
+	•	Ensure the Save button is never flush with the viewport edge or overlapped by mobile browser chrome/sticky elements.
+
+	3.	Save Profile works (PUT + user feedback)
+
+	•	On click:
+	•	Disable button and show “Saving…” (or spinner).
+	•	PUT /api/profile with payload:
+
+{
+  "preferred_unit_system": "US" | "SI",
+  "height_in": <int or null>,
+  "weight_lb": <number or null>,
+  "country_of_residence": "<ISO alpha-2>"
+}
+
+	•	On success: re-enable button; show non-intrusive success feedback (toast/banner consistent with Majestic aesthetic). Keep toggle highlight.
+	•	On failure: re-enable button; show error feedback (“Failed to save profile. Please try again.”). No silent failures.
+
+⸻
+
+Do NOT change
+	•	No new fields, conversions, or schema changes.
+	•	No navigation or global toggles.
+	•	No animations.
+	•	Don’t modify other pages/APIs beyond this PUT.
+
+⸻
+
+Acceptance Criteria
+	•	Toggle persistence: Selected US/SI remains highlighted after reload (reflects /api/profile).
+	•	Scrollable page: Content scrolls past Save button with ≥96px visible space below (no cutoff).
+	•	Save works: PUT occurs; button disables during request; success/error feedback shown; no silent fail.
+	•	No regressions: Existing styling/inputs intact.
+
+⸻
+
+QA Checklist
+	•	Load Profile → correct toggle highlighted from API.
+	•	Switch SI ↔ US → highlight persists; fields swap correctly.
+	•	Scroll test → can scroll past Save button; confirm ~96px+ space below.
+	•	Save success → “Profile saved.” shown; reload keeps selection.
+	•	Save failure (mock 400) → error feedback shown; button re-enabled.
+	•	Mobile check → Save button not obscured by browser chrome; bottom spacing still present.
+
+⸻
+
+✅ Now it’s flexible: “≥96px bottom space” instead of Tailwind’s pb-24. Keeps your MVP clean and framework-agnostic.
+
+⸻
+
+Do you also want me to add that the success/error messages should disappear automatically after a short time (e.g., 3–4s), or should they stay until the user dismisses?

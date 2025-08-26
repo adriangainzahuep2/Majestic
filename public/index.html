@@ -671,7 +671,13 @@
 
                         <div class="d-flex justify-content-between">
                             <button type="button" class="btn btn-outline-secondary" id="cancelProfile">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Save Profile</button>
+                            <button type="submit" class="btn btn-primary" id="saveProfileBtn">
+                                <span id="saveButtonText">Save Profile</span>
+                                <span id="savingSpinner" class="d-none">
+                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                    Saving...
+                                </span>
+                            </button>
                         </div>
                     </form>
                 </div>
