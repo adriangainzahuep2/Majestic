@@ -435,9 +435,38 @@ class HealthSystemsService {
       // Process visual study data and extract relevant measurements
       for (const study of visualStudiesResult.rows) {
         try {
-          const measurements = JSON.parse(study.metrics_json || '[]');
+          let measurements = [];
           
+          // Robust parsing: handle object, string, or invalid data
+          if (study.metrics_json) {
+            if (typeof study.metrics_json === 'object' && Array.isArray(study.metrics_json)) {
+              // Already parsed JSONB array
+              measurements = study.metrics_json;
+            } else if (typeof study.metrics_json === 'object') {
+              // JSONB object - wrap in array
+              measurements = [study.metrics_json];
+            } else if (typeof study.metrics_json === 'string') {
+              if (study.metrics_json === '[object Object]' || study.metrics_json.startsWith('[object')) {
+                // Invalid serialization - skip with warning
+                console.warn(`[TRENDS] Study ${study.id} has invalid metrics_json: ${study.metrics_json.substring(0, 50)}... - flagging for cleanup`);
+                // TODO: Log this for cleanup script
+                continue;
+              }
+              // Try to parse JSON string
+              try {
+                const parsed = JSON.parse(study.metrics_json);
+                measurements = Array.isArray(parsed) ? parsed : [parsed];
+              } catch (innerError) {
+                console.warn(`[TRENDS] Study ${study.id} has unparseable metrics_json - skipping`);
+                continue;
+              }
+            }
+          }
+          
+          // Filter to only metrics for this system and key metrics
           for (const measurement of measurements) {
+            if (!measurement || !measurement.name) continue;
+            
             const measurementName = measurement.name;
             
             // Check if this measurement corresponds to a key metric for this system
@@ -454,12 +483,14 @@ class HealthSystemsService {
               metricData[measurementName].series.push({
                 t: study.test_date ? new Date(study.test_date).toISOString() : new Date(study.created_at).toISOString(),
                 v: parseFloat(measurement.value),
-                source: 'visual'
+                source: 'visual',
+                needs_review: false
               });
             }
           }
         } catch (parseError) {
-          console.warn('Error parsing metrics_json for study', study.id, parseError);
+          console.warn(`[TRENDS] Error processing study ${study.id} metrics:`, parseError.message);
+          // Continue processing other studies
         }
       }
 

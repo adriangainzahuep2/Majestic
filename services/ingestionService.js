@@ -260,7 +260,7 @@ class IngestionService {
       INSERT INTO imaging_studies (
         user_id, linked_system_id, study_type, file_url, thumbnail_url,
         test_date, ai_summary, metrics_json, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)
       RETURNING id
     `, [
       studyData.userId,
@@ -270,7 +270,7 @@ class IngestionService {
       studyData.thumbnailUrl,
       studyData.testDate,
       studyData.aiSummary,
-      JSON.stringify(studyData.metricsJson),
+      JSON.stringify(studyData.metricsJson), // Convert object to JSON string for JSONB column
       studyData.status
     ]);
 

@@ -47,6 +47,10 @@ class HealthDashboard {
         // Phase 1 Unified Ingestion Pipeline
         document.getElementById('fileUpload').addEventListener('change', (e) => this.handleFileSelect(e));
         document.getElementById('uploadBtn').addEventListener('click', () => this.uploadFilesToUnifiedPipeline());
+        document.getElementById('chooseFilesBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('fileUpload').click();
+        });
 
         // Setup drag and drop
         this.setupDragAndDrop();
@@ -2059,8 +2063,11 @@ class HealthDashboard {
             fileInput.dispatchEvent(event);
         });
 
-        dropZone.addEventListener('click', () => {
-            document.getElementById('fileUpload').click();
+        dropZone.addEventListener('click', (e) => {
+            // Only trigger file input if clicking on dropZone itself, not on child elements like the button
+            if (e.target === dropZone || e.target.classList.contains('upload-icon') || e.target.classList.contains('fa-cloud-upload-alt')) {
+                document.getElementById('fileUpload').click();
+            }
         });
     }
 

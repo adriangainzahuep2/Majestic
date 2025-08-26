@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, text, integer, decimal, boolean, timestamp, date, index, unique } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, text, integer, decimal, boolean, timestamp, date, index, unique, jsonb } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Users table
@@ -99,16 +99,18 @@ export const dailyPlans = pgTable('daily_plans', {
 export const imagingStudies = pgTable('imaging_studies', {
   id: serial('id').primaryKey(),
   userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }),
-  uploadId: integer('upload_id').references(() => uploads.id, { onDelete: 'cascade' }),
-  systemId: integer('system_id').references(() => healthSystems.id),
+  linkedSystemId: integer('linked_system_id').references(() => healthSystems.id),
   studyType: varchar('study_type', { length: 100 }),
-  studyDate: date('study_date'),
-  findings: text('findings'),
-  summary: text('summary'),
-  metricChanges: text('metric_changes'),
-  comparisonData: text('comparison_data'),
-  thumbnailPath: text('thumbnail_path'),
+  fileUrl: text('file_url'),
+  thumbnailUrl: text('thumbnail_url'),
+  testDate: date('test_date'),
+  aiSummary: text('ai_summary'),
+  metricsJson: jsonb('metrics_json'),
+  comparisonSummary: text('comparison_summary'),
+  metricChangesJson: jsonb('metric_changes_json'),
+  status: varchar('status', { length: 50 }),
   createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
 });
 
 // User Custom Metrics table
