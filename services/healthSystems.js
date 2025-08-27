@@ -27,6 +27,18 @@ class HealthSystemsService {
       epigenetic: 18
     };
 
+    // Approach #5: Exclusion Rules to prevent known conflicts
+    this.exclusionRules = {
+      6: { // Digestive system
+        excludeMetrics: ['Astigmatism', 'Astigmatism Zernike', 'Astigmatism (Posterior)', 'Astigmatism (TCPIOL)', 'Astigmatism (Zernike)'],
+        excludePatterns: [/astigmat/i, /vision/i, /eye/i, /diopter/i, /\bd\s*$/i] // D unit pattern for diopters
+      },
+      12: { // Sensory system
+        excludeMetrics: ['AST Enzyme', 'ALT Enzyme', 'Liver Function'],
+        excludePatterns: [/enzyme/i, /liver/i, /hepatic/i]
+      }
+    };
+
     // Metric to system mapping
     this.metricSystemMap = this.buildMetricSystemMap();
   }
@@ -184,10 +196,52 @@ class HealthSystemsService {
 
   isKeyMetric(systemId, metricName) {
     const systemKeyMetrics = this.keyMetrics[systemId] || [];
-    return systemKeyMetrics.some(keyMetric => 
-      metricName.toLowerCase().includes(keyMetric.toLowerCase()) ||
-      keyMetric.toLowerCase().includes(metricName.toLowerCase())
+    
+    // Approach #5: Check exclusion rules first to prevent known conflicts
+    const exclusions = this.exclusionRules[systemId];
+    if (exclusions) {
+      // Check if metric is explicitly excluded
+      if (exclusions.excludeMetrics?.includes(metricName)) {
+        return false;
+      }
+      
+      // Check if metric matches any exclusion patterns
+      if (exclusions.excludePatterns?.some(pattern => pattern.test(metricName))) {
+        return false;
+      }
+    }
+    
+    // Approach #1: Exact Match Priority with Word Boundary Fallback
+    
+    // Step 1: Try exact match first (case-insensitive)
+    const exactMatch = systemKeyMetrics.find(keyMetric => 
+      keyMetric.toLowerCase() === metricName.toLowerCase()
     );
+    if (exactMatch) {
+      return true;
+    }
+    
+    // Step 2: Try word boundary matching to avoid substring issues
+    // This prevents "AST" from matching "Astigmatism"
+    const wordBoundaryMatch = systemKeyMetrics.some(keyMetric => {
+      // Create regex pattern with word boundaries using proper string concatenation
+      const pattern = new RegExp('\\b' + keyMetric.toLowerCase() + '\\b', 'i');
+      return pattern.test(metricName.toLowerCase());
+    });
+    if (wordBoundaryMatch) {
+      return true;
+    }
+    
+    // Approach #3: Minimum Length Threshold for Partial Matching
+    // Step 3: Fall back to partial matching only for longer key metrics (>= 4 chars)
+    // This prevents short abbreviations from causing false matches
+    return systemKeyMetrics.some(keyMetric => {
+      if (keyMetric.length < 4) {
+        return false; // Skip partial matching for short key metrics
+      }
+      return metricName.toLowerCase().includes(keyMetric.toLowerCase()) ||
+             keyMetric.toLowerCase().includes(metricName.toLowerCase());
+    });
   }
 
   calculateTileColor(systemId, metrics) {
