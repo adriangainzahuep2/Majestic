@@ -2954,7 +2954,9 @@ class HealthDashboard {
         const profileState = {
             preferredUnitSystem: unitSystem,
             sex: document.getElementById('sex').value || null,
-            
+            dateOfBirth: document.getElementById('dateOfBirth').value 
+            ? new Date(document.getElementById('dateOfBirth').value).toISOString().split('T')[0] 
+            : null,
             heightIn: heightIn,
             weightLb: weightLb,
             ethnicity: document.getElementById('ethnicity').value || null,
