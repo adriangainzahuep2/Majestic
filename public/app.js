@@ -12,6 +12,60 @@ class HealthDashboard {
         this.init();
     }
 
+    // Frontend logging helper for structured, privacy-safe logs
+    logClient(event, data = {}, level = 'INFO') {
+        const logEntry = {
+            ts: new Date().toISOString(),
+            level,
+            event,
+            ...data
+        };
+        console.log('[client]', JSON.stringify(logEntry));
+    }
+
+    // Generate correlation ID for request tracing
+    generateCorrelationId() {
+        return crypto.randomUUID?.() || `cli-${Math.random().toString(36).slice(2, 10)}`;
+    }
+
+    // Create privacy-safe summary of profile data for logging
+    createClientProfileSummary(profileData) {
+        const summary = {};
+        
+        if (profileData) {
+            // Count changed fields
+            summary.field_count = Object.keys(profileData).length;
+            
+            // Boolean flags for presence of key data (safe to log)
+            summary.has_height = profileData.height_in !== null && profileData.height_in !== undefined;
+            summary.has_weight = profileData.weight_lb !== null && profileData.weight_lb !== undefined;
+            summary.has_dob = !!profileData.date_of_birth;
+            summary.has_sex = !!profileData.sex;
+            summary.has_ethnicity = !!profileData.ethnicity;
+            summary.has_country = !!profileData.country_of_residence;
+            summary.unit_system = profileData.preferred_unit_system || null;
+            
+            // Lifestyle flags (safe to log as they're not directly identifiable)
+            summary.smoker = profileData.smoker;
+            summary.pregnant = profileData.pregnant;
+            summary.has_alcohol_data = profileData.alcohol_drinks_per_week !== null && profileData.alcohol_drinks_per_week !== undefined;
+            
+            // Count arrays without exposing content
+            summary.allergies_count = Array.isArray(profileData.allergies) ? profileData.allergies.length : 0;
+            summary.chronic_conditions_count = Array.isArray(profileData.chronicConditions) ? profileData.chronicConditions.length : 0;
+        }
+        
+        return summary;
+    }
+
+    // Helper function to determine error kind for logging
+    getErrorKind(error) {
+        if (!error.status) return 'network';
+        if (error.status >= 400 && error.status < 500) return '4xx';
+        if (error.status >= 500) return '5xx';
+        return 'unknown';
+    }
+
     async init() {
         this.setupEventListeners();
         
@@ -2488,9 +2542,10 @@ class HealthDashboard {
     }
 
     // Utility Methods
-    async apiCall(endpoint, method = 'GET', data = null) {
+    async apiCall(endpoint, method = 'GET', data = null, customHeaders = {}) {
         const headers = {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...customHeaders  // Merge custom headers
         };
 
         if (this.token) {
@@ -2517,7 +2572,9 @@ class HealthDashboard {
                 throw new Error(errorData.message || 'Session expired - please sign in again');
             }
             
-            throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+            const error = new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+            error.status = response.status;
+            throw error;
         }
 
         return await response.json();
@@ -2600,13 +2657,49 @@ class HealthDashboard {
 
     // Profile Methods
     async loadProfileData() {
+        const startTime = performance.now();
+        const correlationId = this.generateCorrelationId();
+        
+        this.logClient('PROFILE_LOAD_REQUESTED', {
+            correlation_id: correlationId,
+            url: '/api/profile',
+            method: 'GET'
+        });
+        
         try {
-            const response = await this.apiCall('/profile', 'GET');
+            const response = await this.apiCall('/profile', 'GET', null, {
+                'X-Request-ID': correlationId
+            });
+            
+            const duration = performance.now() - startTime;
+            
             // Handle both flat response and wrapped response for backwards compatibility
             const profileData = response.profile || response;
             const normalizedProfile = this.normalizeProfileResponse(profileData);
+            
+            // Create privacy-safe summary for logging
+            const profileSummary = this.createClientProfileSummary(profileData);
+            
+            this.logClient('PROFILE_LOAD_SUCCESS', {
+                correlation_id: correlationId,
+                status: 200,
+                duration_ms: Math.round(duration),
+                summary: profileSummary
+            });
+            
             this.populateProfileForm(normalizedProfile);
+            
         } catch (error) {
+            const duration = performance.now() - startTime;
+            
+            this.logClient('PROFILE_LOAD_FAILED', {
+                correlation_id: correlationId,
+                status: error.status || 0,
+                error_kind: this.getErrorKind(error),
+                server_message: error.message || 'Unknown error',
+                duration_ms: Math.round(duration)
+            }, 'ERROR');
+            
             console.error('Failed to load profile:', {
                 message: error.message,
                 status: error.status,
@@ -2800,6 +2893,9 @@ class HealthDashboard {
     async saveProfile(e) {
         e.preventDefault();
         
+        const startTime = performance.now();
+        const correlationId = this.generateCorrelationId();
+        
         // Show saving state
         const saveBtn = document.getElementById('saveProfileBtn');
         const saveText = document.getElementById('saveButtonText');
@@ -2896,6 +2992,21 @@ class HealthDashboard {
             }
         });
 
+        // Create combined payload for logging
+        const fullPayload = {
+            ...profileData,
+            allergies,
+            chronicConditions
+        };
+        
+        // Log profile save attempt 
+        const payloadSummary = this.createClientProfileSummary(fullPayload);
+        this.logClient('PROFILE_SAVE_CLICKED', {
+            correlation_id: correlationId,
+            field_count: Object.keys(profileData).length,
+            summary: payloadSummary
+        });
+        
         // Data is already normalized by buildProfilePayload
         
         // Validate inches field if in US mode
@@ -2933,18 +3044,37 @@ class HealthDashboard {
         }
 
         try {
+            // Log request dispatch
+            this.logClient('PROFILE_SAVE_REQUEST_DISPATCHED', {
+                correlation_id: correlationId,
+                url: '/api/profile',
+                method: 'PUT',
+                payload_summary: payloadSummary
+            });
+            
             console.log('Sending profile data:', JSON.stringify({...profileData, allergies, chronicConditions}, null, 2));
             
             const response = await this.apiCall('/profile', 'PUT', {
                 ...profileData,
                 allergies,
                 chronicConditions
+            }, {
+                'X-Request-ID': correlationId
             });
+            
+            const duration = performance.now() - startTime;
             
             // Reset button state on success
             saveBtn.disabled = false;
             saveText.classList.remove('d-none');
             savingSpinner.classList.add('d-none');
+            
+            // Log successful save
+            this.logClient('PROFILE_SAVE_SUCCESS', {
+                correlation_id: correlationId,
+                status: 200,
+                duration_ms: Math.round(duration)
+            });
             
             console.log('Profile save response:', response);
             this.showToast('success', 'Profile Saved', 'Your profile has been updated successfully');
@@ -2959,6 +3089,17 @@ class HealthDashboard {
             // Keep unit system toggle highlight by not navigating away
             
         } catch (error) {
+            const duration = performance.now() - startTime;
+            
+            // Log failed save
+            this.logClient('PROFILE_SAVE_FAILED', {
+                correlation_id: correlationId,
+                status: error.status || 0,
+                error_kind: this.getErrorKind(error),
+                server_message: error.message || 'Unknown error',
+                duration_ms: Math.round(duration)
+            }, 'ERROR');
+            
             console.error('Failed to save profile:', error);
             
             // Reset button state on error

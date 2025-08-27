@@ -1,7 +1,12 @@
 const express = require('express');
 const authMiddleware = require('../middleware/auth');
+const requestIdMiddleware = require('../middleware/requestId');
+const { info, warn, error, createProfileSummary } = require('../utils/logger');
 
 const router = express.Router();
+
+// Apply request ID middleware to all profile routes
+router.use(requestIdMiddleware);
 
 // ISO Alpha-2 country list
 const COUNTRIES = [
@@ -258,30 +263,88 @@ const COUNTRIES = [
 
 // GET /api/profile - Get user profile
 router.get('/', authMiddleware, async (req, res) => {
+    const startTime = Date.now();
+    const correlationId = req.correlationId;
+    const userId = req.user.userId;
+    
+    info('PROFILE_API_GET_START', {
+        correlation_id: correlationId,
+        user_id: userId,
+        route: '/api/profile'
+    });
+    
     try {
-        const userId = req.user.userId;
-        
-        // Get user profile
+        // Get user profile - log DB operation start
+        const dbStartTime = Date.now();
+        info('PROFILE_DB_SELECT_START', {
+            correlation_id: correlationId,
+            user_id: userId,
+            query: 'users_select'
+        });
         const userResult = await req.db.query(
             'SELECT * FROM users WHERE id = $1',
             [userId]
         );
+        
+        info('PROFILE_DB_SELECT_END', {
+            correlation_id: correlationId,
+            user_id: userId,
+            query: 'users_select',
+            row_count: userResult.rows.length,
+            duration_ms: Date.now() - dbStartTime
+        });
             
         if (userResult.rows.length === 0) {
+            warn('PROFILE_API_GET_ERROR', {
+                correlation_id: correlationId,
+                user_id: userId,
+                error_name: 'USER_NOT_FOUND',
+                status: 404
+            });
             return res.status(404).json({ success: false, message: 'User not found' });
         }
         
         // Get chronic conditions
+        const conditionsDbStart = Date.now();
+        info('PROFILE_DB_SELECT_START', {
+            correlation_id: correlationId,
+            user_id: userId,
+            query: 'chronic_conditions_select'
+        });
+        
         const chronicConditionsResult = await req.db.query(
             'SELECT * FROM user_chronic_conditions WHERE user_id = $1',
             [userId]
         );
+        
+        info('PROFILE_DB_SELECT_END', {
+            correlation_id: correlationId,
+            user_id: userId,
+            query: 'chronic_conditions_select',
+            row_count: chronicConditionsResult.rows.length,
+            duration_ms: Date.now() - conditionsDbStart
+        });
             
         // Get allergies
+        const allergiesDbStart = Date.now();
+        info('PROFILE_DB_SELECT_START', {
+            correlation_id: correlationId,
+            user_id: userId,
+            query: 'allergies_select'
+        });
+        
         const allergiesResult = await req.db.query(
             'SELECT * FROM user_allergies WHERE user_id = $1',
             [userId]
         );
+        
+        info('PROFILE_DB_SELECT_END', {
+            correlation_id: correlationId,
+            user_id: userId,
+            query: 'allergies_select',
+            row_count: allergiesResult.rows.length,
+            duration_ms: Date.now() - allergiesDbStart
+        });
         
         // Return flat profile object with snake_case keys and null-safe values
         const user = userResult.rows[0];
@@ -303,19 +366,52 @@ router.get('/', authMiddleware, async (req, res) => {
             allergies: allergiesResult.rows
         };
         
+        // Create privacy-safe profile summary for logging
+        const profileSummary = createProfileSummary(profile);
+        
+        info('PROFILE_API_GET_SUCCESS', {
+            correlation_id: correlationId,
+            user_id: userId,
+            route: '/api/profile',
+            duration_ms: Date.now() - startTime,
+            summary: profileSummary
+        });
+        
         res.setHeader('Content-Type', 'application/json');
         res.json(profile);
-    } catch (error) {
-        console.error('Failed to get profile:', error);
+    } catch (err) {
+        error('PROFILE_API_GET_ERROR', {
+            correlation_id: correlationId,
+            user_id: userId,
+            route: '/api/profile',
+            error_name: err.name || 'UNKNOWN_ERROR',
+            status: 500,
+            duration_ms: Date.now() - startTime
+        });
+        
+        console.error('Failed to get profile:', err);
         res.status(500).json({ success: false, message: 'Failed to get profile' });
     }
 });
 
 // PUT /api/profile - Update user profile
 router.put('/', authMiddleware, async (req, res) => {
+    const startTime = Date.now();
+    const correlationId = req.correlationId;
+    const userId = req.user.userId;
+    const profileData = req.body;
+    
+    // Create privacy-safe summary of incoming data
+    const inputSummary = createProfileSummary(profileData);
+    
+    info('PROFILE_API_PUT_START', {
+        correlation_id: correlationId,
+        user_id: userId,
+        route: '/api/profile',
+        summary: inputSummary
+    });
+    
     try {
-        const userId = req.user.userId;
-        const profileData = req.body;
         
         // Extract allergies and chronic conditions from the main data
         const { allergies = [], chronicConditions = [], ...userUpdates } = profileData;
@@ -382,7 +478,15 @@ router.put('/', authMiddleware, async (req, res) => {
         
         values.push(userId); // WHERE clause parameter
         
-        // Update user profile
+        // Update user profile - log DB operation
+        const userDbStart = Date.now();
+        info('PROFILE_DB_UPDATE_START', {
+            correlation_id: correlationId,
+            user_id: userId,
+            query: 'users_update',
+            field_count: updateFields.length
+        });
+        
         const updateQuery = `
             UPDATE users 
             SET ${updateFields.join(', ')}
@@ -392,32 +496,103 @@ router.put('/', authMiddleware, async (req, res) => {
         
         const updatedUser = await req.db.query(updateQuery, values);
         
+        info('PROFILE_DB_UPDATE_END', {
+            correlation_id: correlationId,
+            user_id: userId,
+            query: 'users_update',
+            row_count: updatedUser.rows.length,
+            duration_ms: Date.now() - userDbStart
+        });
+        
         // Delete existing chronic conditions and allergies
-        await req.db.query('DELETE FROM user_chronic_conditions WHERE user_id = $1', [userId]);
-        await req.db.query('DELETE FROM user_allergies WHERE user_id = $1', [userId]);
+        const deleteConditionsStart = Date.now();
+        info('PROFILE_DB_UPDATE_START', {
+            correlation_id: correlationId,
+            user_id: userId,
+            query: 'chronic_conditions_delete'
+        });
+        
+        const deletedConditions = await req.db.query('DELETE FROM user_chronic_conditions WHERE user_id = $1', [userId]);
+        
+        info('PROFILE_DB_UPDATE_END', {
+            correlation_id: correlationId,
+            user_id: userId,
+            query: 'chronic_conditions_delete',
+            row_count: deletedConditions.rowCount || 0,
+            duration_ms: Date.now() - deleteConditionsStart
+        });
+        
+        const deleteAllergiesStart = Date.now();
+        info('PROFILE_DB_UPDATE_START', {
+            correlation_id: correlationId,
+            user_id: userId,
+            query: 'allergies_delete'
+        });
+        
+        const deletedAllergies = await req.db.query('DELETE FROM user_allergies WHERE user_id = $1', [userId]);
+        
+        info('PROFILE_DB_UPDATE_END', {
+            correlation_id: correlationId,
+            user_id: userId,
+            query: 'allergies_delete',
+            row_count: deletedAllergies.rowCount || 0,
+            duration_ms: Date.now() - deleteAllergiesStart
+        });
         
         // Insert new chronic conditions
         if (chronicConditions.length > 0) {
+            const insertConditionsStart = Date.now();
+            info('PROFILE_DB_UPDATE_START', {
+                correlation_id: correlationId,
+                user_id: userId,
+                query: 'chronic_conditions_insert',
+                record_count: chronicConditions.length
+            });
+            
             const conditionValues = chronicConditions.map(condition => 
                 `(${userId}, '${condition.conditionName.replace(/'/g, "''")}', '${condition.status}', NOW())`
             ).join(', ');
             
-            await req.db.query(`
+            const insertedConditions = await req.db.query(`
                 INSERT INTO user_chronic_conditions (user_id, condition_name, status, created_at)
                 VALUES ${conditionValues}
             `);
+            
+            info('PROFILE_DB_UPDATE_END', {
+                correlation_id: correlationId,
+                user_id: userId,
+                query: 'chronic_conditions_insert',
+                row_count: insertedConditions.rowCount || 0,
+                duration_ms: Date.now() - insertConditionsStart
+            });
         }
         
         // Insert new allergies
         if (allergies.length > 0) {
+            const insertAllergiesStart = Date.now();
+            info('PROFILE_DB_UPDATE_START', {
+                correlation_id: correlationId,
+                user_id: userId,
+                query: 'allergies_insert',
+                record_count: allergies.length
+            });
+            
             const allergyValues = allergies.map(allergy => 
                 `(${userId}, '${allergy.allergyType}', '${allergy.allergenName.replace(/'/g, "''")}', NOW())`
             ).join(', ');
             
-            await req.db.query(`
+            const insertedAllergies = await req.db.query(`
                 INSERT INTO user_allergies (user_id, allergy_type, allergen_name, created_at)
                 VALUES ${allergyValues}
             `);
+            
+            info('PROFILE_DB_UPDATE_END', {
+                correlation_id: correlationId,
+                user_id: userId,
+                query: 'allergies_insert',
+                row_count: insertedAllergies.rowCount || 0,
+                duration_ms: Date.now() - insertAllergiesStart
+            });
         }
         
         // Return flat updated profile object with snake_case keys
@@ -438,10 +613,30 @@ router.put('/', authMiddleware, async (req, res) => {
             cycle_phase: updatedUserData.cycle_phase ?? null
         };
         
+        // Create privacy-safe summary of updated profile
+        const outputSummary = createProfileSummary(updatedProfile);
+        
+        info('PROFILE_API_PUT_SUCCESS', {
+            correlation_id: correlationId,
+            user_id: userId,
+            route: '/api/profile',
+            duration_ms: Date.now() - startTime,
+            summary: outputSummary
+        });
+        
         res.setHeader('Content-Type', 'application/json');
         res.json(updatedProfile);
-    } catch (error) {
-        console.error('Failed to update profile:', error);
+    } catch (err) {
+        error('PROFILE_API_PUT_ERROR', {
+            correlation_id: correlationId,
+            user_id: userId,
+            route: '/api/profile',
+            error_name: err.name || 'UNKNOWN_ERROR',
+            status: 500,
+            duration_ms: Date.now() - startTime
+        });
+        
+        console.error('Failed to update profile:', err);
         res.status(500).json({ success: false, message: 'Failed to update profile' });
     }
 });

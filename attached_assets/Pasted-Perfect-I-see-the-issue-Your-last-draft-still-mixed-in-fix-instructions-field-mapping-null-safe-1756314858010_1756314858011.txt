@@ -1,0 +1,120 @@
+Perfect — I see the issue. Your last draft still mixed in fix instructions (field mapping, null safety, etc.), whereas you now want a pure logging-only prompt that does not take corrective actions beyond instrumentation. Here’s the streamlined version:
+
+⸻
+
+REPLIT AGENT PROMPT: Add Structured, Privacy-Safe Logging for “Save Profile” (Frontend + Backend)
+
+⸻
+
+Goal
+
+Instrument the Save Profile flow with structured, privacy-safe logs that let us trace what happens after the Save button is clicked — across frontend, backend, and DB — using a single correlation ID.
+⚠️ Do not change validation, schemas, or field mappings. This task is logging only.
+
+⸻
+
+Scope
+	•	Frontend: Profile page (GET + PUT logic in public/app.js or equivalent).
+	•	Backend: /api/profile routes (GET and PUT) and DB calls inside those handlers.
+	•	Do not modify auth flows, schema, or unrelated routes/pages.
+
+⸻
+
+Logging principles
+	1.	Structured JSON logs (not free-text): { ts, level, event, correlation_id, user_id?, route, duration_ms, summary }.
+	2.	Correlation ID:
+	•	Generate UUID on the client per Save click.
+	•	Send in X-Request-ID header on GET + PUT.
+	•	Backend echoes the same ID back (X-Request-ID) and exposes it to the browser.
+	3.	PII Safety: Never log raw DOB, tokens, cookies, or full request/response bodies. Log only safe summaries (booleans, counts, codes).
+	4.	Levels:
+	•	INFO = start/end/success events
+	•	WARN = validation or recoverable issues
+	•	ERROR = exceptions or failed requests
+	5.	Environment:
+	•	DEV: verbose logs (all events)
+	•	PROD: minimal logs (INFO start/end + ERROR)
+
+⸻
+
+Frontend instrumentation
+	•	Add a small helper:
+
+function logClient(event, data = {}, level = 'INFO') {
+  console.log('[client]', JSON.stringify({
+    ts: new Date().toISOString(),
+    level,
+    event,
+    ...data,
+  }));
+}
+
+	•	On Save Profile click:
+	•	Generate correlationId = crypto.randomUUID() (or fallback).
+	•	Emit:
+	•	PROFILE_SAVE_CLICKED (include correlation_id, count of changed fields, flags like has_height/has_weight).
+	•	PROFILE_SAVE_REQUEST_DISPATCHED (with URL, method, and payload summary only — no DOB or raw values).
+	•	Add header X-Request-ID: correlationId.
+	•	On response:
+	•	Success → log PROFILE_SAVE_SUCCESS with status + duration_ms (use performance.now()).
+	•	Failure → log PROFILE_SAVE_FAILED with status, error_kind (network/4xx/5xx), server message if present, + duration.
+	•	On GET /api/profile:
+	•	Emit PROFILE_LOAD_REQUESTED → then PROFILE_LOAD_SUCCESS or PROFILE_LOAD_FAILED (safe fields only).
+
+⸻
+
+Backend instrumentation
+	1.	Logger utility (utils/logger.js):
+
+function log(level, event, data = {}) {
+  console.log('[server]', JSON.stringify({
+    ts: new Date().toISOString(),
+    level,
+    event,
+    ...data
+  }));
+}
+module.exports = { info: (e,d)=>log('INFO',e,d), warn: (e,d)=>log('WARN',e,d), error: (e,d)=>log('ERROR',e,d) };
+
+	2.	Request ID middleware (/middleware/requestId.js):
+
+module.exports = (req,res,next) => {
+  const headerId = req.headers['x-request-id'];
+  req.correlationId = headerId || crypto.randomUUID?.() || `srv-${Math.random().toString(36).slice(2,10)}`;
+  res.setHeader('X-Request-ID', req.correlationId);
+  res.setHeader('Access-Control-Expose-Headers', 'X-Request-ID');
+  next();
+};
+
+Mount before /api/profile.
+	3.	Instrument /api/profile routes:
+	•	Log PROFILE_API_GET_START and PROFILE_API_PUT_START (include correlation_id, user_id if known).
+	•	Log DB activity: PROFILE_DB_SELECT_START/END, PROFILE_DB_UPDATE_START/END with row counts + duration.
+	•	On success → log PROFILE_API_GET_SUCCESS or PROFILE_API_PUT_SUCCESS with sanitized summary (e.g., has_height, has_weight, country).
+	•	On error → log PROFILE_API_<GET|PUT>_ERROR with error_name, status, correlation_id.
+
+⸻
+
+Acceptance Criteria
+	•	AC1: Each Save click produces client + server logs tied together by one correlation_id.
+	•	AC2: Logs capture lifecycle: CLICKED → REQUEST_DISPATCHED → API_START → DB_START/END → API_SUCCESS/ERROR → CLIENT_SUCCESS/FAILED.
+	•	AC3: Logs never include DOB, tokens, or full bodies — only summaries (flags, counts, codes).
+	•	AC4: Duration values (duration_ms) logged for requests and DB ops.
+	•	AC5: No changes to feature behavior — Save still works or fails as before.
+
+⸻
+
+QA Checklist
+	•	Save Profile with normal data → logs show full trace, correlation_id consistent across client/server.
+	•	Save invalid data → WARN/ERROR logged; client shows FAILED with server message.
+	•	Expired/missing token → AUTH_REJECTED logged with correlation_id.
+	•	Confirm no DOB, tokens, or raw payloads appear in logs.
+	•	Logs contain timing and summaries, not raw values.
+
+⸻
+
+✅ This version is logging-only: it doesn’t alter mappings, validations, or schemas — it just instruments Save Profile end-to-end with structured, safe logs.
+
+⸻
+
+Would you like me to now generate a sample log trace (client + server + DB) for a Save attempt so you can visualize what these logs will look like in practice?

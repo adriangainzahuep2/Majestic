@@ -1,0 +1,122 @@
+Here’s the refined, production-ready prompt that includes the null-safety + field mapping fix and your latest requirement: add comprehensive, privacy-safe logging for Save Profile with correlation IDs, UUIDs, and high-resolution timings.
+
+⸻
+
+REPLIT AGENT PROMPT: Fix Profile Field Mapping + Add Structured Logging (Frontend + Backend)
+
+⸻
+
+Goal
+
+Fix the profile feature so that:
+	•	Field mapping is correct (snake_case ↔ camelCase normalized, no .toString() on nulls).
+	•	Save Profile is fully traceable: structured logs across frontend ↔ backend ↔ DB, with a single correlation ID.
+	•	No PII is logged (DOB, tokens, headers, full payloads excluded). Only safe summaries.
+
+⸻
+
+Scope
+	•	Frontend: Profile page (GET/PUT logic in public/app.js or equivalent).
+	•	Backend: /api/profile routes (GET + PUT) and DB calls inside them.
+	•	Do not touch unrelated pages, auth flows, or schema.
+
+⸻
+
+Fixes
+
+A) Field Mapping + Null Safety
+	1.	Backend (routes/profile.js)
+	•	GET /api/profile → return a flat JSON object with snake_case keys. No { profile: {...} } wrapper.
+	•	Missing fields → return as null, not undefined.
+	•	PUT /api/profile → accept snake_case payload. Convert "" → null. Validate minimal types only (numeric parse, booleans).
+	2.	Frontend (public/app.js)
+	•	Add a normalizeProfileResponse function that maps snake_case API → camelCase UI state with null checks.
+	•	Add a buildProfilePayload function that converts camelCase state → snake_case payload. Convert blanks → nulls.
+	•	Remove all .toString() calls on possibly null fields.
+	•	Populate form with value = v ?? ''. Compute age only if dateOfBirth exists.
+
+⸻
+
+B) Structured Logging (Frontend + Backend)
+
+1. Logging principles
+	•	JSON logs: { ts, level, event, correlation_id, user_id?, route, duration_ms, summary }
+	•	Correlation ID:
+	•	Frontend generates UUID (crypto.randomUUID() or fallback).
+	•	Send in X-Request-ID header for GET and PUT.
+	•	Backend echoes X-Request-ID back. Add Access-Control-Expose-Headers: X-Request-ID for browsers.
+	•	Levels: INFO (normal), WARN (validation), ERROR (exceptions).
+	•	DEV: verbose; PROD: INFO + ERROR minimal.
+
+2. Frontend
+	•	Add logClient(event, data, level) helper → console.log('[client]', JSON.stringify(entry)).
+	•	On Save click:
+	•	Generate correlationId.
+	•	Emit PROFILE_SAVE_CLICKED (with correlation_id, fields_changed_count, has_height/weight flags).
+	•	Emit PROFILE_SAVE_REQUEST_DISPATCHED with URL, method, payload summary (no DOB).
+	•	Add header X-Request-ID: correlationId.
+	•	On response:
+	•	Success → PROFILE_SAVE_SUCCESS with status + duration_ms (use performance.now()).
+	•	Failure → PROFILE_SAVE_FAILED with status, error_kind, server message if present.
+	•	On load (GET):
+	•	PROFILE_LOAD_REQUESTED → then PROFILE_LOAD_SUCCESS or FAILED.
+
+3. Backend
+	•	Add utils/logger.js:
+
+function log(level, event, data = {}) {
+  console.log('[server]', JSON.stringify({
+    ts: new Date().toISOString(),
+    level,
+    event,
+    ...data
+  }));
+}
+module.exports = { info: (e,d)=>log('INFO',e,d), warn: (e,d)=>log('WARN',e,d), error: (e,d)=>log('ERROR',e,d) };
+
+	•	Middleware /middleware/requestId.js:
+
+module.exports = (req,res,next) => {
+  const headerId = req.headers['x-request-id'];
+  req.correlationId = headerId || globalThis.crypto?.randomUUID?.() || `srv-${Math.random().toString(36).slice(2,10)}`;
+  res.setHeader('X-Request-ID', req.correlationId);
+  res.setHeader('Access-Control-Expose-Headers', 'X-Request-ID');
+  next();
+};
+
+	•	Wrap /api/profile routes:
+	•	Log PROFILE_API_GET_START/END or PUT_START/END.
+	•	Use high-res timing (process.hrtime.bigint()).
+	•	Log DB calls: PROFILE_DB_SELECT_START/END, PROFILE_DB_UPDATE_START/END with rows_affected.
+	•	On success: PROFILE_API_<GET|PUT>_SUCCESS.
+	•	On error: PROFILE_API_<GET|PUT>_ERROR with error_name, status (stack only in DEV).
+	•	Auth middleware: on reject, log AUTH_REJECTED with reason: missing|expired|invalid + correlation ID.
+
+⸻
+
+Acceptance Criteria
+	•	AC1: GET returns flat snake_case JSON, missing fields = null. PUT accepts snake_case, blanks → null.
+	•	AC2: No .toString() errors; nulls handled gracefully in UI.
+	•	AC3: Client + server logs show shared correlation_id for each Save.
+	•	AC4: Logs safe: no DOB, tokens, or payload dumps. Only safe summaries (booleans, codes, counts).
+	•	AC5: Save works; success/failure logged with status and duration. Profile feature functionally unchanged.
+
+⸻
+
+QA Checklist
+	•	Load profile with many nulls → no console errors; placeholders show.
+	•	Network tab: GET returns flat snake_case; PUT sends same.
+	•	Save with normal data → success toast; logs show START → SUCCESS with durations.
+	•	Save with invalid data → WARN/ERROR logs; client shows error toast.
+	•	401 (expired token) → AUTH_REJECTED in server logs with correlation ID.
+	•	Logs confirm rows_affected after DB update.
+	•	Client/server correlation IDs match.
+	•	No logs show DOB or raw payloads.
+
+⸻
+
+✅ This prompt will both fix the profile field mapping issues and give you end-to-end visibility into Save Profile flow, with privacy-safe, structured, correlated logging.
+
+⸻
+
+Do you want me to also generate a sample log trace (client + server + DB) for a successful Save, so you can visualize exactly what you’ll see after this is implemented?

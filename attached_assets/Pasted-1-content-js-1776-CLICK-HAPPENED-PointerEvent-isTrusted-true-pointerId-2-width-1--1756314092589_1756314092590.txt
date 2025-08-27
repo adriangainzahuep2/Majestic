@@ -1,0 +1,97 @@
+1
+content.js:1776 CLICK HAPPENED---------== PointerEvent {isTrusted: true, pointerId: 2, width: 1, height: 1, pressure: 0, …}
+content.js:1738  event occur PointerEvent {isTrusted: true, pointerId: 2, width: 1, height: 1, pressure: 0, …}
+content.js:1741 8399
+content.js:1652 Its without ethercalc PointerEvent {isTrusted: true, pointerId: 2, width: 1, height: 1, pressure: 0, …}
+content.js:1570 810 <span id=​"saveButtonText">​Save Profile​</span>​
+content.js:1571 Selection {anchorNode: div.toast-container.position-fixed.bottom-0.end-0.p-3, anchorOffset: 0, focusNode: div.toast-container.position-fixed.bottom-0.end-0.p-3, focusOffset: 0, isCollapsed: true, …}
+content.js:1573 textSelect len 0
+(index):1 An invalid form control with name='' is not focusable. <input type=​"number" class=​"form-control" id=​"heightFeet" placeholder=​"Feet" min=​"4" max=​"7">​Understand this error
+(index):1 An invalid form control with name='' is not focusable. <input type=​"number" class=​"form-control" id=​"weightLbs" placeholder=​"lbs" min=​"66" max=​"660" step=​"0.1">​Understand this error
+content.js:605 IS Recording false
+content.js:1409 step1
+content.js:1410 {}
+content.js:1446 step1else
+content.js:1584 getevent
+content.js:1585 gnodepp  {node: PointerEvent, selectionClick: false}
+content.js:1590 selectionClick false
+content.js:1591 1371
+content.js:465 event incoming PointerEvent {isTrusted: true, pointerId: 2, width: 1, height: 1, pressure: 0, …}
+content.js:466 textSelect 
+content.js:468 selectionClick false
+content.js:476 after incoming <span id=​"saveButtonText">​Save Profile​</span>​
+content.js:481 aNode null
+content.js:399 makeEventParentDict
+content.js:399 makeEventParentDict
+content.js:404 parent_ele <button type=​"submit" class=​"btn btn-primary" id=​"saveProfileBtn">​…​</button>​
+content.js:405 parent_ele.tagName BUTTON
+content.js:131 elt <button type=​"submit" class=​"btn btn-primary" id=​"saveProfileBtn">​…​</button>​
+content.js:134 elt type 1
+content.js:135 elt1 <button type=​"submit" class=​"btn btn-primary" id=​"saveProfileBtn">​…​</button>​
+content.js:134 elt type 1
+content.js:135 elt1 <div class=​"d-flex justify-content-between">​…​</div>​flex
+content.js:134 elt type 1
+content.js:135 elt1 <form id=​"profileForm">​…​</form>​
+content.js:134 elt type 1
+content.js:135 elt1 <div class=​"col-lg-8 mx-auto">​…​</div>​
+content.js:134 elt type 1
+content.js:135 elt1 <div class=​"row">​…​</div>​flex
+content.js:134 elt type 1
+content.js:135 elt1 <div id=​"profileSection" class>​…​</div>​
+content.js:134 elt type 1
+content.js:135 elt1 <div class=​"container-fluid mt-4">​…​</div>​
+content.js:134 elt type 1
+content.js:135 elt1 <body>​…​</body>​
+content.js:134 elt type 1
+content.js:135 elt1 <html lang=​"en">​scroll<head>​…​</head>​<body>​…​</body>​<chatgpt-sidebar data-gpts-theme=​"light">​…​</chatgpt-sidebar>​</html>​
+content.js:428 after loop {tag: 'button', tagtext: '\n                                Save Profile\n    …                    \n                            ', xpath: '/html/body/div/div[3]/div[2]/div/form/div[6]/button[2]', xlength: 9, taghtml: '<button type="submit" class="btn btn-primary" id="…    </span>\n                            </button>', …}
+content.js:131 elt <span id=​"saveButtonText">​Save Profile​</span>​
+content.js:134 elt type 1
+content.js:135 elt1 <span id=​"saveButtonText">​Save Profile​</span>​
+content.js:134 elt type 1
+content.js:135 elt1 <button type=​"submit" class=​"btn btn-primary" id=​"saveProfileBtn">​…​</button>​
+content.js:134 elt type 1
+content.js:135 elt1 <div class=​"d-flex justify-content-between">​…​</div>​flex
+content.js:134 elt type 1
+content.js:135 elt1 <form id=​"profileForm">​…​</form>​
+content.js:134 elt type 1
+content.js:135 elt1 <div class=​"col-lg-8 mx-auto">​…​</div>​
+content.js:134 elt type 1
+content.js:135 elt1 <div class=​"row">​…​</div>​flex
+content.js:134 elt type 1
+content.js:135 elt1 <div id=​"profileSection" class>​…​</div>​
+content.js:134 elt type 1
+content.js:135 elt1 <div class=​"container-fluid mt-4">​…​</div>​
+content.js:134 elt type 1
+content.js:135 elt1 <body>​…​</body>​
+content.js:134 elt type 1
+content.js:135 elt1 <html lang=​"en">​scroll<head>​…​</head>​<body>​…​</body>​<chatgpt-sidebar data-gpts-theme=​"light">​…​</chatgpt-sidebar>​</html>​
+content.js:434 xpath found in child /html/body/div/div[3]/div[2]/div/form/div[6]/button[2]/span
+content.js:437  dict xpath /html/body/div/div[3]/div[2]/div/form/div[6]/button[2]/span
+content.js:456 repeatDict {Event: {…}, Parent: {…}, Page: '<html lang="en"><head>\n    <meta charset="UTF-8">\n…data-gpts-theme="light"></chatgpt-sidebar></html>', text: 'Save Profile'}
+content.js:458 chrome storage
+content.js:504 DICTT in cellCheckfalse {tag: 'span', xpath: '/html/body/div/div[3]/div[2]/div/form/div[6]/button[2]/span', xlength: 10, taghtml: '<span id="saveButtonText">Save Profile</span>', tagtext: 'Save Profile', …}
+content.js:505 aNode null
+content.js:506 imgNode null
+content.js:1593 cellCheckfalse {tag: 'span', xpath: '/html/body/div/div[3]/div[2]/div/form/div[6]/button[2]/span', xlength: 10, taghtml: '<span id="saveButtonText">Save Profile</span>', tagtext: 'Save Profile', …} ParentDict {tag: 'button', tagtext: '\n                                Save Profile\n    …                    \n                            ', xpath: '/html/body/div/div[3]/div[2]/div/form/div[6]/button[2]', xlength: 9, taghtml: '<button type="submit" class="btn btn-primary" id="…    </span>\n                            </button>', …}
+content.js:1595 chooseDictFromSDict {tag: 'span', xpath: '/html/body/div/div[3]/div[2]/div/form/div[6]/button[2]/span', xlength: 10, taghtml: '<span id="saveButtonText">Save Profile</span>', tagtext: 'Save Profile', …} ParentDict {}
+content.js:1600 textSelect 
+content.js:1601 Final DICt {tag: 'span', xpath: '/html/body/div/div[3]/div[2]/div/form/div[6]/button[2]/span', xlength: 10, taghtml: '<span id="saveButtonText">Save Profile</span>', tagtext: 'Save Profile', …} ParentDict {tag: 'button', tagtext: '\n                                Save Profile\n    …                    \n                            ', xpath: '/html/body/div/div[3]/div[2]/div/form/div[6]/button[2]', xlength: 9, taghtml: '<button type="submit" class="btn btn-primary" id="…    </span>\n                            </button>', …}
+content.js:1654 type12
+content.js:1655 DICTTTTT {tag: 'span', xpath: '/html/body/div/div[3]/div[2]/div/form/div[6]/button[2]/span', xlength: 10, taghtml: '<span id="saveButtonText">Save Profile</span>', tagtext: 'Save Profile', …}
+content.js:1656 
+content.js:1657 true
+content.js:1750 typeeventType12 1
+content.js:1751 ParentDict {tag: 'button', tagtext: '\n                                Save Profile\n    …                    \n                            ', xpath: '/html/body/div/div[3]/div[2]/div/form/div[6]/button[2]', xlength: 9, taghtml: '<button type="submit" class="btn btn-primary" id="…    </span>\n                            </button>', …}
+content.js:1671 textSelect  
+content.js:1672 true
+content.js:1676 INSIDE THE CONDITION 1 srname 300612 dict {tag: 'span', xpath: '/html/body/div/div[3]/div[2]/div/form/div[6]/button[2]/span', xlength: 10, taghtml: '<span id="saveButtonText">Save Profile</span>', tagtext: 'Save Profile', …}
+content.js:1679 srname not 00 300612
+content.js:1681 false
+content.js:1616 sending event
+content.js:1617 selectionClick false
+content.js:928 add_iframe_events false
+content.js:1624 frameElement null
+content.js:1625 check1
+content.js:1626 repeatDict1 iframe {Event: {…}, Parent: {…}, Page: '<html lang="en"><head>\n    <meta charset="UTF-8">\n…data-gpts-theme="light"></chatgpt-sidebar></html>', text: undefined}
+(index):1 Unchecked runtime.lastError: The message port closed before a response was received.

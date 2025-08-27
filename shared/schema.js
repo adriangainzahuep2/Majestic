@@ -4,7 +4,7 @@ import { relations } from 'drizzle-orm';
 // Users table
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
-  email: varchar('email', { length: 255 }).notNull().unique(),
+  email: varchar('email', { length: 255 }).unique(),
   googleId: varchar('google_id', { length: 255 }).unique(),
   name: varchar('name', { length: 255 }),
   avatarUrl: text('avatar_url'),
@@ -117,6 +117,7 @@ export const dailyPlans = pgTable('daily_plans', {
 export const imagingStudies = pgTable('imaging_studies', {
   id: serial('id').primaryKey(),
   userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  uploadId: integer('upload_id').references(() => uploads.id, { onDelete: 'cascade' }),  
   linkedSystemId: integer('linked_system_id').references(() => healthSystems.id),
   studyType: varchar('study_type', { length: 100 }),
   fileUrl: text('file_url'),
@@ -248,7 +249,7 @@ export const imagingStudiesRelations = relations(imagingStudies, ({ one }) => ({
     references: [uploads.id],
   }),
   healthSystem: one(healthSystems, {
-    fields: [imagingStudies.systemId],
+    fields: [imagingStudies.linkedSystemId],
     references: [healthSystems.id],
   }),
 }));
