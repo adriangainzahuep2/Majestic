@@ -134,6 +134,31 @@ class HealthSystemsService {
     return map;
   }
 
+  /**
+   * Check if a metric should be excluded from a specific system
+   * @param {number} systemId - The health system ID
+   * @param {string} metricName - The metric name to check
+   * @returns {boolean} - True if the metric should be excluded from this system
+   */
+  isMetricExcludedFromSystem(systemId, metricName) {
+    const exclusions = this.exclusionRules[systemId];
+    if (!exclusions) {
+      return false;
+    }
+
+    // Check if metric is explicitly excluded
+    if (exclusions.excludeMetrics?.includes(metricName)) {
+      return true;
+    }
+    
+    // Check if metric matches any exclusion patterns
+    if (exclusions.excludePatterns?.some(pattern => pattern.test(metricName))) {
+      return true;
+    }
+
+    return false;
+  }
+
   mapMetricToSystem(metricName, category = null) {
     // Try exact match first
     const exactMatch = this.metricSystemMap.get(metricName.toLowerCase());
@@ -142,7 +167,10 @@ class HealthSystemsService {
     // Try partial matching
     for (const [key, systemId] of this.metricSystemMap.entries()) {
       if (metricName.toLowerCase().includes(key) || key.includes(metricName.toLowerCase())) {
-        return systemId;
+        // Check if this metric should be excluded from this system
+        if (!this.isMetricExcludedFromSystem(systemId, metricName)) {
+          return systemId;
+        }
       }
     }
 
@@ -198,17 +226,8 @@ class HealthSystemsService {
     const systemKeyMetrics = this.keyMetrics[systemId] || [];
     
     // Approach #5: Check exclusion rules first to prevent known conflicts
-    const exclusions = this.exclusionRules[systemId];
-    if (exclusions) {
-      // Check if metric is explicitly excluded
-      if (exclusions.excludeMetrics?.includes(metricName)) {
-        return false;
-      }
-      
-      // Check if metric matches any exclusion patterns
-      if (exclusions.excludePatterns?.some(pattern => pattern.test(metricName))) {
-        return false;
-      }
+    if (this.isMetricExcludedFromSystem(systemId, metricName)) {
+      return false;
     }
     
     // Approach #1: Exact Match Priority with Word Boundary Fallback
