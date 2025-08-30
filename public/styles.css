@@ -10,14 +10,14 @@
     --secondary-light: #66B3FF;    /* Light blue */
     --secondary-ultra-light: #F0F8FF; /* Ultra light blue */
 
-    /* Health Status Colors - Soft & Calm */
-    --success-color: #34C759;      /* Good health - vibrant green */
+    /* Health Status Colors - Soft & Calm Apple Health Style */
+    --success-color: #30D158;      /* Apple Health green - optimal */
     --success-light: #85E085;      /* Light success */
-    --warning-color: #FF9500;      /* Attention needed - warm orange */
-    --warning-light: #FFB84D;      /* Light warning */
-    --danger-color: #FF3B30;       /* Concern - soft red */
+    --warning-color: #FF9F0A;      /* Apple warning amber - needs attention */
+    --warning-light: #FFD60A;      /* Light warning */
+    --danger-color: #FF453A;       /* Apple danger red - concerning */
     --danger-light: #FF8A80;       /* Light danger */
-    --neutral-color: #8E8E93;      /* No data - neutral gray */
+    --neutral-color: #8E8E93;      /* Apple neutral gray - no data */
     --neutral-light: #C7C7CC;      /* Light neutral */
 
     /* Calm Background Colors */
@@ -1362,21 +1362,25 @@ input[type="number"]:active {
     .metric-status-chip.normal {
         background: rgba(48, 209, 88, 0.2) !important;
         color: #30D158 !important;
+        border: 1px solid rgba(48, 209, 88, 0.4) !important;
     }
 
     .metric-status-chip.high {
         background: rgba(255, 69, 58, 0.2) !important;
         color: #FF453A !important;
+        border: 1px solid rgba(255, 69, 58, 0.4) !important;
     }
 
     .metric-status-chip.low {
         background: rgba(255, 159, 10, 0.2) !important;
         color: #FF9F0A !important;
+        border: 1px solid rgba(255, 159, 10, 0.4) !important;
     }
 
     .metric-status-chip.no-data {
         background: rgba(142, 142, 147, 0.2) !important;
         color: #8E8E93 !important;
+        border: 1px solid rgba(142, 142, 147, 0.4) !important;
     }
 
     /* Button contrast fixes */
@@ -1471,27 +1475,27 @@ input[type="number"]:active {
 }
 
 .metric-status-chip.normal {
-    background: rgba(52, 199, 89, 0.15);
-    color: #34C759;
-    border: 1px solid rgba(52, 199, 89, 0.3);
+    background: rgba(48, 209, 88, 0.15) !important;
+    color: #30D158 !important;
+    border: 1px solid rgba(48, 209, 88, 0.3) !important;
 }
 
 .metric-status-chip.high {
-    background: rgba(255, 69, 58, 0.15);
-    color: #FF453A;
-    border: 1px solid rgba(255, 69, 58, 0.3);
+    background: rgba(255, 69, 58, 0.15) !important;
+    color: #FF453A !important;
+    border: 1px solid rgba(255, 69, 58, 0.3) !important;
 }
 
 .metric-status-chip.low {
-    background: rgba(255, 159, 10, 0.15);
-    color: #FF9F0A;
-    border: 1px solid rgba(255, 159, 10, 0.3);
+    background: rgba(255, 159, 10, 0.15) !important;
+    color: #FF9F0A !important;
+    border: 1px solid rgba(255, 159, 10, 0.3) !important;
 }
 
 .metric-status-chip.no-data {
-    background: rgba(142, 142, 147, 0.15);
-    color: #8E8E93;
-    border: 1px solid rgba(142, 142, 147, 0.3);
+    background: rgba(142, 142, 147, 0.15) !important;
+    color: #8E8E93 !important;
+    border: 1px solid rgba(142, 142, 147, 0.3) !important;
 }
 
 .micro-range-bar {
