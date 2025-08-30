@@ -266,13 +266,13 @@ router.get('/', authMiddleware, async (req, res) => {
     const startTime = Date.now();
     const correlationId = req.correlationId;
     const userId = req.user.userId;
-    
+
     info('PROFILE_API_GET_START', {
         correlation_id: correlationId,
         user_id: userId,
         route: '/api/profile'
     });
-    
+
     try {
         // Get user profile - log DB operation start
         const dbStartTime = Date.now();
@@ -285,7 +285,7 @@ router.get('/', authMiddleware, async (req, res) => {
             'SELECT * FROM users WHERE id = $1',
             [userId]
         );
-        
+
         info('PROFILE_DB_SELECT_END', {
             correlation_id: correlationId,
             user_id: userId,
@@ -293,7 +293,7 @@ router.get('/', authMiddleware, async (req, res) => {
             row_count: userResult.rows.length,
             duration_ms: Date.now() - dbStartTime
         });
-            
+
         if (userResult.rows.length === 0) {
             warn('PROFILE_API_GET_ERROR', {
                 correlation_id: correlationId,
@@ -303,7 +303,7 @@ router.get('/', authMiddleware, async (req, res) => {
             });
             return res.status(404).json({ success: false, message: 'User not found' });
         }
-        
+
         // Get chronic conditions
         const conditionsDbStart = Date.now();
         info('PROFILE_DB_SELECT_START', {
@@ -311,12 +311,12 @@ router.get('/', authMiddleware, async (req, res) => {
             user_id: userId,
             query: 'chronic_conditions_select'
         });
-        
+
         const chronicConditionsResult = await req.db.query(
             'SELECT * FROM user_chronic_conditions WHERE user_id = $1',
             [userId]
         );
-        
+
         info('PROFILE_DB_SELECT_END', {
             correlation_id: correlationId,
             user_id: userId,
@@ -324,7 +324,7 @@ router.get('/', authMiddleware, async (req, res) => {
             row_count: chronicConditionsResult.rows.length,
             duration_ms: Date.now() - conditionsDbStart
         });
-            
+
         // Get allergies
         const allergiesDbStart = Date.now();
         info('PROFILE_DB_SELECT_START', {
@@ -332,12 +332,12 @@ router.get('/', authMiddleware, async (req, res) => {
             user_id: userId,
             query: 'allergies_select'
         });
-        
+
         const allergiesResult = await req.db.query(
             'SELECT * FROM user_allergies WHERE user_id = $1',
             [userId]
         );
-        
+
         info('PROFILE_DB_SELECT_END', {
             correlation_id: correlationId,
             user_id: userId,
@@ -345,7 +345,7 @@ router.get('/', authMiddleware, async (req, res) => {
             row_count: allergiesResult.rows.length,
             duration_ms: Date.now() - allergiesDbStart
         });
-        
+
         // Return flat profile object with snake_case keys and null-safe values
         const user = userResult.rows[0];
         const profile = {
@@ -365,10 +365,10 @@ router.get('/', authMiddleware, async (req, res) => {
             chronicConditions: chronicConditionsResult.rows,
             allergies: allergiesResult.rows
         };
-        
+
         // Create privacy-safe profile summary for logging
         const profileSummary = createProfileSummary(profile);
-        
+
         info('PROFILE_API_GET_SUCCESS', {
             correlation_id: correlationId,
             user_id: userId,
@@ -376,7 +376,7 @@ router.get('/', authMiddleware, async (req, res) => {
             duration_ms: Date.now() - startTime,
             summary: profileSummary
         });
-        
+
         res.setHeader('Content-Type', 'application/json');
         res.json(profile);
     } catch (err) {
@@ -388,7 +388,7 @@ router.get('/', authMiddleware, async (req, res) => {
             status: 500,
             duration_ms: Date.now() - startTime
         });
-        
+
         console.error('Failed to get profile:', err);
         res.status(500).json({ success: false, message: 'Failed to get profile' });
     }
@@ -400,41 +400,41 @@ router.put('/', authMiddleware, async (req, res) => {
     const correlationId = req.correlationId;
     const userId = req.user.userId;
     const profileData = req.body;
-    
+
     // Create privacy-safe summary of incoming data
     const inputSummary = createProfileSummary(profileData);
-    
+
     info('PROFILE_API_PUT_START', {
         correlation_id: correlationId,
         user_id: userId,
         route: '/api/profile',
         summary: inputSummary
     });
-    
+
     try {
-        
+
         // Extract allergies and chronic conditions from the main data
         const { allergies = [], chronicConditions = [], ...userUpdates } = profileData;
-        
+
         // Build the SQL update query dynamically - expect snake_case input
         const updateFields = [];
         const values = [];
         let paramIndex = 1;
-        
+
         // Add profile fields to update - input should be snake_case
         const profileFields = [
             'preferred_unit_system', 'sex', 'date_of_birth', 'height_in', 'weight_lb', 
             'ethnicity', 'country_of_residence', 'smoker', 'packs_per_week', 
             'alcohol_drinks_per_week', 'pregnant', 'pregnancy_start_date', 'cycle_phase'
         ];
-        
+
         profileFields.forEach(field => {
             if (userUpdates[field] !== undefined) {
                 updateFields.push(`${field} = $${paramIndex}`);
-                
+
                 // Normalize input values
                 let value = userUpdates[field];
-                
+
                 // Handle empty strings -> null
                 if (value === '') {
                     value = null;
@@ -457,27 +457,27 @@ router.put('/', authMiddleware, async (req, res) => {
                         value = null; // Invalid date format
                     }
                 }
-                
+
                 values.push(value);
                 paramIndex++;
             }
         });
-        
+
         // Always update these fields
         updateFields.push(`profile_completed = $${paramIndex}`);
         values.push(true);
         paramIndex++;
-        
+
         updateFields.push(`profile_updated_at = $${paramIndex}`);
         values.push(new Date());
         paramIndex++;
-        
+
         updateFields.push(`updated_at = $${paramIndex}`);
         values.push(new Date());
         paramIndex++;
-        
+
         values.push(userId); // WHERE clause parameter
-        
+
         // Update user profile - log DB operation
         const userDbStart = Date.now();
         info('PROFILE_DB_UPDATE_START', {
@@ -486,16 +486,16 @@ router.put('/', authMiddleware, async (req, res) => {
             query: 'users_update',
             field_count: updateFields.length
         });
-        
+
         const updateQuery = `
             UPDATE users 
             SET ${updateFields.join(', ')}
             WHERE id = $${paramIndex}
             RETURNING *
         `;
-        
+
         const updatedUser = await req.db.query(updateQuery, values);
-        
+
         info('PROFILE_DB_UPDATE_END', {
             correlation_id: correlationId,
             user_id: userId,
@@ -503,98 +503,53 @@ router.put('/', authMiddleware, async (req, res) => {
             row_count: updatedUser.rows.length,
             duration_ms: Date.now() - userDbStart
         });
-        
-        // Delete existing chronic conditions and allergies
-        const deleteConditionsStart = Date.now();
-        info('PROFILE_DB_UPDATE_START', {
-            correlation_id: correlationId,
-            user_id: userId,
-            query: 'chronic_conditions_delete'
-        });
-        
-        const deletedConditions = await req.db.query('DELETE FROM user_chronic_conditions WHERE user_id = $1', [userId]);
-        
-        info('PROFILE_DB_UPDATE_END', {
-            correlation_id: correlationId,
-            user_id: userId,
-            query: 'chronic_conditions_delete',
-            row_count: deletedConditions.rowCount || 0,
-            duration_ms: Date.now() - deleteConditionsStart
-        });
-        
-        const deleteAllergiesStart = Date.now();
-        info('PROFILE_DB_UPDATE_START', {
-            correlation_id: correlationId,
-            user_id: userId,
-            query: 'allergies_delete'
-        });
-        
-        const deletedAllergies = await req.db.query('DELETE FROM user_allergies WHERE user_id = $1', [userId]);
-        
-        info('PROFILE_DB_UPDATE_END', {
-            correlation_id: correlationId,
-            user_id: userId,
-            query: 'allergies_delete',
-            row_count: deletedAllergies.rowCount || 0,
-            duration_ms: Date.now() - deleteAllergiesStart
-        });
-        
-        // Insert new chronic conditions
-        if (chronicConditions.length > 0) {
-            const insertConditionsStart = Date.now();
-            info('PROFILE_DB_UPDATE_START', {
-                correlation_id: correlationId,
-                user_id: userId,
-                query: 'chronic_conditions_insert',
-                record_count: chronicConditions.length
-            });
-            
-            const conditionValues = chronicConditions.map(condition => 
-                `(${userId}, '${condition.conditionName.replace(/'/g, "''")}', '${condition.status}', NOW())`
-            ).join(', ');
-            
-            const insertedConditions = await req.db.query(`
-                INSERT INTO user_chronic_conditions (user_id, condition_name, status, created_at)
-                VALUES ${conditionValues}
-            `);
-            
-            info('PROFILE_DB_UPDATE_END', {
-                correlation_id: correlationId,
-                user_id: userId,
-                query: 'chronic_conditions_insert',
-                row_count: insertedConditions.rowCount || 0,
-                duration_ms: Date.now() - insertConditionsStart
-            });
+
+        // Use transaction for consistent update of conditions/allergies
+        const client = await req.db.connect();
+        try {
+            await client.query('BEGIN');
+
+            // Delete existing chronic conditions and allergies
+            const deleteConditionsStart = Date.now();
+            info('PROFILE_DB_UPDATE_START', { correlation_id: correlationId, user_id: userId, query: 'chronic_conditions_delete' });
+            const deletedConditions = await client.query('DELETE FROM user_chronic_conditions WHERE user_id = $1', [userId]);
+            info('PROFILE_DB_UPDATE_END', { correlation_id: correlationId, user_id: userId, query: 'chronic_conditions_delete', row_count: deletedConditions.rowCount || 0, duration_ms: Date.now() - deleteConditionsStart });
+
+            const deleteAllergiesStart = Date.now();
+            info('PROFILE_DB_UPDATE_START', { correlation_id: correlationId, user_id: userId, query: 'allergies_delete' });
+            const deletedAllergies = await client.query('DELETE FROM user_allergies WHERE user_id = $1', [userId]);
+            info('PROFILE_DB_UPDATE_END', { correlation_id: correlationId, user_id: userId, query: 'allergies_delete', row_count: deletedAllergies.rowCount || 0, duration_ms: Date.now() - deleteAllergiesStart });
+
+            // Insert new chronic conditions with parameterized query
+            if (chronicConditions.length > 0) {
+                const insertConditionsStart = Date.now();
+                info('PROFILE_DB_UPDATE_START', { correlation_id: correlationId, user_id: userId, query: 'chronic_conditions_insert', record_count: chronicConditions.length });
+                const text = 'INSERT INTO user_chronic_conditions (user_id, condition_name, status, created_at) VALUES ($1, $2, $3, NOW())';
+                for (const condition of chronicConditions) {
+                    await client.query(text, [userId, condition.conditionName || null, condition.status || null]);
+                }
+                info('PROFILE_DB_UPDATE_END', { correlation_id: correlationId, user_id: userId, query: 'chronic_conditions_insert', row_count: chronicConditions.length, duration_ms: Date.now() - insertConditionsStart });
+            }
+
+            // Insert new allergies with parameterized query
+            if (allergies.length > 0) {
+                const insertAllergiesStart = Date.now();
+                info('PROFILE_DB_UPDATE_START', { correlation_id: correlationId, user_id: userId, query: 'allergies_insert', record_count: allergies.length });
+                const text = 'INSERT INTO user_allergies (user_id, allergy_type, allergen_name, created_at) VALUES ($1, $2, $3, NOW())';
+                for (const allergy of allergies) {
+                    await client.query(text, [userId, allergy.allergyType || null, allergy.allergenName || null]);
+                }
+                info('PROFILE_DB_UPDATE_END', { correlation_id: correlationId, user_id: userId, query: 'allergies_insert', row_count: allergies.length, duration_ms: Date.now() - insertAllergiesStart });
+            }
+
+            await client.query('COMMIT');
+        } catch (txErr) {
+            await client.query('ROLLBACK');
+            throw txErr;
+        } finally {
+            client.release();
         }
-        
-        // Insert new allergies
-        if (allergies.length > 0) {
-            const insertAllergiesStart = Date.now();
-            info('PROFILE_DB_UPDATE_START', {
-                correlation_id: correlationId,
-                user_id: userId,
-                query: 'allergies_insert',
-                record_count: allergies.length
-            });
-            
-            const allergyValues = allergies.map(allergy => 
-                `(${userId}, '${allergy.allergyType}', '${allergy.allergenName.replace(/'/g, "''")}', NOW())`
-            ).join(', ');
-            
-            const insertedAllergies = await req.db.query(`
-                INSERT INTO user_allergies (user_id, allergy_type, allergen_name, created_at)
-                VALUES ${allergyValues}
-            `);
-            
-            info('PROFILE_DB_UPDATE_END', {
-                correlation_id: correlationId,
-                user_id: userId,
-                query: 'allergies_insert',
-                row_count: insertedAllergies.rowCount || 0,
-                duration_ms: Date.now() - insertAllergiesStart
-            });
-        }
-        
+
         // Return flat updated profile object with snake_case keys
         const updatedUserData = updatedUser.rows[0];
         const updatedProfile = {
@@ -612,10 +567,10 @@ router.put('/', authMiddleware, async (req, res) => {
             pregnancy_start_date: updatedUserData.pregnancy_start_date ?? null,
             cycle_phase: updatedUserData.cycle_phase ?? null
         };
-        
+
         // Create privacy-safe summary of updated profile
         const outputSummary = createProfileSummary(updatedProfile);
-        
+
         info('PROFILE_API_PUT_SUCCESS', {
             correlation_id: correlationId,
             user_id: userId,
@@ -623,7 +578,7 @@ router.put('/', authMiddleware, async (req, res) => {
             duration_ms: Date.now() - startTime,
             summary: outputSummary
         });
-        
+
         res.setHeader('Content-Type', 'application/json');
         res.json(updatedProfile);
     } catch (err) {
@@ -635,7 +590,7 @@ router.put('/', authMiddleware, async (req, res) => {
             status: 500,
             duration_ms: Date.now() - startTime
         });
-        
+
         console.error('Failed to update profile:', err);
         res.status(500).json({ success: false, message: 'Failed to update profile' });
     }

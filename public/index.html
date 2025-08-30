@@ -29,6 +29,7 @@
                                 <div id="userAvatar" class="user-avatar">
                                     <span id="userInitials"></span>
                                 </div>
+                                <span id="userName" class="ms-2 d-none"></span>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end" style="min-width: 150px;">
                                 <li><a class="dropdown-item" href="#" id="profileLink"><i class="fas fa-user me-2"></i>Profile</a></li>
@@ -365,8 +366,8 @@
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-md-6 mb-3">
-                                            <label class="form-label">Sex *</label>
-                                            <select class="form-select" id="sex" required>
+                                            <label class="form-label">Sex</label>
+                                            <select class="form-select" id="sex">
                                                 <option value="">Select...</option>
                                                 <option value="Male">Male</option>
                                                 <option value="Female">Female</option>
@@ -375,8 +376,8 @@
                                             </select>
                                         </div>
                                         <div class="col-md-6 mb-3">
-                                            <label class="form-label">Date of Birth *</label>
-                                            <input type="date" class="form-control" id="dateOfBirth" required>
+                                            <label class="form-label">Date of Birth</label>
+                                            <input type="date" class="form-control" id="dateOfBirth">
                                             <div class="form-text">Age: <span id="calculatedAge">-</span></div>
                                         </div>
                                     </div>
@@ -385,14 +386,14 @@
                                             <label class="form-label">Height</label>
                                             <!-- US Height Input -->
                                             <div class="input-group" id="heightUS">
-                                                <input type="number" class="form-control" id="heightFeet" placeholder="Feet" min="1" max="7">
+                                                <input type="number" class="form-control" id="heightFeet" placeholder="Feet" min="4" max="7">
                                                 <span class="input-group-text">'</span>
                                                 <input type="number" class="form-control" id="heightInches" placeholder="Inches" min="0" max="11">
                                                 <span class="input-group-text">"</span>
                                             </div>
                                             <!-- SI Height Input -->
                                             <div class="input-group d-none" id="heightSI">
-                                                <input type="number" class="form-control" id="heightCm" placeholder="cm" min="55" max="274">
+                                                <input type="number" class="form-control" id="heightCm" placeholder="cm" min="120" max="230">
                                                 <span class="input-group-text">cm</span>
                                             </div>
                                         </div>
@@ -400,12 +401,12 @@
                                             <label class="form-label">Weight</label>
                                             <!-- US Weight Input -->
                                             <div class="input-group" id="weightUS">
-                                                <input type="number" class="form-control" id="weightLbs" placeholder="lbs" min="20" max="1500" step="0.1">
+                                                <input type="number" class="form-control" id="weightLbs" placeholder="lbs" min="66" max="660" step="0.1">
                                                 <span class="input-group-text">lbs</span>
                                             </div>
                                             <!-- SI Weight Input -->
                                             <div class="input-group d-none" id="weightSI">
-                                                <input type="number" class="form-control" id="weightKg" placeholder="kg" min="10" max="680" step="0.1">
+                                                <input type="number" class="form-control" id="weightKg" placeholder="kg" min="30" max="300" step="0.1">
                                                 <span class="input-group-text">kg</span>
                                             </div>
                                         </div>

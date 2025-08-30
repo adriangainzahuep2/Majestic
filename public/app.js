@@ -8,7 +8,8 @@ class HealthDashboard {
         this.systemsData = new Map();
         this.isRefreshingInsights = false;
         this.insightsPollingInterval = null;
-        
+        this.currentProfile = null; // holds last loaded normalized profile
+
         this.init();
     }
 
@@ -31,11 +32,11 @@ class HealthDashboard {
     // Create privacy-safe summary of profile data for logging
     createClientProfileSummary(profileData) {
         const summary = {};
-        
+
         if (profileData) {
             // Count changed fields
             summary.field_count = Object.keys(profileData).length;
-            
+
             // Boolean flags for presence of key data (safe to log)
             summary.has_height = profileData.height_in !== null && profileData.height_in !== undefined;
             summary.has_weight = profileData.weight_lb !== null && profileData.weight_lb !== undefined;
@@ -44,17 +45,17 @@ class HealthDashboard {
             summary.has_ethnicity = !!profileData.ethnicity;
             summary.has_country = !!profileData.country_of_residence;
             summary.unit_system = profileData.preferred_unit_system || null;
-            
+
             // Lifestyle flags (safe to log as they're not directly identifiable)
             summary.smoker = profileData.smoker;
             summary.pregnant = profileData.pregnant;
             summary.has_alcohol_data = profileData.alcohol_drinks_per_week !== null && profileData.alcohol_drinks_per_week !== undefined;
-            
+
             // Count arrays without exposing content
             summary.allergies_count = Array.isArray(profileData.allergies) ? profileData.allergies.length : 0;
             summary.chronic_conditions_count = Array.isArray(profileData.chronicConditions) ? profileData.chronicConditions.length : 0;
         }
-        
+
         return summary;
     }
 
@@ -68,7 +69,7 @@ class HealthDashboard {
 
     async init() {
         this.setupEventListeners();
-        
+
         if (this.token) {
             console.log('[INIT] Found token, attempting to load user profile...');
             try {
@@ -92,7 +93,7 @@ class HealthDashboard {
         document.getElementById('demoLoginBtn').addEventListener('click', () => this.demoLogin());
         document.getElementById('googleLoginBtn').addEventListener('click', () => this.googleLogin());
         document.getElementById('logoutBtn').addEventListener('click', () => this.logout());
-        
+
         // Profile navigation
         document.getElementById('profileLink').addEventListener('click', (e) => {
             e.preventDefault();
@@ -100,17 +101,17 @@ class HealthDashboard {
         });
         document.getElementById('backToApp').addEventListener('click', () => this.showApp());
         document.getElementById('cancelProfile').addEventListener('click', () => this.showApp());
-        
+
         // Tab navigation
         document.getElementById('dashboard-tab').addEventListener('click', () => this.loadDashboard());
         document.getElementById('daily-plan-tab').addEventListener('click', () => this.loadDailyPlan());
         document.getElementById('uploads-tab').addEventListener('click', () => this.loadUploads());
         document.getElementById('trends-tab').addEventListener('click', () => this.loadTrends());
-        
+
         // Dashboard actions
         document.getElementById('refreshDashboard').addEventListener('click', () => this.loadDashboard());
         document.getElementById('regeneratePlan').addEventListener('click', () => this.regenerateDailyPlan());
-        
+
         // Phase 1 Unified Ingestion Pipeline
         document.getElementById('fileUpload').addEventListener('change', (e) => this.handleFileSelect(e));
         document.getElementById('uploadBtn').addEventListener('click', () => this.uploadFilesToUnifiedPipeline());
@@ -121,7 +122,7 @@ class HealthDashboard {
 
         // Profile form
         document.getElementById('profileForm').addEventListener('submit', (e) => this.saveProfile(e));
-        
+
         // Profile field interactions
         document.getElementById('dateOfBirth').addEventListener('change', this.calculateAge);
         document.getElementById('heightFeet').addEventListener('input', this.convertHeight);
@@ -148,7 +149,7 @@ class HealthDashboard {
             });
 
             const data = await response.json();
-            
+
             if (data.success) {
                 this.token = data.token;
                 this.user = data.user;
@@ -171,7 +172,7 @@ class HealthDashboard {
             // Get Google Client ID from backend
             const configResponse = await fetch(`${this.apiBase}/auth/config`);
             const config = await configResponse.json();
-            
+
             if (!config.googleClientId) {
                 this.showToast('error', 'Configuration Error', 'Google OAuth not configured. Please contact support.');
                 return;
@@ -212,18 +213,18 @@ class HealthDashboard {
                 client_id: clientId,
                 callback: this.handleGoogleSignIn.bind(this)
             });
-            
+
             // Create a temporary button and click it to trigger popup
             const tempDiv = document.createElement('div');
             tempDiv.style.display = 'none';
             document.body.appendChild(tempDiv);
-            
+
             window.google.accounts.id.renderButton(tempDiv, {
                 theme: 'outline',
                 size: 'large',
                 type: 'standard'
             });
-            
+
             // Auto-click the button
             setTimeout(() => {
                 const button = tempDiv.querySelector('div[role="button"]');
@@ -243,11 +244,11 @@ class HealthDashboard {
     async handleGoogleSignIn(response) {
         try {
             this.showLoading(true);
-            
+
             if (!response.credential) {
                 throw new Error('No credential received from Google');
             }
-            
+
             // Send the Google ID token to our backend
             const authResponse = await fetch(`${this.apiBase}/auth/google`, {
                 method: 'POST',
@@ -260,7 +261,7 @@ class HealthDashboard {
             });
 
             const data = await authResponse.json();
-            
+
             if (data.success) {
                 this.token = data.token;
                 this.user = data.user;
@@ -315,12 +316,12 @@ class HealthDashboard {
         document.getElementById('profileSection').classList.add('d-none');
         document.getElementById('userSection').classList.remove('d-none');
         document.getElementById('loginBtn').classList.add('d-none');
-        
+
         // Update user avatar
         if (this.user) {
             this.updateUserAvatar();
         }
-        
+
         this.loadDashboard();
     }
 
@@ -430,13 +431,13 @@ class HealthDashboard {
                 this.apiCall(`/metrics/system/${systemId}`, 'GET'),
                 this.apiCall(`/imaging-studies/system/${systemId}`, 'GET').catch(() => ({ studies: [] }))
             ]);
-            
+
             // Combine data
             const combinedData = {
                 ...metricsData,
                 studies: studiesData.studies || []
             };
-            
+
             // Store current system data for range analysis
             this.currentSystemData = combinedData;
             this.renderSystemModal(combinedData);
@@ -564,12 +565,12 @@ class HealthDashboard {
 
         const modalInstance = new bootstrap.Modal(modal);
         modalInstance.show();
-        
+
         // Load trends data after modal is shown
         modal.addEventListener('shown.bs.modal', async () => {
             const tooltipTriggerList = modal.querySelectorAll('[data-bs-toggle="tooltip"]');
             const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
-            
+
             // Load trends for this system
             await this.loadSystemTrends(systemData.system.id);
         });
@@ -578,7 +579,7 @@ class HealthDashboard {
     async loadSystemTrends(systemId) {
         try {
             const trendsData = await this.apiCall(`/metrics/system/${systemId}/trends`, 'GET');
-            
+
             if (trendsData && trendsData.length > 0) {
                 this.renderTrendsCharts(trendsData);
                 document.getElementById('trends-section').style.display = 'block';
@@ -605,7 +606,7 @@ class HealthDashboard {
         // Create a chart for each metric trend
         trendsData.forEach((trend, index) => {
             const chartId = `trend-chart-${trend.metric_id}`;
-            
+
             // Create chart container
             const chartDiv = document.createElement('div');
             chartDiv.id = chartId;
@@ -751,7 +752,7 @@ class HealthDashboard {
         // Check for custom reference range first (from database), then fall back to metricUtils
         let rangeBlock = '';
         let metricMatch = null;
-        
+
         if (metric.reference_range) {
             // Use custom reference range from database metric
             const rangeMatch = metric.reference_range.match(/(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\s*(.+)?/);
@@ -760,14 +761,14 @@ class HealthDashboard {
                 const normalRangeMin = parseFloat(minVal);
                 const normalRangeMax = parseFloat(maxVal);
                 const rangeUnits = units?.trim() || metric.metric_unit || '';
-                
+
                 const status = window.metricUtils ? 
                     window.metricUtils.calculateStatus(metric.metric_value, normalRangeMin, normalRangeMax) : 
                     (metric.metric_value >= normalRangeMin && metric.metric_value <= normalRangeMax ? 'Normal' : 'Out of Range');
                 const statusClass = status.toLowerCase().replace(' ', '-');
                 const rangeBar = window.metricUtils ? 
                     window.metricUtils.generateMicroRangeBar(metric.metric_value, normalRangeMin, normalRangeMax) : '';
-                
+
                 rangeBlock = `
                     <div class="metric-range-block">
                         <div class="metric-status-chip ${statusClass}">${status}</div>
@@ -781,18 +782,18 @@ class HealthDashboard {
                 `;
             }
         }
-        
+
         // Fall back to metricUtils if no custom reference range
         if (!rangeBlock) {
             const customMetrics = systemData.customMetrics || [];
             metricMatch = window.metricUtils ? 
                 window.metricUtils.findMetricMatch(metric.metric_name, systemData.system?.name || systemData.name, customMetrics) : null;
-            
+
             if (metricMatch) {
                 const status = window.metricUtils.calculateStatus(metric.metric_value, metricMatch.normalRangeMin, metricMatch.normalRangeMax);
                 const statusClass = status.toLowerCase().replace(' ', '-');
                 const rangeBar = window.metricUtils.generateMicroRangeBar(metric.metric_value, metricMatch.normalRangeMin, metricMatch.normalRangeMax);
-                
+
                 rangeBlock = `
                     <div class="metric-range-block">
                         <div class="metric-status-chip ${statusClass}">${status}</div>
@@ -813,7 +814,7 @@ class HealthDashboard {
                 `;
             }
         }
-        
+
         const needsReview = !metricMatch && !metric.reference_range || metric.needs_review;
 
         const editForm = `
@@ -883,18 +884,18 @@ class HealthDashboard {
     renderCombinedAdditionalMetrics(systemData) {
         const nonKeyMetrics = systemData.nonKeyMetrics || [];
         const customMetrics = systemData.customMetrics || [];
-        
+
         if (nonKeyMetrics.length === 0 && customMetrics.length === 0) {
             return '<p style="color: #EBEBF5;">No additional metrics available</p>';
         }
-        
+
         let html = '';
-        
+
         // Render non-key official metrics
         if (nonKeyMetrics.length > 0) {
             html += this.renderMetricsTable(nonKeyMetrics, systemData.system);
         }
-        
+
         // Render custom metrics
         if (customMetrics.length > 0) {
             if (nonKeyMetrics.length > 0) {
@@ -903,7 +904,7 @@ class HealthDashboard {
             }
             html += this.renderCustomMetricsTable(customMetrics, systemData.system);
         }
-        
+
         return html;
     }
 
@@ -935,7 +936,7 @@ class HealthDashboard {
         const sourceIcon = metric.source_type === 'official' ? 
             '<i class="fas fa-globe text-success" title="Global metric"></i>' : 
             '<i class="fas fa-user text-info" title="Personal metric"></i>';
-        
+
         return `
             <tr>
                 <td style="color: #FFFFFF; font-weight: 600;">
@@ -961,10 +962,10 @@ class HealthDashboard {
 
     isCustomMetricInRange(metric) {
         if (!metric.normal_range_min || !metric.normal_range_max) return null;
-        
+
         const value = parseFloat(metric.value);
         if (isNaN(value)) return null;
-        
+
         return value >= metric.normal_range_min && value <= metric.normal_range_max;
     }
 
@@ -972,7 +973,7 @@ class HealthDashboard {
         if (isInRange === null) {
             return '<span class="badge bg-secondary">-</span>';
         }
-        
+
         if (isInRange) {
             return '<span class="badge bg-success">Normal</span>';
         } else {
@@ -1002,9 +1003,9 @@ class HealthDashboard {
         if (this.isRefreshingInsights) {
             return;
         }
-        
+
         this.isRefreshingInsights = true;
-        
+
         // Add refreshing indicator to insights panels
         const insightsPanels = document.querySelectorAll('.insights-panel .card-body');
         insightsPanels.forEach(panel => {
@@ -1013,7 +1014,7 @@ class HealthDashboard {
             if (existingRefreshing) {
                 existingRefreshing.remove();
             }
-            
+
             const refreshingDiv = document.createElement('div');
             refreshingDiv.className = 'text-center py-3 insights-refreshing';
             refreshingDiv.innerHTML = `
@@ -1027,7 +1028,7 @@ class HealthDashboard {
     hideInsightsRefreshing() {
         // Reset the refreshing state
         this.isRefreshingInsights = false;
-        
+
         // Remove refreshing indicators
         const refreshingDivs = document.querySelectorAll('.insights-refreshing');
         refreshingDivs.forEach(div => div.remove());
@@ -1099,11 +1100,11 @@ class HealthDashboard {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(modal);
         const modalInstance = new bootstrap.Modal(modal);
         modalInstance.show();
-        
+
         // Clean up modal after hiding
         modal.addEventListener('hidden.bs.modal', () => {
             document.body.removeChild(modal);
@@ -1117,7 +1118,7 @@ class HealthDashboard {
         const currentMetricName = currentMetricSelect.options[0].text; // First option is current metric
         const currentUnitsElement = document.getElementById(`edit-unit-${metricId}`);
         const currentUnits = currentUnitsElement ? currentUnitsElement.value : '';
-        
+
         const modal = document.createElement('div');
         modal.className = 'modal fade';
         modal.id = 'inlineCustomMetricModal';
@@ -1179,11 +1180,11 @@ class HealthDashboard {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(modal);
         const modalInstance = new bootstrap.Modal(modal);
         modalInstance.show();
-        
+
         // Clean up modal after hiding
         modal.addEventListener('hidden.bs.modal', () => {
             document.body.removeChild(modal);
@@ -1227,15 +1228,15 @@ class HealthDashboard {
             const currentValue = document.getElementById(`edit-value-${metricId}`).value;
             const currentUnit = document.getElementById(`edit-unit-${metricId}`).value;
             const currentDate = document.getElementById(`edit-date-${metricId}`).value;
-            
+
             selectElement.value = metricName;
-            
+
             // Step 3: Update the metric with custom type and reference range
             const referenceRange = (rangeMin !== null || rangeMax !== null) ? 
                 `${rangeMin || 0}-${rangeMax || ''} ${units}`.trim() : '';
-            
+
             console.log('DEBUG updating metric:', { metricId, metricName, currentValue, units, referenceRange, rangeMin, rangeMax });
-            
+
             await this.apiCall(`/metrics/${metricId}`, 'PUT', {
                 metric_name: metricName,
                 metric_value: parseFloat(currentValue),
@@ -1249,10 +1250,10 @@ class HealthDashboard {
             bootstrap.Modal.getInstance(document.getElementById('inlineCustomMetricModal')).hide();
 
             this.showToast('success', 'Custom Metric Type', 'New metric type created and metric updated successfully');
-            
+
             // Cancel edit mode first, then refresh
             this.cancelMetricEdit(metricId);
-            
+
             // Refresh the system details to show updated data
             if (this.currentSystemData && this.currentSystemData.system) {
                 this.showSystemDetails(this.currentSystemData.system.id);
@@ -1275,7 +1276,7 @@ class HealthDashboard {
             'IU/L', 'mEq/L', 'U/L', 'g/24h', 'Osm/kg', 'Osm/L',
             'kg', 'cm', 'mmol/mol', 'Angstrom', 'Other'
         ];
-        
+
         return units.map(unit => `<option value="${unit}">${unit}</option>`).join('');
     }
 
@@ -1288,7 +1289,7 @@ class HealthDashboard {
             'IU/L', 'mEq/L', 'U/L', 'g/24h', 'Osm/kg', 'Osm/L',
             'kg', 'cm', 'mmol/mol', 'Angstrom', 'Other'
         ];
-        
+
         return units.map(unit => {
             const selected = unit === selectedUnit ? 'selected' : '';
             return `<option value="${unit}" ${selected}>${unit}</option>`;
@@ -1315,15 +1316,15 @@ class HealthDashboard {
 
             this.showLoading(true);
             await this.apiCall('/metrics/custom', 'POST', formData);
-            
+
             // Close modal
             bootstrap.Modal.getInstance(document.getElementById('addCustomMetricModal')).hide();
-            
+
             // Refresh system details
             this.showSystemDetails(systemId);
-            
+
             this.showToast('success', 'Custom Metric', 'Custom metric added successfully');
-            
+
         } catch (error) {
             console.error('Failed to save custom metric:', error);
             this.showToast('error', 'Save Failed', error.message);
@@ -1339,16 +1340,16 @@ class HealthDashboard {
 
     async deleteCustomMetric(metricId) {
         if (!confirm('Are you sure you want to delete this custom metric?')) return;
-        
+
         try {
             this.showLoading(true);
             await this.apiCall(`/metrics/custom/${metricId}`, 'DELETE');
-            
+
             // Refresh current system view
             this.refreshCurrentSystemView();
-            
+
             this.showToast('success', 'Custom Metric', 'Custom metric deleted successfully');
-            
+
         } catch (error) {
             console.error('Failed to delete custom metric:', error);
             this.showToast('error', 'Delete Failed', error.message);
@@ -1368,20 +1369,20 @@ class HealthDashboard {
 
         this.insightsPollingInterval = setInterval(async () => {
             pollCount++;
-            
+
             try {
                 // Check if new insights are available
                 const response = await this.apiCall('/api/dashboard');
                 if (response.success && response.data) {
                     // Update system insights if they're different
                     this.hideInsightsRefreshing();
-                    
+
                     // Refresh current system view if modal is open
                     const modal = document.getElementById('systemModal');
                     if (modal && modal.classList.contains('show')) {
                         this.refreshCurrentSystemView();
                     }
-                    
+
                     this.showToast('success', 'Insights Updated', 'AI insights have been refreshed with your latest data.');
                     clearInterval(this.insightsPollingInterval);
                     return;
@@ -1414,13 +1415,13 @@ class HealthDashboard {
             if (metricNameSpan) {
                 metricNameSpan.textContent = updatedMetric.metric_name;
             }
-            
+
             // Remove existing "Needs Review" indicator
             const existingIndicator = nameCell.querySelector('.needs-review-indicator');
             if (existingIndicator) {
                 existingIndicator.remove();
             }
-            
+
             // Add "Needs Review" indicator only if still needed
             if (needsReview) {
                 const indicator = document.createElement('span');
@@ -1456,13 +1457,13 @@ class HealthDashboard {
 
         // Update the range indicator using existing metric utilities
         const rangeCell = metricRow.querySelector('.range-indicator');
-        
+
         // Get custom metrics for range analysis
         const systemData = this.currentSystemData || {};
         const customMetrics = systemData.customMetrics || [];
         const metricMatch = window.metricUtils ? 
             window.metricUtils.findMetricMatch(updatedMetric.metric_name, systemData.system?.name || systemData.name, customMetrics) : null;
-            
+
         if (rangeCell && window.metricUtils && metricMatch) {
             if (updatedMetric.metric_value) {
                 const status = window.metricUtils.calculateStatus(
@@ -1476,7 +1477,7 @@ class HealthDashboard {
                     metricMatch.normalRangeMin, 
                     metricMatch.normalRangeMax
                 );
-                
+
                 rangeCell.innerHTML = `
                     <div class="metric-range-block">
                         <div class="metric-status-chip ${statusClass}">${status}</div>
@@ -1514,7 +1515,7 @@ class HealthDashboard {
         const studiesList = studies.map(study => {
             const testDate = study.test_date ? new Date(study.test_date).toLocaleDateString() : 'Unknown date';
             const keyMetricsText = this.formatStudyKeyMetrics(study.metrics_json);
-            
+
             return `
                 <div class="study-item mb-3 p-3" style="background: #2C2C2E; border-radius: 8px; border: 1px solid #3A3A3C;">
                     <div class="row align-items-center">
@@ -1654,7 +1655,7 @@ class HealthDashboard {
                                 <div class="col-md-6">
                                     <h6 style="color: #FFFFFF;">AI Summary</h6>
                                     <p style="color: #EBEBF5; font-size: 14px;">${study.ai_summary || 'No summary available'}</p>
-                                    
+
                                     ${study.comparison_summary ? `
                                         <h6 style="color: #FFFFFF; margin-top: 20px;">Comparison Analysis</h6>
                                         <p style="color: #EBEBF5; font-size: 14px;">${study.comparison_summary}</p>
@@ -1663,7 +1664,7 @@ class HealthDashboard {
                                 <div class="col-md-6">
                                     <h6 style="color: #FFFFFF;">Measurements</h6>
                                     ${this.renderStudyMetricsTable(study.metrics_json)}
-                                    
+
                                     ${study.metric_changes_json ? `
                                         <h6 style="color: #FFFFFF; margin-top: 20px;">Metric Changes</h6>
                                         ${this.renderMetricChangesTable(study.metric_changes_json)}
@@ -1764,7 +1765,7 @@ class HealthDashboard {
             const systemMatch = modalTitle.textContent.match(/(\w+)\s+System/);
             if (systemMatch) {
                 const systemName = systemMatch[1];
-                
+
                 // Find system ID from dashboard data
                 if (this.dashboardData && this.dashboardData.systems) {
                     const system = this.dashboardData.systems.find(s => 
@@ -1783,27 +1784,27 @@ class HealthDashboard {
             // Fetch available metric types from new API endpoint
             const response = await this.apiCall(`/metrics/types?systemId=${systemId}`, 'GET');
             const { officialMetricNames, approvedCustomMetricNames, userPendingMetricNames } = response;
-            
+
             // Clear existing options except current
             selectElement.innerHTML = `<option value="${currentMetric}" selected>${currentMetric}</option>`;
-            
+
             // Add all available metric names
             const allMetricNames = [
                 ...officialMetricNames,
                 ...approvedCustomMetricNames,
                 ...userPendingMetricNames
             ];
-            
+
             // Remove duplicates and current metric
             const uniqueMetrics = [...new Set(allMetricNames)].filter(name => name !== currentMetric);
-            
+
             uniqueMetrics.forEach(metricName => {
                 const option = document.createElement('option');
                 option.value = metricName;
                 option.textContent = metricName;
                 selectElement.appendChild(option);
             });
-            
+
             // Add "+ Add New Metric" option
             const addOption = document.createElement('option');
             addOption.value = '__ADD_NEW__';
@@ -1811,7 +1812,7 @@ class HealthDashboard {
             addOption.style.fontStyle = 'italic';
             addOption.style.color = '#007AFF';
             selectElement.appendChild(addOption);
-            
+
             return true;
         } catch (error) {
             console.error('Failed to populate metric dropdown:', error);
@@ -1821,19 +1822,19 @@ class HealthDashboard {
 
     generateUnitOptions(metricMatch, currentUnit) {
         const commonUnits = ['mg/dL', 'mmHg', 'g/dL', '%', 'U/L', 'ng/mL', 'pg/mL', 'μg/L', 'IU/mL', 'beats/min', 'L/min'];
-        
+
         let options = `<option value="${currentUnit || ''}">${currentUnit || 'Select unit'}</option>`;
-        
+
         if (metricMatch && metricMatch.units && metricMatch.units !== currentUnit) {
             options += `<option value="${metricMatch.units}">${metricMatch.units} (recommended)</option>`;
         }
-        
+
         commonUnits.forEach(unit => {
             if (unit !== currentUnit && (!metricMatch || unit !== metricMatch.units)) {
                 options += `<option value="${unit}">${unit}</option>`;
             }
         });
-        
+
         return options;
     }
 
@@ -1841,19 +1842,19 @@ class HealthDashboard {
         const editRow = document.getElementById(`edit-row-${metricId}`);
         const editForm = document.getElementById(`edit-form-${metricId}`);
         const displayRow = document.getElementById(`metric-row-${metricId}`);
-        
+
         // Show edit form and hide display row
         displayRow.classList.add('d-none');
         editRow.classList.remove('d-none');
-        
+
         // Populate metric dropdown with available options
         const selectElement = document.getElementById(`edit-metric-${metricId}`);
         const systemId = selectElement.dataset.systemId;
         const currentMetric = selectElement.value;
-        
+
         if (systemId) {
             await this.populateMetricDropdown(selectElement, systemId, currentMetric);
-            
+
             // Add change handler for "+ Add New Metric" option
             selectElement.addEventListener('change', (e) => {
                 if (e.target.value === '__ADD_NEW__') {
@@ -1861,7 +1862,7 @@ class HealthDashboard {
                 }
             });
         }
-        
+
         // Pre-populate the date field with the existing metric date
         const metricRow = document.querySelector(`[data-metric-id="${metricId}"]`);
         if (metricRow) {
@@ -1878,7 +1879,7 @@ class HealthDashboard {
                 }
             }
         }
-        
+
         editRow.classList.remove('d-none');
         editForm.classList.remove('d-none');
     }
@@ -1887,7 +1888,7 @@ class HealthDashboard {
         const editRow = document.getElementById(`edit-row-${metricId}`);
         const editForm = document.getElementById(`edit-form-${metricId}`);
         const displayRow = document.getElementById(`metric-row-${metricId}`);
-        
+
         // Hide edit form and show display row
         if (editRow) editRow.classList.add('d-none');
         if (editForm) editForm.classList.add('d-none');
@@ -1911,19 +1912,19 @@ class HealthDashboard {
 
             if (response.success) {
                 this.showToast('success', 'Metric Updated', 'Metric updated. AI insights and daily plan refreshed.');
-                
+
                 // Update the metric row in the table immediately
                 this.updateMetricRowInTable(metricId, response.metric);
-                
+
                 // Hide edit form  
                 this.cancelMetricEdit(metricId);
-                
+
                 // Show refreshing state for insights
                 this.showInsightsRefreshing();
-                
+
                 // Start polling for updated insights
                 this.startInsightsPolling(this.user?.id);
-                
+
                 // Refresh main dashboard to update tile colors immediately  
                 setTimeout(() => {
                     this.loadDashboard();
@@ -1962,7 +1963,7 @@ class HealthDashboard {
                 <span class="badge bg-${statusColor} mb-2" style="font-size: 0.9rem;">${systemStatus}</span>
                 ${summaryInsight ? `<div style="color: #FFFFFF; margin-top: 8px; line-height: 1.4;">${summaryInsight}</div>` : ''}
             </div>
-            
+
             ${outOfRangeMetrics && outOfRangeMetrics.length > 0 ? `
                 <div class="mb-3">
                     <h6 style="color: #FFFFFF; font-size: 0.9rem; margin-bottom: 12px;">
@@ -2027,7 +2028,7 @@ class HealthDashboard {
 
     renderDailyPlan(dailyPlan) {
         const container = document.getElementById('dailyPlanContent');
-        
+
         if (!dailyPlan) {
             container.innerHTML = `
                 <div class="card">
@@ -2109,7 +2110,7 @@ class HealthDashboard {
         try {
             await this.apiCall('/dashboard/daily-plan/regenerate', 'POST');
             this.showToast('success', 'Daily Plan', 'Daily plan regeneration queued. Check back in a few minutes.');
-            
+
             // Reload after a delay
             setTimeout(() => this.loadDailyPlan(), 30000);
         } catch (error) {
@@ -2125,7 +2126,7 @@ class HealthDashboard {
         const files = event.target.files;
         const uploadBtn = document.getElementById('uploadBtn');
         const dropZone = document.getElementById('dropZone');
-        
+
         if (files.length > 0) {
             uploadBtn.disabled = false;
             uploadBtn.innerHTML = `<i class="fas fa-magic me-2"></i>Process ${files.length} File(s) with AI`;
@@ -2159,11 +2160,11 @@ class HealthDashboard {
             e.preventDefault();
             dropZone.style.borderColor = '#3A3A3C';
             dropZone.style.background = '#2C2C2E';
-            
+
             const files = e.dataTransfer.files;
             const fileInput = document.getElementById('fileUpload');
             fileInput.files = files;
-            
+
             // Trigger change event
             const event = new Event('change', { bubbles: true });
             fileInput.dispatchEvent(event);
@@ -2181,7 +2182,7 @@ class HealthDashboard {
         const fileInput = document.getElementById('fileUpload');
         const files = fileInput.files;
         const testDateInput = document.getElementById('testDate');
-        
+
         if (files.length === 0) return;
 
         this.showUploadProgress(true);
@@ -2192,11 +2193,11 @@ class HealthDashboard {
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
                 console.log(`[UPLOAD] Processing file ${i + 1}/${files.length}: ${file.name}`);
-                
+
                 // Update progress
                 const progress = ((i / files.length) * 100).toFixed(0);
                 document.querySelector('#uploadProgress .progress-bar').style.width = `${progress}%`;
-                
+
                 const formData = new FormData();
                 formData.append('file', file);
                 if (testDateInput.value) {
@@ -2213,7 +2214,7 @@ class HealthDashboard {
 
                 const result = await response.json();
                 results.push({ fileName: file.name, result });
-                
+
                 if (!response.ok) {
                     throw new Error(result.message || `Failed to process ${file.name}`);
                 }
@@ -2221,15 +2222,15 @@ class HealthDashboard {
 
             // Complete progress
             document.querySelector('#uploadProgress .progress-bar').style.width = '100%';
-            
+
             // Show results
             this.showUploadResults(results);
-            
+
             // Clean up
             fileInput.value = '';
             testDateInput.value = '';
             document.getElementById('uploadBtn').disabled = true;
-            
+
             // Refresh dashboard to show new data
             setTimeout(() => {
                 this.loadDashboard();
@@ -2257,10 +2258,10 @@ class HealthDashboard {
 
     showUploadResults(results) {
         const resultDiv = document.getElementById('uploadResult');
-        
+
         const successCount = results.filter(r => r.result.success).length;
         const totalCount = results.length;
-        
+
         let html = `
             <div class="alert alert-success" style="background: #1e3a3a; border: 1px solid #28a745; color: #FFFFFF;">
                 <h6><i class="fas fa-check-circle me-2"></i>Processing Complete</h6>
@@ -2273,7 +2274,7 @@ class HealthDashboard {
                 const icon = dataType === 'lab' ? 'fas fa-vials' : 
                            dataType === 'visual' ? 'fas fa-images' : 
                            'fas fa-file-medical';
-                
+
                 html += `
                     <div class="mb-2 p-2" style="background: #2C2C2E; border-radius: 4px;">
                         <strong><i class="${icon} me-1"></i>${fileName}</strong>
@@ -2293,10 +2294,10 @@ class HealthDashboard {
         });
 
         html += '</div>';
-        
+
         resultDiv.innerHTML = html;
         resultDiv.style.display = 'block';
-        
+
         // Auto-hide after 10 seconds
         setTimeout(() => {
             resultDiv.style.display = 'none';
@@ -2329,7 +2330,7 @@ class HealthDashboard {
 
     renderUploadsList(uploads) {
         const container = document.getElementById('uploadsList');
-        
+
         if (uploads.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
@@ -2449,7 +2450,7 @@ class HealthDashboard {
             const promises = trendMetrics.map(metrics => 
                 this.apiCall(`/metrics/trends?metrics=${metrics}`, 'GET').catch(() => null)
             );
-            
+
             const results = await Promise.all(promises);
             this.renderTrendCharts(results);
         } catch (error) {
@@ -2463,20 +2464,20 @@ class HealthDashboard {
     renderTrendCharts(trendsData) {
         // LDL Chart
         this.renderChart('ldlChart', trendsData[0], 'LDL Cholesterol', 'mg/dL');
-        
+
         // ApoB Chart
         this.renderChart('apoBChart', trendsData[1], 'ApoB', 'mg/dL');
-        
+
         // CRP Chart
         this.renderChart('crpChart', trendsData[2], 'CRP', 'mg/L');
-        
+
         // IL-6 Chart
         this.renderChart('il6Chart', trendsData[3], 'IL-6', 'pg/mL');
     }
 
     renderChart(containerId, trendData, title, unit) {
         const container = document.getElementById(containerId);
-        
+
         if (!trendData || !trendData.trends || Object.keys(trendData.trends).length === 0) {
             container.innerHTML = `
                 <div class="d-flex align-items-center justify-content-center h-100">
@@ -2562,16 +2563,16 @@ class HealthDashboard {
         }
 
         const response = await fetch(`${this.apiBase}${endpoint}`, config);
-        
+
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-            
+
             // Handle 401 specifically for session expiry
             if (response.status === 401) {
                 this.handleSessionExpiry();
                 throw new Error(errorData.message || 'Session expired - please sign in again');
             }
-            
+
             const error = new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
             error.status = response.status;
             throw error;
@@ -2579,16 +2580,16 @@ class HealthDashboard {
 
         return await response.json();
     }
-    
+
     handleSessionExpiry() {
         // Clear stored token
         localStorage.removeItem('authToken');
         this.token = null;
         this.user = null;
-        
+
         // Show sign-in prompt
         this.showToast('warning', 'Session Expired', 'Please sign in again to continue');
-        
+
         // Redirect to login after a short delay
         setTimeout(() => {
             this.showLogin();
@@ -2659,39 +2660,41 @@ class HealthDashboard {
     async loadProfileData() {
         const startTime = performance.now();
         const correlationId = this.generateCorrelationId();
-        
+
         this.logClient('PROFILE_LOAD_REQUESTED', {
             correlation_id: correlationId,
             url: '/api/profile',
             method: 'GET'
         });
-        
+
         try {
             const response = await this.apiCall('/profile', 'GET', null, {
                 'X-Request-ID': correlationId
             });
-            
+
             const duration = performance.now() - startTime;
-            
+
             // Handle both flat response and wrapped response for backwards compatibility
             const profileData = response.profile || response;
             const normalizedProfile = this.normalizeProfileResponse(profileData);
-            
+            this.currentProfile = normalizedProfile;
+
             // Create privacy-safe summary for logging
             const profileSummary = this.createClientProfileSummary(profileData);
-            
+
             this.logClient('PROFILE_LOAD_SUCCESS', {
                 correlation_id: correlationId,
                 status: 200,
                 duration_ms: Math.round(duration),
                 summary: profileSummary
             });
-            
-            this.populateProfileForm(normalizedProfile);
-            
+
+            this.populateProfileForm(normalizedProfile, profileData.allergies || []);
+            this.expandProfileSections(normalizedProfile);
+
         } catch (error) {
             const duration = performance.now() - startTime;
-            
+
             this.logClient('PROFILE_LOAD_FAILED', {
                 correlation_id: correlationId,
                 status: error.status || 0,
@@ -2699,13 +2702,13 @@ class HealthDashboard {
                 server_message: error.message || 'Unknown error',
                 duration_ms: Math.round(duration)
             }, 'ERROR');
-            
+
             console.error('Failed to load profile:', {
                 message: error.message,
                 status: error.status,
                 endpoint: '/profile'
             });
-            
+
             // Don't show error toast for 401 (handled by handleSessionExpiry)
             if (!error.message.includes('Session expired')) {
                 this.showToast('error', 'Profile Load Failed', 
@@ -2714,18 +2717,24 @@ class HealthDashboard {
         }
     }
 
-    populateProfileForm(profile) {
+    populateProfileForm(profile, allergies = []) {
         if (!profile) return;
-        
+
         // Set unit system preference
         const unitSystem = profile.preferredUnitSystem || 'US';
         document.getElementById(`unit${unitSystem}`).checked = true;
         this.toggleUnitSystem(unitSystem);
-        
+
         // Demographics - use null-safe values
         document.getElementById('sex').value = profile.sex || '';
-        document.getElementById('dateOfBirth').value = profile.dateOfBirth || '';
-        
+        // Convert ISO date to YYYY-MM-DD format for date input
+        if (profile.dateOfBirth) {
+            const dobDate = new Date(profile.dateOfBirth);
+            document.getElementById('dateOfBirth').value = dobDate.toISOString().split('T')[0];
+        } else {
+            document.getElementById('dateOfBirth').value = '';
+        }
+
         // Height and weight from canonical storage
         if (profile.heightIn !== null && profile.heightIn !== undefined) {
             if (unitSystem === 'US') {
@@ -2738,7 +2747,7 @@ class HealthDashboard {
                 document.getElementById('heightCm').value = cm;
             }
         }
-        
+
         if (profile.weightLb !== null && profile.weightLb !== undefined) {
             if (unitSystem === 'US') {
                 document.getElementById('weightLbs').value = profile.weightLb;
@@ -2747,10 +2756,10 @@ class HealthDashboard {
                 document.getElementById('weightKg').value = parseFloat(kg);
             }
         }
-        
+
         document.getElementById('ethnicity').value = profile.ethnicity || '';
         document.getElementById('countryOfResidence').value = profile.countryOfResidence || '';
-        
+
         // Lifestyle - null-safe boolean handling
         if (profile.smoker === true || profile.smoker === false) {
             document.getElementById('smoker').value = profile.smoker.toString();
@@ -2761,29 +2770,50 @@ class HealthDashboard {
         } else {
             document.getElementById('smoker').value = '';
         }
-        
+
         document.getElementById('alcoholDrinksPerWeek').value = profile.alcoholDrinksPerWeek || '';
-        
+
         // Reproductive context - null-safe boolean handling
         if (profile.pregnant === true || profile.pregnant === false) {
             document.getElementById('pregnant').value = profile.pregnant.toString();
             if (profile.pregnant && profile.pregnancyStartDate) {
-                document.getElementById('pregnancyStartDate').value = profile.pregnancyStartDate;
+                // Convert ISO date to YYYY-MM-DD format for date input
+                const pregnancyDate = new Date(profile.pregnancyStartDate);
+                document.getElementById('pregnancyStartDate').value = pregnancyDate.toISOString().split('T')[0];
                 document.getElementById('pregnancyDateContainer').classList.remove('d-none');
             }
         } else {
             document.getElementById('pregnant').value = '';
         }
-        
+
         document.getElementById('cyclePhase').value = profile.cyclePhase || '';
-        
+
         // Calculate age if DOB exists
         if (profile.dateOfBirth) {
             this.calculateAge();
         }
-        
+
         // Show reproductive section if sex is female
         this.toggleReproductiveSection();
+
+        // Allergies & intolerances: mark checkboxes based on stored records
+        try {
+            // Uncheck all first
+            const allCbs = Array.from(document.querySelectorAll('#allergiesCollapse input[type="checkbox"]'));
+            allCbs.forEach(cb => { cb.checked = false; });
+            // Mark those present in DB response by matching type and value
+            if (Array.isArray(allergies) && allergies.length > 0) {
+                allergies.forEach(a => {
+                    const type = (a.allergy_type || a.type || '').toString();
+                    const name = (a.allergen_name || a.name || '').toString();
+                    if (!type || !name) return;
+                    const match = allCbs.find(cb => (cb.dataset.type || '') === type && (cb.value || '') === name);
+                    if (match) match.checked = true;
+                });
+            }
+        } catch (e) {
+            console.warn('Allergies populate warning:', e);
+        }
     }
 
     async loadCountries() {
@@ -2791,13 +2821,17 @@ class HealthDashboard {
             const response = await this.apiCall('/profile/countries', 'GET');
             const select = document.getElementById('countryOfResidence');
             select.innerHTML = '<option value="">Select country...</option>';
-            
+
             response.countries.forEach(country => {
                 const option = document.createElement('option');
                 option.value = country.code;
                 option.textContent = country.name;
                 select.appendChild(option);
             });
+            // Re-select previously loaded country if any
+            if (this.currentProfile && this.currentProfile.countryOfResidence) {
+                select.value = this.currentProfile.countryOfResidence;
+            }
         } catch (error) {
             console.error('Failed to load countries:', error);
             document.getElementById('countryOfResidence').innerHTML = '<option value="">Error loading countries</option>';
@@ -2815,11 +2849,11 @@ class HealthDashboard {
 
     handleUnitSystemChange(newSystem) {
         const currentSystem = newSystem === 'US' ? 'SI' : 'US';
-        
+
         // Get current values
         let currentHeight = null;
         let currentWeight = null;
-        
+
         if (currentSystem === 'US') {
             const feet = parseInt(document.getElementById('heightFeet').value) || 0;
             const inches = parseInt(document.getElementById('heightInches').value) || 0;
@@ -2837,14 +2871,14 @@ class HealthDashboard {
                 currentWeight = kg * 2.2046226218; // convert to lbs
             }
         }
-        
+
         // Clear all inputs
         document.getElementById('heightFeet').value = '';
         document.getElementById('heightInches').value = '';
         document.getElementById('heightCm').value = '';
         document.getElementById('weightLbs').value = '';
         document.getElementById('weightKg').value = '';
-        
+
         // Convert and populate in new system
         if (currentHeight !== null) {
             if (newSystem === 'US') {
@@ -2857,7 +2891,7 @@ class HealthDashboard {
                 document.getElementById('heightCm').value = cm;
             }
         }
-        
+
         if (currentWeight !== null) {
             if (newSystem === 'US') {
                 document.getElementById('weightLbs').value = currentWeight.toFixed(1);
@@ -2866,7 +2900,7 @@ class HealthDashboard {
                 document.getElementById('weightKg').value = parseFloat(kg);
             }
         }
-        
+
         // Toggle UI visibility
         this.toggleUnitSystem(newSystem);
     }
@@ -2876,42 +2910,58 @@ class HealthDashboard {
         const heightSI = document.getElementById('heightSI');
         const weightUS = document.getElementById('weightUS');
         const weightSI = document.getElementById('weightSI');
-        
+
         if (system === 'US') {
             heightUS.classList.remove('d-none');
             heightSI.classList.add('d-none');
             weightUS.classList.remove('d-none');
             weightSI.classList.add('d-none');
+
+            // Disable validation for hidden metric inputs
+            document.getElementById('heightCm').disabled = true;
+            document.getElementById('weightKg').disabled = true;
+            // Enable validation for visible US inputs
+            document.getElementById('heightFeet').disabled = false;
+            document.getElementById('heightInches').disabled = false;
+            document.getElementById('weightLbs').disabled = false;
         } else {
             heightUS.classList.add('d-none');
             heightSI.classList.remove('d-none');
             weightUS.classList.add('d-none');
             weightSI.classList.remove('d-none');
+
+            // Disable validation for hidden US inputs
+            document.getElementById('heightFeet').disabled = true;
+            document.getElementById('heightInches').disabled = true;
+            document.getElementById('weightLbs').disabled = true;
+            // Enable validation for visible metric inputs
+            document.getElementById('heightCm').disabled = false;
+            document.getElementById('weightKg').disabled = false;
         }
     }
 
     async saveProfile(e) {
         e.preventDefault();
-        
+
         const startTime = performance.now();
         const correlationId = this.generateCorrelationId();
-        
+
         // Show saving state
         const saveBtn = document.getElementById('saveProfileBtn');
         const saveText = document.getElementById('saveButtonText');
         const savingSpinner = document.getElementById('savingSpinner');
-        
+
         saveBtn.disabled = true;
         saveText.classList.add('d-none');
         savingSpinner.classList.remove('d-none');
-        
+
         // Get current unit system
         const unitSystem = document.querySelector('input[name="unitSystem"]:checked').value;
-        
+
         // Convert to canonical US units
         let heightIn = null;
         let weightLb = null;
-        
+
         if (unitSystem === 'US') {
             const feet = parseInt(document.getElementById('heightFeet').value) || 0;
             const inches = parseInt(document.getElementById('heightInches').value) || 0;
@@ -2929,14 +2979,14 @@ class HealthDashboard {
                 weightLb = kg * 2.2046226218;
             }
         }
-        
+
         // Validate height and weight bounds
         if (heightIn !== null && (heightIn < 48 || heightIn > 90)) {
             // Reset button state on validation error
             saveBtn.disabled = false;
             saveText.classList.remove('d-none');
             savingSpinner.classList.add('d-none');
-            
+
             this.showToast('error', 'Validation Error', 'Height must be between 4\'0" and 7\'6" (48-90 inches)');
             return;
         }
@@ -2945,11 +2995,11 @@ class HealthDashboard {
             saveBtn.disabled = false;
             saveText.classList.remove('d-none');
             savingSpinner.classList.add('d-none');
-            
+
             this.showToast('error', 'Validation Error', 'Weight must be between 66-660 lbs');
             return;
         }
-        
+
         // Build profile state in camelCase for processing
         const profileState = {
             preferredUnitSystem: unitSystem,
@@ -2969,7 +3019,7 @@ class HealthDashboard {
             pregnancyStartDate: document.getElementById('pregnancyStartDate').value || null,
             cyclePhase: document.getElementById('cyclePhase').value || null
         };
-        
+
         // Convert to snake_case payload for API
         const profileData = this.buildProfilePayload(profileState);
 
@@ -3001,7 +3051,7 @@ class HealthDashboard {
             allergies,
             chronicConditions
         };
-        
+
         // Log profile save attempt 
         const payloadSummary = this.createClientProfileSummary(fullPayload);
         this.logClient('PROFILE_SAVE_CLICKED', {
@@ -3009,9 +3059,9 @@ class HealthDashboard {
             field_count: Object.keys(profileData).length,
             summary: payloadSummary
         });
-        
+
         // Data is already normalized by buildProfilePayload
-        
+
         // Validate inches field if in US mode
         if (unitSystem === 'US') {
             const inches = parseInt(document.getElementById('heightInches').value) || 0;
@@ -3020,19 +3070,19 @@ class HealthDashboard {
                 saveBtn.disabled = false;
                 saveText.classList.remove('d-none');
                 savingSpinner.classList.add('d-none');
-                
+
                 this.showToast('error', 'Validation Error', 'Inches must be between 0-11');
                 return;
             }
         }
-        
+
         // Ensure numeric fields are properly validated
         if (profileData.packs_per_week !== null && profileData.packs_per_week < 0) {
             // Reset button state on validation error
             saveBtn.disabled = false;
             saveText.classList.remove('d-none');
             savingSpinner.classList.add('d-none');
-            
+
             this.showToast('error', 'Validation Error', 'Packs per week cannot be negative');
             return;
         }
@@ -3041,7 +3091,7 @@ class HealthDashboard {
             saveBtn.disabled = false;
             saveText.classList.remove('d-none');
             savingSpinner.classList.add('d-none');
-            
+
             this.showToast('error', 'Validation Error', 'Drinks per week cannot be negative');
             return;
         }
@@ -3054,9 +3104,9 @@ class HealthDashboard {
                 method: 'PUT',
                 payload_summary: payloadSummary
             });
-            
+
             console.log('Sending profile data:', JSON.stringify({...profileData, allergies, chronicConditions}, null, 2));
-            
+
             const response = await this.apiCall('/profile', 'PUT', {
                 ...profileData,
                 allergies,
@@ -3064,36 +3114,36 @@ class HealthDashboard {
             }, {
                 'X-Request-ID': correlationId
             });
-            
+
             const duration = performance.now() - startTime;
-            
+
             // Reset button state on success
             saveBtn.disabled = false;
             saveText.classList.remove('d-none');
             savingSpinner.classList.add('d-none');
-            
+
             // Log successful save
             this.logClient('PROFILE_SAVE_SUCCESS', {
                 correlation_id: correlationId,
                 status: 200,
                 duration_ms: Math.round(duration)
             });
-            
+
             console.log('Profile save response:', response);
             this.showToast('success', 'Profile Saved', 'Your profile has been updated successfully');
-            
+
             // Auto-dismiss success toast after 3 seconds
             setTimeout(() => {
                 const toastElement = document.getElementById('alertToast');
                 const toast = bootstrap.Toast.getInstance(toastElement);
                 if (toast) toast.hide();
             }, 3000);
-            
+
             // Keep unit system toggle highlight by not navigating away
-            
+
         } catch (error) {
             const duration = performance.now() - startTime;
-            
+
             // Log failed save
             this.logClient('PROFILE_SAVE_FAILED', {
                 correlation_id: correlationId,
@@ -3102,16 +3152,16 @@ class HealthDashboard {
                 server_message: error.message || 'Unknown error',
                 duration_ms: Math.round(duration)
             }, 'ERROR');
-            
+
             console.error('Failed to save profile:', error);
-            
+
             // Reset button state on error
             saveBtn.disabled = false;
             saveText.classList.remove('d-none');
             savingSpinner.classList.add('d-none');
-            
+
             let errorMessage = 'Failed to save profile. Please try again.';
-            
+
             // Try to extract specific error details
             if (error && error.response) {
                 try {
@@ -3130,7 +3180,7 @@ class HealthDashboard {
             } else if (error && error.error) {
                 errorMessage = `Save failed: ${error.error}`;
             }
-            
+
             this.showToast('error', 'Save Failed', errorMessage);
         }
     }
@@ -3138,17 +3188,17 @@ class HealthDashboard {
     calculateAge() {
         const dob = document.getElementById('dateOfBirth').value;
         const ageSpan = document.getElementById('calculatedAge');
-        
+
         if (dob) {
             const birthDate = new Date(dob);
             const today = new Date();
             let age = today.getFullYear() - birthDate.getFullYear();
             const monthDiff = today.getMonth() - birthDate.getMonth();
-            
+
             if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
                 age--;
             }
-            
+
             ageSpan.textContent = `${age} years old`;
         } else {
             ageSpan.textContent = '-';
@@ -3159,7 +3209,7 @@ class HealthDashboard {
         const feet = parseInt(document.getElementById('heightFeet').value) || 0;
         const inches = parseInt(document.getElementById('heightInches').value) || 0;
         const cm = parseInt(document.getElementById('heightCm').value) || 0;
-        
+
         if ((feet || inches) && !cm) {
             // Convert ft/in to cm
             const totalInches = feet * 12 + inches;
@@ -3178,7 +3228,7 @@ class HealthDashboard {
     convertWeight() {
         const lbs = parseFloat(document.getElementById('weightLbs').value) || 0;
         const kg = parseFloat(document.getElementById('weightKg').value) || 0;
-        
+
         if (lbs && !kg) {
             // Convert lbs to kg
             const convertedKg = (lbs * 0.453592).toFixed(1);
@@ -3193,7 +3243,7 @@ class HealthDashboard {
     toggleReproductiveSection() {
         const sex = document.getElementById('sex').value;
         const reproductiveSection = document.getElementById('reproductiveSection');
-        
+
         if (sex === 'Female') {
             reproductiveSection.style.display = 'block';
         } else {
@@ -3204,7 +3254,7 @@ class HealthDashboard {
     toggleSmokingFields() {
         const smoker = document.getElementById('smoker').value;
         const container = document.getElementById('packsPerWeekContainer');
-        
+
         if (smoker === 'true') {
             container.classList.remove('d-none');
         } else {
@@ -3216,7 +3266,7 @@ class HealthDashboard {
     togglePregnancyFields() {
         const pregnant = document.getElementById('pregnant').value;
         const container = document.getElementById('pregnancyDateContainer');
-        
+
         if (pregnant === 'true') {
             container.classList.remove('d-none');
         } else {
@@ -3228,12 +3278,12 @@ class HealthDashboard {
     calculateTrimester() {
         const startDate = document.getElementById('pregnancyStartDate').value;
         const trimesterSpan = document.getElementById('calculatedTrimester');
-        
+
         if (startDate) {
             const start = new Date(startDate);
             const today = new Date();
             const weeks = Math.floor((today - start) / (7 * 24 * 60 * 60 * 1000));
-            
+
             let trimester;
             if (weeks <= 13) {
                 trimester = '1st Trimester';
@@ -3244,10 +3294,40 @@ class HealthDashboard {
             } else {
                 trimester = 'Full Term+';
             }
-            
+
             trimesterSpan.textContent = `${trimester} (${weeks} weeks)`;
         } else {
             trimesterSpan.textContent = '-';
+        }
+    }
+
+    // Expand collapsible sections if we have any pre-existing profile data
+    expandProfileSections(profile) {
+        try {
+            const hasDemo = !!(profile.sex || profile.dateOfBirth || profile.ethnicity || profile.countryOfResidence);
+            if (hasDemo) {
+                const demo = document.getElementById('demographicsCollapse');
+                if (demo && !demo.classList.contains('show')) demo.classList.add('show');
+            }
+            // Expand lifestyle if any field present
+            const hasLifestyle = (profile.smoker !== null) || (profile.alcoholDrinksPerWeek !== null);
+            if (hasLifestyle) {
+                const life = document.getElementById('lifestyleCollapse');
+                if (life && !life.classList.contains('show')) life.classList.add('show');
+            }
+            // Expand reproductive for female/pregnant data
+            const hasRepro = (profile.pregnant !== null) || (profile.pregnancyStartDate !== null) || (profile.cyclePhase);
+            if (hasRepro) {
+                const rep = document.getElementById('reproductiveCollapse');
+                if (rep && !rep.classList.contains('show')) rep.classList.add('show');
+            }
+            // Expand allergies/conditions if lists will be marked separately
+            const cond = document.getElementById('conditionsCollapse');
+            if (cond && !cond.classList.contains('show')) cond.classList.add('show');
+            const allg = document.getElementById('allergiesCollapse');
+            if (allg && !allg.classList.contains('show')) allg.classList.add('show');
+        } catch (e) {
+            console.warn('expandProfileSections warning:', e);
         }
     }
 }

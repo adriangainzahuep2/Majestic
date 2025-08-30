@@ -25,7 +25,7 @@ const HEALTH_SYSTEMS = [
 // Initialize database schema
 async function initializeDatabase() {
   const client = await pool.connect();
-  
+
   try {
     // Create tables
     await client.query(`
@@ -38,6 +38,26 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Ensure profile-related columns exist on users table for profile routes
+    await client.query(`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS preferred_unit_system VARCHAR(10),
+        ADD COLUMN IF NOT EXISTS sex VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS date_of_birth DATE,
+        ADD COLUMN IF NOT EXISTS height_in INTEGER,
+        ADD COLUMN IF NOT EXISTS weight_lb DECIMAL(5,2),
+        ADD COLUMN IF NOT EXISTS ethnicity VARCHAR(100),
+        ADD COLUMN IF NOT EXISTS country_of_residence VARCHAR(3),
+        ADD COLUMN IF NOT EXISTS smoker BOOLEAN,
+        ADD COLUMN IF NOT EXISTS packs_per_week DECIMAL(3,1),
+        ADD COLUMN IF NOT EXISTS alcohol_drinks_per_week INTEGER,
+        ADD COLUMN IF NOT EXISTS pregnant BOOLEAN,
+        ADD COLUMN IF NOT EXISTS pregnancy_start_date DATE,
+        ADD COLUMN IF NOT EXISTS cycle_phase VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS profile_completed BOOLEAN DEFAULT false,
+        ADD COLUMN IF NOT EXISTS profile_updated_at TIMESTAMP
     `);
 
     await client.query(`
@@ -91,6 +111,28 @@ async function initializeDatabase() {
         question TEXT NOT NULL,
         response TEXT NOT NULL,
         response_date DATE DEFAULT CURRENT_DATE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Create user_chronic_conditions table for profile data
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_chronic_conditions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+        condition_name VARCHAR(200) NOT NULL,
+        status VARCHAR(20) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Create user_allergies table for profile data
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_allergies (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+        allergy_type VARCHAR(40) NOT NULL,
+        allergen_name VARCHAR(200) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
