@@ -1461,41 +1461,76 @@ input[type="number"]:active {
     background: var(--text-tertiary);
 }
 
-/* Metric Range Components */
-.metric-status-chip {
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    display: inline-block;
-    min-width: 60px;
-    text-align: center;
+/* Metric Range Components - Apple Health Colors v3.1 */
+.metric-status-chip,
+span.metric-status-chip,
+div.metric-status-chip,
+.badge.metric-status-chip {
+    padding: 4px 8px !important;
+    border-radius: 12px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    display: inline-block !important;
+    min-width: 60px !important;
+    text-align: center !important;
 }
 
-.metric-status-chip.normal {
+/* Force Apple Health Green for Normal/Optimal status */
+.metric-status-chip.normal,
+span.metric-status-chip.normal,
+div.metric-status-chip.normal,
+.badge.metric-status-chip.normal,
+.metric-status-chip[class*="normal"],
+[class*="metric-status-chip"][class*="normal"] {
     background: rgba(48, 209, 88, 0.15) !important;
+    background-color: rgba(48, 209, 88, 0.15) !important;
     color: #30D158 !important;
     border: 1px solid rgba(48, 209, 88, 0.3) !important;
+    border-color: rgba(48, 209, 88, 0.3) !important;
 }
 
-.metric-status-chip.high {
+/* Force Apple Health Red for High/Concerning status */
+.metric-status-chip.high,
+span.metric-status-chip.high,
+div.metric-status-chip.high,
+.badge.metric-status-chip.high,
+.metric-status-chip[class*="high"],
+[class*="metric-status-chip"][class*="high"] {
     background: rgba(255, 69, 58, 0.15) !important;
+    background-color: rgba(255, 69, 58, 0.15) !important;
     color: #FF453A !important;
     border: 1px solid rgba(255, 69, 58, 0.3) !important;
+    border-color: rgba(255, 69, 58, 0.3) !important;
 }
 
-.metric-status-chip.low {
+/* Force Apple Health Amber for Low/Warning status */
+.metric-status-chip.low,
+span.metric-status-chip.low,
+div.metric-status-chip.low,
+.badge.metric-status-chip.low,
+.metric-status-chip[class*="low"],
+[class*="metric-status-chip"][class*="low"] {
     background: rgba(255, 159, 10, 0.15) !important;
+    background-color: rgba(255, 159, 10, 0.15) !important;
     color: #FF9F0A !important;
     border: 1px solid rgba(255, 159, 10, 0.3) !important;
+    border-color: rgba(255, 159, 10, 0.3) !important;
 }
 
-.metric-status-chip.no-data {
+/* Force Apple Health Gray for No Data status */
+.metric-status-chip.no-data,
+span.metric-status-chip.no-data,
+div.metric-status-chip.no-data,
+.badge.metric-status-chip.no-data,
+.metric-status-chip[class*="no-data"],
+[class*="metric-status-chip"][class*="no-data"] {
     background: rgba(142, 142, 147, 0.15) !important;
+    background-color: rgba(142, 142, 147, 0.15) !important;
     color: #8E8E93 !important;
     border: 1px solid rgba(142, 142, 147, 0.3) !important;
+    border-color: rgba(142, 142, 147, 0.3) !important;
 }
 
 .micro-range-bar {
