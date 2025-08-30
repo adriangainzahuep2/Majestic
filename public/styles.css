@@ -20,6 +20,11 @@
     --neutral-color: #8E8E93;      /* Apple neutral gray - no data */
     --neutral-light: #C7C7CC;      /* Light neutral */
 
+    /* Glow effects for Whoop aesthetic */
+    --success-glow: rgba(48, 209, 88, 0.4);
+    --warning-glow: rgba(255, 159, 10, 0.4);
+    --danger-glow: rgba(255, 69, 58, 0.4);
+
     /* Calm Background Colors */
     --bg-primary: #FFFFFF;         /* Pure white */
     --bg-secondary: #F8F9FA;       /* Whisper gray */
@@ -1477,64 +1482,76 @@ div.metric-status-chip,
     text-align: center !important;
 }
 
-/* Apple Health Status Chips - More Distinct Colors */
+/* Whoop Health Status Chips - Bold with Glow Effects */
 .metric-status-chip.normal,
 span.metric-status-chip.normal,
 div.metric-status-chip.normal,
 .badge.metric-status-chip.normal,
 .metric-status-chip[class*="normal"],
 [class*="metric-status-chip"][class*="normal"] {
-    background: rgba(52, 199, 89, 0.2) !important;
-    background-color: rgba(52, 199, 89, 0.2) !important;
-    color: #34C759 !important;
-    border: 1px solid rgba(52, 199, 89, 0.5) !important;
-    border-color: rgba(52, 199, 89, 0.5) !important;
-    font-weight: 600 !important;
+    background: var(--success-color) !important;
+    background-color: var(--success-color) !important;
+    color: #000000 !important;
+    border: 2px solid var(--success-color) !important;
+    border-color: var(--success-color) !important;
+    font-weight: 800 !important;
+    box-shadow: 0 0 15px var(--success-glow) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
 }
 
-/* Apple Health Red for High/Concerning status - More vibrant */
+/* Whoop Red for High/Concerning status */
 .metric-status-chip.high,
 span.metric-status-chip.high,
 div.metric-status-chip.high,
 .badge.metric-status-chip.high,
 .metric-status-chip[class*="high"],
 [class*="metric-status-chip"][class*="high"] {
-    background: rgba(255, 59, 48, 0.2) !important;
-    background-color: rgba(255, 59, 48, 0.2) !important;
-    color: #FF3B30 !important;
-    border: 1px solid rgba(255, 59, 48, 0.5) !important;
-    border-color: rgba(255, 59, 48, 0.5) !important;
-    font-weight: 600 !important;
+    background: var(--danger-color) !important;
+    background-color: var(--danger-color) !important;
+    color: #FFFFFF !important;
+    border: 2px solid var(--danger-color) !important;
+    border-color: var(--danger-color) !important;
+    font-weight: 800 !important;
+    box-shadow: 0 0 15px var(--danger-glow) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
 }
 
-/* Apple Health Orange for Low/Warning status - More distinct */
+/* Whoop Amber for Low/Warning status */
 .metric-status-chip.low,
 span.metric-status-chip.low,
 div.metric-status-chip.low,
 .badge.metric-status-chip.low,
 .metric-status-chip[class*="low"],
 [class*="metric-status-chip"][class*="low"] {
-    background: rgba(255, 149, 0, 0.2) !important;
-    background-color: rgba(255, 149, 0, 0.2) !important;
-    color: #FF9500 !important;
-    border: 1px solid rgba(255, 149, 0, 0.5) !important;
-    border-color: rgba(255, 149, 0, 0.5) !important;
-    font-weight: 600 !important;
+    background: var(--warning-color) !important;
+    background-color: var(--warning-color) !important;
+    color: #000000 !important;
+    border: 2px solid var(--warning-color) !important;
+    border-color: var(--warning-color) !important;
+    font-weight: 800 !important;
+    box-shadow: 0 0 15px var(--warning-glow) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
 }
 
-/* Apple Health Gray for No Data status - More contrast */
+/* Whoop Gray for No Data status */
 .metric-status-chip.no-data,
 span.metric-status-chip.no-data,
 div.metric-status-chip.no-data,
 .badge.metric-status-chip.no-data,
 .metric-status-chip[class*="no-data"],
 [class*="metric-status-chip"][class*="no-data"] {
-    background: rgba(142, 142, 147, 0.3) !important;
-    background-color: rgba(142, 142, 147, 0.3) !important;
-    color: #8E8E93 !important;
-    border: 1px solid rgba(142, 142, 147, 0.6) !important;
-    border-color: rgba(142, 142, 147, 0.6) !important;
-    font-weight: 600 !important;
+    background: var(--neutral-color) !important;
+    background-color: var(--neutral-color) !important;
+    color: #FFFFFF !important;
+    border: 2px solid var(--neutral-color) !important;
+    border-color: var(--neutral-color) !important;
+    font-weight: 800 !important;
+    box-shadow: 0 0 10px rgba(116, 125, 140, 0.4) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
 }
 
 .micro-range-bar {
