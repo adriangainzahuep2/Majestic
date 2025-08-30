@@ -471,8 +471,8 @@ class HealthDashboard {
                 <div class="col-lg-8">
                     <!-- Trends -->
                     <div id="trends-section" class="card mb-4" style="display: none;">
-                        <div class="card-header" style="background: #007AFF; color: #FFFFFF;">
-                            <h6 class="mb-0" style="color: #FFFFFF;">
+                        <div class="card-header system-section-header">
+                            <h6 class="mb-0">
                                 <i class="fas fa-chart-line me-2"></i>Trends
                             </h6>
                         </div>
@@ -503,8 +503,8 @@ class HealthDashboard {
 
                     <!-- Additional Metrics (Non-Key + Custom) -->
                     <div class="card mb-4">
-                        <div class="card-header">
-                            <h6 class="mb-0" style="color: #FFFFFF;">
+                        <div class="card-header system-section-header">
+                            <h6 class="mb-0">
                                 <i class="fas fa-list me-2"></i>Additional Metrics
                             </h6>
                         </div>
@@ -515,8 +515,8 @@ class HealthDashboard {
 
                     <!-- Studies & Imaging Section (Phase 1) -->
                     <div class="card mb-4">
-                        <div class="card-header">
-                            <h6 class="mb-0" style="color: #FFFFFF;">
+                        <div class="card-header system-section-header">
+                            <h6 class="mb-0">
                                 <i class="fas fa-images me-2"></i>Studies & Imaging
                             </h6>
                         </div>
@@ -529,8 +529,8 @@ class HealthDashboard {
                 <div class="col-lg-4">
                     <!-- AI Insights -->
                     <div class="card mb-4 insights-panel">
-                        <div class="card-header">
-                            <h6 class="mb-0" style="color: #FFFFFF;">
+                        <div class="card-header system-section-header">
+                            <h6 class="mb-0">
                                 <div class="ai-insights-icon"></div>AI Insights
                             </h6>
                         </div>
@@ -544,8 +544,8 @@ class HealthDashboard {
 
                     <!-- System Status -->
                     <div class="card mb-4">
-                        <div class="card-header">
-                            <h6 class="mb-0" style="color: #FFFFFF;">
+                        <div class="card-header system-section-header">
+                            <h6 class="mb-0">
                                 <i class="fas fa-heartbeat me-2"></i>System Status
                             </h6>
                         </div>
