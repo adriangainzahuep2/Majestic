@@ -156,8 +156,24 @@ router.get('/system/:systemId/trends', async (req, res) => {
   try {
     const userId = req.user.userId;
     const systemId = req.params.systemId;
+    
+    console.log('[DEBUG] Trends API called:', {
+      userId: userId,
+      systemId: systemId,
+      systemIdType: typeof systemId,
+      url: req.url,
+      method: req.method
+    });
 
     const trendsData = await healthSystemsService.getSystemTrends(userId, systemId);
+    
+    console.log('[DEBUG] Trends API response:', {
+      userId: userId,
+      systemId: systemId,
+      trendsCount: trendsData?.length || 0,
+      trendsMetrics: trendsData?.map(t => t.metric_name) || []
+    });
+    
     res.json(trendsData);
 
   } catch (error) {

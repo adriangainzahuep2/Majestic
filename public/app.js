@@ -417,6 +417,11 @@ class HealthDashboard {
 
         // Add click handler for drill-down
         col.querySelector('.system-tile').addEventListener('click', () => {
+            console.log('[DEBUG] System tile clicked:', {
+                systemId: system.id,
+                systemName: system.name,
+                clickedAt: new Date().toISOString()
+            });
             this.showSystemDetails(system.id);
         });
 
@@ -424,6 +429,7 @@ class HealthDashboard {
     }
 
     async showSystemDetails(systemId) {
+        console.log('[DEBUG] showSystemDetails called with systemId:', systemId);
         this.showLoading(true);
         try {
             // Fetch system metrics and visual studies in parallel
@@ -440,6 +446,12 @@ class HealthDashboard {
 
             // Store current system data for range analysis
             this.currentSystemData = combinedData;
+            console.log('[DEBUG] Combined system data:', {
+                systemId: systemId,
+                systemName: combinedData.system?.name,
+                keyMetricsCount: combinedData.keyMetrics?.length,
+                hasStudies: combinedData.studies?.length > 0
+            });
             this.renderSystemModal(combinedData);
         } catch (error) {
             console.error('Failed to load system details:', error);
@@ -572,13 +584,23 @@ class HealthDashboard {
             const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
             // Load trends for this system
+            console.log('[DEBUG] About to load trends for system:', {
+                systemId: systemData.system.id,
+                systemName: systemData.system.name
+            });
             await this.loadSystemTrends(systemData.system.id);
         });
     }
 
     async loadSystemTrends(systemId) {
+        console.log('[DEBUG] loadSystemTrends called with systemId:', systemId);
         try {
             const trendsData = await this.apiCall(`/metrics/system/${systemId}/trends`, 'GET');
+            console.log('[DEBUG] Trends API response:', {
+                systemId: systemId,
+                trendsCount: trendsData?.length || 0,
+                trendsData: trendsData
+            });
 
             if (trendsData && trendsData.length > 0) {
                 this.renderTrendsCharts(trendsData);
@@ -597,6 +619,10 @@ class HealthDashboard {
     }
 
     renderTrendsCharts(trendsData) {
+        console.log('[DEBUG] renderTrendsCharts called with data:', {
+            trendsCount: trendsData?.length || 0,
+            metrics: trendsData?.map(t => ({ name: t.metric_name, pointsCount: t.series?.length })) || []
+        });
         const container = document.getElementById('trends-container');
         if (!container) return;
 
@@ -605,6 +631,14 @@ class HealthDashboard {
 
         // Create a chart for each metric trend
         trendsData.forEach((trend, index) => {
+            console.log('[DEBUG] Creating chart for metric:', {
+                index: index,
+                metricName: trend.metric_name,
+                metricId: trend.metric_id,
+                seriesLength: trend.series?.length || 0,
+                firstDataPoint: trend.series?.[0],
+                lastDataPoint: trend.series?.[trend.series?.length - 1]
+            });
             const chartId = `trend-chart-${trend.metric_id}`;
 
             // Create chart container

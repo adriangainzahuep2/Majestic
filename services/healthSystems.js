@@ -461,6 +461,13 @@ class HealthSystemsService {
   async getSystemTrends(userId, systemId) {
     const { pool } = require('../database/schema');
     
+    console.log('[DEBUG] getSystemTrends called:', {
+      userId: userId,
+      systemId: systemId,
+      systemIdType: typeof systemId,
+      parsedSystemId: parseInt(systemId)
+    });
+    
     try {
       // Get key lab metrics for this system
       const labMetricsResult = await pool.query(`
@@ -471,6 +478,13 @@ class HealthSystemsService {
         WHERE m.user_id = $1 AND m.system_id = $2 AND m.is_key_metric = true
         ORDER BY m.metric_name, m.test_date ASC, m.created_at ASC
       `, [userId, systemId]);
+      
+      console.log('[DEBUG] Lab metrics query result:', {
+        userId: userId,
+        systemId: systemId,
+        rowCount: labMetricsResult.rows.length,
+        metrics: labMetricsResult.rows.map(r => ({ name: r.metric_name, value: r.metric_value, system_id: r.system_id || 'N/A' }))
+      });
 
       // Get visual study data for this system
       const visualStudiesResult = await pool.query(`
@@ -480,6 +494,13 @@ class HealthSystemsService {
         AND i.metrics_json IS NOT NULL
         ORDER BY i.test_date ASC, i.created_at ASC
       `, [userId, systemId]);
+      
+      console.log('[DEBUG] Visual studies query result:', {
+        userId: userId,
+        systemId: systemId,
+        rowCount: visualStudiesResult.rows.length,
+        studies: visualStudiesResult.rows.map(r => ({ id: r.id, linked_system_id: r.linked_system_id || 'N/A' }))
+      });
 
       // Process lab metrics
       const metricData = {};
@@ -613,6 +634,17 @@ class HealthSystemsService {
           });
         }
       }
+      
+      console.log('[DEBUG] getSystemTrends final response:', {
+        userId: userId,
+        systemId: systemId,
+        totalTrends: trendsResponse.length,
+        trendsMetrics: trendsResponse.map(t => ({
+          name: t.metric_name,
+          pointsCount: t.points_count,
+          hasRangeBand: !!t.range_band
+        }))
+      });
 
       return trendsResponse;
       
