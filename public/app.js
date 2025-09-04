@@ -9,6 +9,7 @@ class HealthDashboard {
         this.isRefreshingInsights = false;
         this.insightsPollingInterval = null;
         this.currentProfile = null; // holds last loaded normalized profile
+        this.trendsChartManager = null; // Will be initialized when needed
 
         this.init();
     }
@@ -461,8 +462,44 @@ class HealthDashboard {
         }
     }
 
+    recreateSystemModal() {
+        // Remove existing modal if it exists
+        const existingModal = document.getElementById('systemModal');
+        if (existingModal) {
+            // Destroy any Bootstrap modal instance
+            const modalInstance = bootstrap.Modal.getInstance(existingModal);
+            if (modalInstance) {
+                modalInstance.dispose();
+            }
+            existingModal.remove();
+        }
+
+        // Create completely new modal DOM
+        const newModal = document.createElement('div');
+        newModal.className = 'modal fade system-drill-down';
+        newModal.id = 'systemModal';
+        newModal.setAttribute('tabindex', '-1');
+        newModal.innerHTML = `
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="systemModalTitle">System Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">✕</button>
+                    </div>
+                    <div class="modal-body" id="systemModalBody">
+                        <!-- System details will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(newModal);
+
+        return newModal;
+    }
+
     renderSystemModal(systemData) {
-        const modal = document.getElementById('systemModal');
+        // Always recreate the modal to avoid state persistence
+        const modal = this.recreateSystemModal();
         const title = document.getElementById('systemModalTitle');
         const body = document.getElementById('systemModalBody');
 
@@ -578,188 +615,261 @@ class HealthDashboard {
         const modalInstance = new bootstrap.Modal(modal);
         modalInstance.show();
 
-        // Load trends data after modal is shown
+        // Initialize trends chart manager and load trends after modal is shown
         modal.addEventListener('shown.bs.modal', async () => {
             const tooltipTriggerList = modal.querySelectorAll('[data-bs-toggle="tooltip"]');
             const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
-            // Load trends for this system
-            console.log('[DEBUG] About to load trends for system:', {
-                systemId: systemData.system.id,
-                systemName: systemData.system.name
-            });
-            await this.loadSystemTrends(systemData.system.id);
+            // Initialize and use trends chart manager
+            this.trendsChartManager = this.createTrendsChartManager();
+            await this.trendsChartManager.render(systemData.system.id, this.apiCall.bind(this));
+        });
+
+        // Clean up trends chart manager when modal is hidden
+        modal.addEventListener('hidden.bs.modal', () => {
+            if (this.trendsChartManager) {
+                this.trendsChartManager.destroy();
+                this.trendsChartManager = null;
+            }
         });
     }
 
-    async loadSystemTrends(systemId) {
-        console.log('[DEBUG] loadSystemTrends called with systemId:', systemId);
-        try {
-            const trendsData = await this.apiCall(`/metrics/system/${systemId}/trends`, 'GET');
-            console.log('[DEBUG] Trends API response:', {
-                systemId: systemId,
-                trendsCount: trendsData?.length || 0,
-                trendsData: trendsData
-            });
-
-            if (trendsData && trendsData.length > 0) {
-                this.renderTrendsCharts(trendsData);
-                document.getElementById('trends-section').style.display = 'block';
-            } else {
-                // Clear any existing charts and hide trends section if no data
-                this.renderTrendsCharts([]);
-                document.getElementById('trends-section').style.display = 'none';
-            }
-        } catch (error) {
-            console.error('Error loading trends:', error);
-            const trendsContainer = document.getElementById('trends-container');
-            if (trendsContainer) {
-                trendsContainer.innerHTML = '<p class="text-muted">Unable to load trend data.</p>';
-            }
-        }
-    }
-
-    renderTrendsCharts(trendsData) {
-        console.log('[DEBUG] renderTrendsCharts called with data:', {
-            trendsCount: trendsData?.length || 0,
-            metrics: trendsData?.map(t => ({ name: t.metric_name, pointsCount: t.series?.length })) || []
-        });
-        const container = document.getElementById('trends-container');
-        if (!container) return;
-
-        // Clear loading state
-        container.innerHTML = '';
-
-        // Create a chart for each metric trend
-        trendsData.forEach((trend, index) => {
-            console.log('[DEBUG] Creating chart for metric:', {
-                index: index,
-                metricName: trend.metric_name,
-                metricId: trend.metric_id,
-                seriesLength: trend.series?.length || 0,
-                firstDataPoint: trend.series?.[0],
-                lastDataPoint: trend.series?.[trend.series?.length - 1]
-            });
-            const chartId = `trend-chart-${trend.metric_id}`;
-
-            // Create chart container
-            const chartDiv = document.createElement('div');
-            chartDiv.id = chartId;
-            chartDiv.className = 'trend-chart mb-4';
-            chartDiv.style.height = '300px';
-            container.appendChild(chartDiv);
-
-            // Prepare data for Plotly
-            const xValues = trend.series.map(point => new Date(point.t));
-            const yValues = trend.series.map(point => point.v);
-
-            const traces = [{
-                x: xValues,
-                y: yValues,
-                type: 'scatter',
-                mode: 'lines+markers',
-                name: trend.metric_name,
-                line: {
-                    color: '#007AFF',
-                    width: 3
-                },
-                marker: {
-                    color: '#007AFF',
-                    size: 8,
-                    symbol: 'circle'
-                }
-            }];
-
-            // Add reference range band if available
-            if (trend.range_band) {
-                traces.push({
-                    x: [xValues[0], xValues[xValues.length - 1]],
-                    y: [trend.range_band.min, trend.range_band.min],
-                    type: 'scatter',
-                    mode: 'lines',
-                    name: 'Lower Normal',
-                    line: {
-                        color: '#34C759',
-                        width: 1,
-                        dash: 'dash'
-                    },
-                    showlegend: false,
-                    hoverinfo: 'skip'
-                });
-
-                traces.push({
-                    x: [xValues[0], xValues[xValues.length - 1]],
-                    y: [trend.range_band.max, trend.range_band.max],
-                    type: 'scatter',
-                    mode: 'lines',
-                    name: 'Upper Normal',
-                    line: {
-                        color: '#34C759',
-                        width: 1,
-                        dash: 'dash'
-                    },
-                    showlegend: false,
-                    hoverinfo: 'skip'
-                });
-
-                // Add shaded area between normal range
-                traces.push({
-                    x: [...xValues, ...xValues.slice().reverse()],
-                    y: [...new Array(xValues.length).fill(trend.range_band.min), 
-                        ...new Array(xValues.length).fill(trend.range_band.max).reverse()],
-                    type: 'scatter',
-                    mode: 'lines',
-                    fill: 'tonexty',
-                    fillcolor: 'rgba(52, 199, 89, 0.1)',
-                    line: { color: 'transparent' },
-                    name: 'Normal Range',
-                    showlegend: true,
-                    hoverinfo: 'skip'
-                });
+    // TrendsChart class for managing chart lifecycle
+    createTrendsChartManager() {
+        return new (class TrendsChart {
+            constructor() {
+                this.activeCharts = new Map();
+                this.containerId = 'trends-container';
+                this.sectionId = 'trends-section';
             }
 
-            const layout = {
-                title: {
-                    text: `${trend.metric_name} Trend (${trend.points_count} data points)`,
-                    font: { 
-                        color: '#FFFFFF',
-                        size: 16
+            async render(systemId, apiCallFn) {
+                console.log('[DEBUG] TrendsChart.render called with systemId:', systemId);
+                
+                // Always clean up first
+                this.destroy();
+
+                try {
+                    // Fetch trends data
+                    const trendsData = await apiCallFn(`/metrics/system/${systemId}/trends`, 'GET');
+                    console.log('[DEBUG] Trends API response:', {
+                        systemId: systemId,
+                        trendsCount: trendsData?.length || 0,
+                        trendsMetrics: trendsData?.map(t => t.metric_name) || []
+                    });
+
+                    const container = document.getElementById(this.containerId);
+                    const section = document.getElementById(this.sectionId);
+                    
+                    if (!container || !section) {
+                        console.warn('Trends container or section not found');
+                        return;
                     }
-                },
-                xaxis: {
-                    title: 'Date',
-                    color: '#EBEBF5',
-                    gridcolor: '#2C2C2E',
-                    tickfont: { color: '#EBEBF5' },
-                    titlefont: { color: '#EBEBF5' }
-                },
-                yaxis: {
-                    title: 'Value',
-                    color: '#EBEBF5',
-                    gridcolor: '#2C2C2E',
-                    tickfont: { color: '#EBEBF5' },
-                    titlefont: { color: '#EBEBF5' }
-                },
-                plot_bgcolor: '#1C1C1E',
-                paper_bgcolor: '#1C1C1E',
-                font: { color: '#FFFFFF' },
-                margin: { l: 60, r: 40, t: 60, b: 60 },
-                legend: {
-                    font: { color: '#EBEBF5' },
-                    bgcolor: 'transparent'
+
+                    if (trendsData && trendsData.length > 0) {
+                        this.renderCharts(trendsData);
+                        section.style.display = 'block';
+                    } else {
+                        container.innerHTML = '<p class="text-muted text-center py-3">No trend data available for this system.</p>';
+                        section.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Error loading trends:', error);
+                    const container = document.getElementById(this.containerId);
+                    if (container) {
+                        container.innerHTML = '<p class="text-muted text-center py-3">Unable to load trend data.</p>';
+                    }
                 }
-            };
+            }
 
-            const config = {
-                responsive: true,
-                displayModeBar: false,
-                displaylogo: false
-            };
+            renderCharts(trendsData) {
+                const container = document.getElementById(this.containerId);
+                if (!container) return;
 
-            // Render the chart
-            Plotly.newPlot(chartId, traces, layout, config);
-        });
+                // Clear container completely
+                container.innerHTML = '';
+
+                trendsData.forEach((trend, index) => {
+                    console.log('[DEBUG] Creating chart for metric:', {
+                        index: index,
+                        metricName: trend.metric_name,
+                        metricId: trend.metric_id,
+                        seriesLength: trend.series?.length || 0,
+                        firstDataPoint: trend.series?.[0],
+                        lastDataPoint: trend.series?.[trend.series?.length - 1]
+                    });
+
+                    const chartId = `trend-chart-${trend.metric_id}`;
+
+                    // Create chart container
+                    const chartDiv = document.createElement('div');
+                    chartDiv.id = chartId;
+                    chartDiv.className = 'trend-chart mb-4';
+                    chartDiv.style.height = '300px';
+                    container.appendChild(chartDiv);
+
+                    // Register this chart for cleanup
+                    this.activeCharts.set(chartId, true);
+
+                    // Prepare data for Plotly
+                    const xValues = trend.series.map(point => new Date(point.t));
+                    const yValues = trend.series.map(point => point.v);
+
+                    const traces = [{
+                        x: xValues,
+                        y: yValues,
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        name: trend.metric_name,
+                        line: {
+                            color: '#007AFF',
+                            width: 3
+                        },
+                        marker: {
+                            color: '#007AFF',
+                            size: 8,
+                            symbol: 'circle'
+                        }
+                    }];
+
+                    // Add reference range band if available
+                    if (trend.range_band) {
+                        traces.push({
+                            x: [xValues[0], xValues[xValues.length - 1]],
+                            y: [trend.range_band.min, trend.range_band.min],
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: 'Lower Normal',
+                            line: {
+                                color: '#34C759',
+                                width: 1,
+                                dash: 'dash'
+                            },
+                            showlegend: false,
+                            hoverinfo: 'skip'
+                        });
+
+                        traces.push({
+                            x: [xValues[0], xValues[xValues.length - 1]],
+                            y: [trend.range_band.max, trend.range_band.max],
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: 'Upper Normal',
+                            line: {
+                                color: '#34C759',
+                                width: 1,
+                                dash: 'dash'
+                            },
+                            showlegend: false,
+                            hoverinfo: 'skip'
+                        });
+
+                        // Add shaded area between normal range
+                        traces.push({
+                            x: [...xValues, ...xValues.slice().reverse()],
+                            y: [...new Array(xValues.length).fill(trend.range_band.min), 
+                                ...new Array(xValues.length).fill(trend.range_band.max).reverse()],
+                            type: 'scatter',
+                            mode: 'lines',
+                            fill: 'tonexty',
+                            fillcolor: 'rgba(52, 199, 89, 0.1)',
+                            line: { color: 'transparent' },
+                            name: 'Normal Range',
+                            showlegend: true,
+                            hoverinfo: 'skip'
+                        });
+                    }
+
+                    const layout = {
+                        title: {
+                            text: `${trend.metric_name} Trend (${trend.points_count} data points)`,
+                            font: { 
+                                color: '#FFFFFF',
+                                size: 16
+                            }
+                        },
+                        xaxis: {
+                            title: 'Date',
+                            color: '#EBEBF5',
+                            gridcolor: '#2C2C2E',
+                            tickfont: { color: '#EBEBF5' },
+                            titlefont: { color: '#EBEBF5' }
+                        },
+                        yaxis: {
+                            title: 'Value',
+                            color: '#EBEBF5',
+                            gridcolor: '#2C2C2E',
+                            tickfont: { color: '#EBEBF5' },
+                            titlefont: { color: '#EBEBF5' }
+                        },
+                        plot_bgcolor: '#1C1C1E',
+                        paper_bgcolor: '#1C1C1E',
+                        font: { color: '#FFFFFF' },
+                        margin: { l: 60, r: 40, t: 60, b: 60 },
+                        legend: {
+                            font: { color: '#EBEBF5' },
+                            bgcolor: 'transparent'
+                        }
+                    };
+
+                    const config = {
+                        responsive: true,
+                        displayModeBar: false,
+                        displaylogo: false
+                    };
+
+                    // Render the chart
+                    Plotly.newPlot(chartId, traces, layout, config);
+                });
+            }
+
+            destroy() {
+                console.log('[DEBUG] TrendsChart.destroy called, purging', this.activeCharts.size, 'charts');
+                
+                // Purge all active Plotly charts
+                this.activeCharts.forEach((_, chartId) => {
+                    const chartElement = document.getElementById(chartId);
+                    if (chartElement) {
+                        try {
+                            Plotly.purge(chartId);
+                            console.log('[DEBUG] Purged chart:', chartId);
+                        } catch (error) {
+                            console.warn('Error purging chart:', chartId, error);
+                        }
+                    }
+                });
+
+                // Clear the registry
+                this.activeCharts.clear();
+
+                // Clear container DOM
+                const container = document.getElementById(this.containerId);
+                if (container) {
+                    container.innerHTML = '';
+                }
+
+                // Hide the section
+                const section = document.getElementById(this.sectionId);
+                if (section) {
+                    section.style.display = 'none';
+                }
+            }
+
+            reset() {
+                this.destroy();
+                const container = document.getElementById(this.containerId);
+                if (container) {
+                    container.innerHTML = `
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                            <span>Loading trend data...</span>
+                        </div>
+                    `;
+                }
+            }
+        })();
     }
+
 
     renderMetricsTable(metrics, systemData) {
         return `
