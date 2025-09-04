@@ -606,7 +606,8 @@ class HealthDashboard {
                 this.renderTrendsCharts(trendsData);
                 document.getElementById('trends-section').style.display = 'block';
             } else {
-                // Hide trends section if no data
+                // Clear any existing charts and hide trends section if no data
+                this.renderTrendsCharts([]);
                 document.getElementById('trends-section').style.display = 'none';
             }
         } catch (error) {
