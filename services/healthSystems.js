@@ -164,9 +164,18 @@ class HealthSystemsService {
     const exactMatch = this.metricSystemMap.get(metricName.toLowerCase());
     if (exactMatch) return exactMatch;
 
-    // Try partial matching
+    // Try partial matching with word boundaries and length restrictions
     for (const [key, systemId] of this.metricSystemMap.entries()) {
-      if (metricName.toLowerCase().includes(key) || key.includes(metricName.toLowerCase())) {
+      // Skip partial matching for short keys (< 4 chars) to prevent false matches
+      if (key.length < 4) {
+        continue;
+      }
+      
+      // Use word boundary regex instead of simple substring matching
+      const keyPattern = new RegExp('\\b' + key.toLowerCase() + '\\b', 'i');
+      const metricPattern = new RegExp('\\b' + metricName.toLowerCase() + '\\b', 'i');
+      
+      if (keyPattern.test(metricName.toLowerCase()) || metricPattern.test(key.toLowerCase())) {
         // Check if this metric should be excluded from this system
         if (!this.isMetricExcludedFromSystem(systemId, metricName)) {
           return systemId;
