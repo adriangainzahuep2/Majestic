@@ -1,0 +1,162 @@
+ Replit Agent Prompt — Majestic Admin Console (Drizzle-Compatible)
+Goal: Add an admin interface to the existing Majestic Health Dashboard that integrates seamlessly with the existing Drizzle ORM architecture, JWT authentication, and unified file handling system.
+
+🔧 Dependencies to Add:
+
+exceljs (for advanced Excel features - xlsx already exists)
+express-rate-limit (for admin security)
+📋 Implementation Plan:
+
+1. Extend Drizzle Schema (modify shared/schema.js)
+Add admin tables using existing Drizzle patterns:
+
+// Admin Users table
+export const adminUsers = pgTable('admin_users', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id),
+  role: varchar('role', { length: 50 }).default('admin'),
+  grantedBy: integer('granted_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow()
+});
+// Admin Reference Metrics table
+export const adminReferenceMetrics = pgTable('admin_reference_metrics', {
+  id: serial('id').primaryKey(),
+  metricName: varchar('metric_name', { length: 255 }).notNull(),
+  systemId: integer('system_id').references(() => healthSystems.id),
+  normalRangeMin: decimal('normal_range_min'),
+  normalRangeMax: decimal('normal_range_max'),
+  units: varchar('units', { length: 50 }),
+  version: integer('version').default(1),
+  uploadedBy: integer('uploaded_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow()
+});
+// Admin Audit Log table
+export const adminAuditLog = pgTable('admin_audit_log', {
+  id: serial('id').primaryKey(),
+  adminUserId: integer('admin_user_id').references(() => users.id),
+  action: varchar('action', { length: 100 }),
+  targetTable: varchar('target_table', { length: 100 }),
+  targetId: integer('target_id'),
+  changesJson: jsonb('changes_json'),
+  createdAt: timestamp('created_at').defaultNow()
+});
+2. Create Migration Script (new file: scripts/admin-migration.js)
+Use existing migration patterns to add admin tables safely:
+
+const { db } = require('../shared/database');
+const { sql } = require('drizzle-orm');
+async function createAdminTables() {
+  console.log('🔧 Creating admin tables...');
+  
+  // Create admin tables using raw SQL for initial setup
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS admin_users (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id),
+      role VARCHAR(50) DEFAULT 'admin',
+      granted_by INTEGER REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+  
+  // Additional table creation...
+  console.log('✅ Admin tables created successfully');
+}
+module.exports = { createAdminTables };
+3. Admin Routes (new file: routes/admin.js)
+Follow existing route patterns with proper middleware integration:
+
+const express = require('express');
+const authMiddleware = require('../middleware/auth');
+const rateLimit = require('express-rate-limit');
+const router = express.Router();
+// Admin rate limiting
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
+// Apply auth and rate limiting to all admin routes
+router.use(authMiddleware);
+router.use(adminLimiter);
+// Admin middleware to check permissions
+async function adminMiddleware(req, res, next) {
+  // Check if user is admin using existing patterns
+  next();
+}
+router.use(adminMiddleware);
+// Admin dashboard data
+router.get('/dashboard', async (req, res) => {
+  // Implementation using existing database patterns
+});
+// Reference metrics management
+router.get('/reference-metrics', async (req, res) => {
+  // Download reference metrics as XLSX
+});
+router.post('/reference-metrics', async (req, res) => {
+  // Upload new reference metrics using existing multer config
+});
+module.exports = router;
+4. Extend Auth Middleware (modify middleware/auth.js)
+Add admin checking function that works with existing JWT system:
+
+// Add to existing auth.js
+const checkAdminPermissions = async (req, res, next) => {
+  try {
+    const { pool } = require('../database/schema');
+    const result = await pool.query(
+      'SELECT role FROM admin_users WHERE user_id = $1',
+      [req.user.userId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    req.user.adminRole = result.rows[0].role;
+    next();
+  } catch (error) {
+    res.status(500).json({ error: 'Admin check failed' });
+  }
+};
+module.exports = { authMiddleware, checkAdminPermissions };
+5. Frontend Integration (modify public/app.js)
+Add admin functionality using existing modal and API patterns:
+
+// Add admin navigation to existing UI
+function initializeAdminInterface() {
+  if (window.currentUser && window.currentUser.isAdmin) {
+    // Add admin tab using existing tab patterns
+    addAdminTab();
+  }
+}
+function addAdminTab() {
+  // Integrate with existing navigation system
+  const adminTabHtml = `
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="tab" href="#admin">
+        <i class="fas fa-cog me-2"></i>Admin
+      </a>
+    </li>
+  `;
+  // Add to existing navigation
+}
+6. File Upload Integration (extend routes/ingestFile.js)
+Add admin upload handling to existing unified ingestion pipeline:
+
+// Add admin-specific upload handling to existing ingestFile.js
+router.post('/admin/reference-metrics', authMiddleware, checkAdminPermissions, upload.single('file'), async (req, res) => {
+  try {
+    // Use existing file processing patterns
+    // Integrate with existing Excel processing
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+7. Integration Points:
+Database: Uses existing Drizzle ORM patterns and PostgreSQL connection
+Authentication: Extends existing JWT middleware without conflicts
+File Handling: Integrates with existing multer configuration in unified pipeline
+Frontend: Uses existing modal, API, and navigation patterns
+Error Handling: Follows existing error handling conventions
+This approach ensures 100% compatibility with your existing codebase architecture, using Drizzle ORM, existing auth patterns, and unified file handling without breaking any current functionality.
