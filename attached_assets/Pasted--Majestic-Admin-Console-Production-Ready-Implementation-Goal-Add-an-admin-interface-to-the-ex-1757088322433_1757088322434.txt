@@ -1,0 +1,566 @@
+# Majestic Admin Console - Production Ready Implementation
+
+## Goal
+Add an admin interface to the existing Majestic Health Dashboard that integrates seamlessly with the existing PostgreSQL architecture, JWT authentication, and unified file handling system.
+
+## Required Dependencies
+- exceljs (for advanced Excel features - xlsx already exists)
+- express-rate-limit (for admin security)
+
+## Database Schema Extensions
+
+### 1. Admin Tables (Add to database/schema.js)
+```sql
+-- Admin Users table
+CREATE TABLE IF NOT EXISTS admin_users (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  role VARCHAR(50) DEFAULT 'admin',
+  granted_by INTEGER REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Admin Reference Metrics table
+CREATE TABLE IF NOT EXISTS admin_reference_metrics (
+  id SERIAL PRIMARY KEY,
+  metric_name VARCHAR(255) NOT NULL,
+  system_id INTEGER REFERENCES health_systems(id),
+  normal_range_min DECIMAL(10,3),
+  normal_range_max DECIMAL(10,3),
+  units VARCHAR(50),
+  version INTEGER DEFAULT 1,
+  uploaded_by INTEGER REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Admin Audit Log table
+CREATE TABLE IF NOT EXISTS admin_audit_log (
+  id SERIAL PRIMARY KEY,
+  admin_user_id INTEGER REFERENCES users(id),
+  action VARCHAR(100),
+  target_table VARCHAR(100),
+  target_id INTEGER,
+  changes_json JSONB,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+## Implementation Files
+
+### 1. Admin Middleware (middleware/admin.js)
+```javascript
+const { pool } = require('../database/schema');
+
+const adminMiddleware = async (req, res, next) => {
+  try {
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    // Check admin status using global pool
+    const adminCheck = await pool.query(
+      'SELECT id, role FROM admin_users WHERE user_id = $1',
+      [req.user.userId]
+    );
+
+    if (adminCheck.rows.length === 0) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    req.admin = {
+      adminId: adminCheck.rows[0].id,
+      role: adminCheck.rows[0].role,
+      userId: req.user.userId
+    };
+
+    next();
+  } catch (error) {
+    console.error('Admin middleware error:', error);
+    res.status(500).json({ error: 'Admin authorization failed' });
+  }
+};
+
+module.exports = adminMiddleware;
+```
+
+### 2. Admin Routes (routes/admin.js)
+```javascript
+const express = require('express');
+const { pool } = require('../database/schema');
+const authMiddleware = require('../middleware/auth');
+const adminMiddleware = require('../middleware/admin');
+const ExcelJS = require('exceljs');
+const rateLimit = require('express-rate-limit');
+
+const router = express.Router();
+
+// Rate limiting for admin operations
+const adminRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
+
+// Apply auth and admin middleware to all routes
+router.use(authMiddleware);
+router.use(adminMiddleware);
+router.use(adminRateLimit);
+
+// Get all users with admin status
+router.get('/users', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT u.id, u.email, u.name, u.created_at,
+             au.role as admin_role, au.granted_by
+      FROM users u
+      LEFT JOIN admin_users au ON u.id = au.user_id
+      ORDER BY u.created_at DESC
+    `);
+
+    res.json({ users: result.rows });
+  } catch (error) {
+    console.error('Get admin users error:', error);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// Grant admin access
+router.post('/users/:userId/grant-admin', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { role = 'admin' } = req.body;
+
+    // Check if user exists
+    const userCheck = await pool.query('SELECT id FROM users WHERE id = $1', [userId]);
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Grant admin access
+    await pool.query(`
+      INSERT INTO admin_users (user_id, role, granted_by)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (user_id) DO UPDATE SET role = $2, granted_by = $3
+    `, [userId, role, req.admin.userId]);
+
+    // Log the action
+    await pool.query(`
+      INSERT INTO admin_audit_log (admin_user_id, action, target_table, target_id, changes_json)
+      VALUES ($1, $2, $3, $4, $5)
+    `, [
+      req.admin.userId,
+      'GRANT_ADMIN',
+      'admin_users',
+      userId,
+      JSON.stringify({ role, granted_by: req.admin.userId })
+    ]);
+
+    res.json({ success: true, message: 'Admin access granted' });
+  } catch (error) {
+    console.error('Grant admin error:', error);
+    res.status(500).json({ error: 'Failed to grant admin access' });
+  }
+});
+
+// Get system statistics
+router.get('/statistics', async (req, res) => {
+  try {
+    const [
+      userCount,
+      metricsCount,
+      uploadsCount,
+      studiesCount
+    ] = await Promise.all([
+      pool.query('SELECT COUNT(*) FROM users'),
+      pool.query('SELECT COUNT(*) FROM metrics'),
+      pool.query('SELECT COUNT(*) FROM uploads'),
+      pool.query('SELECT COUNT(*) FROM imaging_studies')
+    ]);
+
+    res.json({
+      statistics: {
+        total_users: parseInt(userCount.rows[0].count),
+        total_metrics: parseInt(metricsCount.rows[0].count),
+        total_uploads: parseInt(uploadsCount.rows[0].count),
+        total_studies: parseInt(studiesCount.rows[0].count)
+      }
+    });
+  } catch (error) {
+    console.error('Get statistics error:', error);
+    res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
+});
+
+// Export metrics to Excel
+router.get('/export/metrics', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT m.*, u.email as user_email, hs.name as system_name
+      FROM metrics m
+      JOIN users u ON m.user_id = u.id
+      LEFT JOIN health_systems hs ON m.system_id = hs.id
+      ORDER BY m.created_at DESC
+    `);
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Metrics Export');
+
+    worksheet.columns = [
+      { header: 'ID', key: 'id', width: 10 },
+      { header: 'User Email', key: 'user_email', width: 30 },
+      { header: 'System', key: 'system_name', width: 20 },
+      { header: 'Metric Name', key: 'metric_name', width: 30 },
+      { header: 'Value', key: 'metric_value', width: 15 },
+      { header: 'Unit', key: 'metric_unit', width: 15 },
+      { header: 'Test Date', key: 'test_date', width: 15 },
+      { header: 'Created At', key: 'created_at', width: 20 }
+    ];
+
+    worksheet.addRows(result.rows);
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=metrics_export.xlsx');
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error('Export metrics error:', error);
+    res.status(500).json({ error: 'Failed to export metrics' });
+  }
+});
+
+module.exports = router;
+```
+
+### 3. Admin Frontend (public/admin.html)
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Majestic Admin Console</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .admin-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #0a1a1a;
+            color: #ffffff;
+            min-height: 100vh;
+        }
+        .admin-header {
+            border-bottom: 2px solid #28a745;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: #1a2a1a;
+            border: 1px solid #28a745;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #28a745;
+        }
+        .users-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #1a2a1a;
+            border: 1px solid #28a745;
+        }
+        .users-table th,
+        .users-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+        .users-table th {
+            background: #28a745;
+            color: #ffffff;
+        }
+        .admin-badge {
+            background: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+        .btn-admin {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-admin:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1>🏥 Majestic Admin Console</h1>
+            <p>System administration and user management</p>
+        </div>
+
+        <div class="stats-grid" id="statsGrid">
+            <!-- Statistics will be loaded here -->
+        </div>
+
+        <div class="section">
+            <h2>User Management</h2>
+            <button class="btn-admin" onclick="exportMetrics()">📊 Export All Metrics</button>
+            <table class="users-table" id="usersTable">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Name</th>
+                        <th>Admin Status</th>
+                        <th>Joined</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    <!-- Users will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('authToken');
+        
+        if (!token) {
+            window.location.href = '/';
+        }
+
+        async function loadStatistics() {
+            try {
+                const response = await fetch('/api/admin/statistics', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load statistics');
+                
+                const data = await response.json();
+                displayStatistics(data.statistics);
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+            }
+        }
+
+        function displayStatistics(stats) {
+            const statsGrid = document.getElementById('statsGrid');
+            statsGrid.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-value">${stats.total_users}</div>
+                    <div>Total Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${stats.total_metrics}</div>
+                    <div>Total Metrics</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${stats.total_uploads}</div>
+                    <div>Total Uploads</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${stats.total_studies}</div>
+                    <div>Visual Studies</div>
+                </div>
+            `;
+        }
+
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/admin/users', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load users');
+                
+                const data = await response.json();
+                displayUsers(data.users);
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        function displayUsers(users) {
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = users.map(user => `
+                <tr>
+                    <td>${user.email}</td>
+                    <td>${user.name || 'N/A'}</td>
+                    <td>
+                        ${user.admin_role ? 
+                            `<span class="admin-badge">${user.admin_role}</span>` : 
+                            '<button class="btn-admin" onclick="grantAdmin(${user.id})">Grant Admin</button>'
+                        }
+                    </td>
+                    <td>${new Date(user.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn-admin" onclick="viewUserDetails(${user.id})">View</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function grantAdmin(userId) {
+            try {
+                const response = await fetch(`/api/admin/users/${userId}/grant-admin`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ role: 'admin' })
+                });
+                
+                if (!response.ok) throw new Error('Failed to grant admin access');
+                
+                alert('Admin access granted successfully');
+                loadUsers(); // Reload users table
+            } catch (error) {
+                console.error('Error granting admin:', error);
+                alert('Failed to grant admin access');
+            }
+        }
+
+        async function exportMetrics() {
+            try {
+                const response = await fetch('/api/admin/export/metrics', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) throw new Error('Failed to export metrics');
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'metrics_export.xlsx';
+                a.click();
+                window.URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error('Error exporting metrics:', error);
+                alert('Failed to export metrics');
+            }
+        }
+
+        function viewUserDetails(userId) {
+            // Implement user details view
+            alert(`User details for ID: ${userId} (to be implemented)`);
+        }
+
+        // Load data on page load
+        loadStatistics();
+        loadUsers();
+    </script>
+</body>
+</html>
+```
+
+### 4. Server Integration (Add to server.js)
+```javascript
+// Add after existing route imports
+const adminRoutes = require('./routes/admin');
+
+// Add after existing API routes
+app.use('/api/admin', adminRoutes);
+```
+
+### 5. Database Migration Script (scripts/admin-migration.js)
+```javascript
+const { pool } = require('../database/schema');
+
+async function createAdminTables() {
+  const client = await pool.connect();
+  
+  try {
+    console.log('🔧 Creating admin tables...');
+    
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS admin_users (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        role VARCHAR(50) DEFAULT 'admin',
+        granted_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id)
+      );
+    `);
+    
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS admin_reference_metrics (
+        id SERIAL PRIMARY KEY,
+        metric_name VARCHAR(255) NOT NULL,
+        system_id INTEGER REFERENCES health_systems(id),
+        normal_range_min DECIMAL(10,3),
+        normal_range_max DECIMAL(10,3),
+        units VARCHAR(50),
+        version INTEGER DEFAULT 1,
+        uploaded_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS admin_audit_log (
+        id SERIAL PRIMARY KEY,
+        admin_user_id INTEGER REFERENCES users(id),
+        action VARCHAR(100),
+        target_table VARCHAR(100),
+        target_id INTEGER,
+        changes_json JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    console.log('✅ Admin tables created successfully');
+  } catch (error) {
+    console.error('❌ Error creating admin tables:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+if (require.main === module) {
+  createAdminTables()
+    .then(() => process.exit(0))
+    .catch(() => process.exit(1));
+}
+
+module.exports = { createAdminTables };
+```
+
+## Key Corrections Made
+
+1. **Database Connection**: Uses `pool` directly from `database/schema` instead of `req.db`
+2. **Authentication Flow**: Properly integrates with existing `authMiddleware` 
+3. **Dependencies**: Only adds missing packages to existing setup
+4. **File Structure**: Follows existing patterns and naming conventions
+5. **Error Handling**: Matches existing error response patterns
+6. **Security**: Implements proper rate limiting and admin checks
+
+## Installation Steps
+
+1. Install missing dependencies: `npm install exceljs express-rate-limit`
+2. Run migration: `node scripts/admin-migration.js`
+3. Add admin routes to server.js
+4. Access admin console at `/admin.html` (requires admin user setup)
+
+This implementation is fully compatible with your existing PostgreSQL setup, authentication system, and follows all established patterns in your codebase.
