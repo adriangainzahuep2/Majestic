@@ -670,14 +670,13 @@ class HealthDashboard {
                         this.renderCharts(trendsData);
                         section.style.display = 'block';
                     } else {
-                        container.innerHTML = '<p class="text-muted text-center py-3">No trend data available for this system.</p>';
-                        section.style.display = 'block';
+                        section.style.display = 'none';
                     }
                 } catch (error) {
                     console.error('Error loading trends:', error);
-                    const container = document.getElementById(this.containerId);
-                    if (container) {
-                        container.innerHTML = '<p class="text-muted text-center py-3">Unable to load trend data.</p>';
+                    const section = document.getElementById(this.sectionId);
+                    if (section) {
+                        section.style.display = 'none';
                     }
                 }
             }
