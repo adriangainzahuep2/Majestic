@@ -132,7 +132,7 @@ class QueueService {
           SELECT m.*, hs.name as system_name 
           FROM metrics m
           JOIN health_systems hs ON m.system_id = hs.id
-          WHERE m.user_id = $1 
+          WHERE m.user_id = $1 AND COALESCE(m.exclude_from_analysis, false) = false
           ORDER BY m.test_date DESC
         `, [userId]);
 
@@ -349,7 +349,7 @@ class QueueService {
         // Get ALL current metrics for this system - NO LIMIT
         const metricsResult = await pool.query(`
           SELECT * FROM metrics 
-          WHERE user_id = $1 AND system_id = $2 
+          WHERE user_id = $1 AND system_id = $2 AND COALESCE(exclude_from_analysis, false) = false
           ORDER BY test_date DESC
         `, [userId, systemId]);
         
@@ -433,7 +433,7 @@ class QueueService {
           SELECT m.*, hs.name as system_name 
           FROM metrics m
           JOIN health_systems hs ON m.system_id = hs.id
-          WHERE m.user_id = $1 
+          WHERE m.user_id = $1 AND COALESCE(m.exclude_from_analysis, false) = false
           ORDER BY m.test_date DESC
         `, [userId]);
         
@@ -478,7 +478,7 @@ class QueueService {
           SELECT m.*, hs.name as system_name 
           FROM metrics m
           JOIN health_systems hs ON m.system_id = hs.id
-          WHERE m.user_id = $1 
+          WHERE m.user_id = $1 AND COALESCE(m.exclude_from_analysis, false) = false
           ORDER BY m.test_date DESC
         `, [userId]);
 
@@ -638,13 +638,13 @@ class QueueService {
 
     try {
       // Get ALL user metrics for comprehensive daily plan - NO TIME LIMIT
-      const metricsResult = await pool.query(`
-        SELECT m.*, hs.name as system_name 
-        FROM metrics m
-        JOIN health_systems hs ON m.system_id = hs.id
-        WHERE m.user_id = $1 
-        ORDER BY m.test_date DESC
-      `, [userId]);
+        const metricsResult = await pool.query(`
+          SELECT m.*, hs.name as system_name 
+          FROM metrics m
+          JOIN health_systems hs ON m.system_id = hs.id
+          WHERE m.user_id = $1 AND COALESCE(m.exclude_from_analysis, false) = false
+          ORDER BY m.test_date DESC
+        `, [userId]);
 
       // DIAGNOSTIC LOGGING - Required for debugging
       console.log(`=== DAILY PLAN DIRECT PROCESSING DEBUG ===`);
@@ -710,11 +710,11 @@ class QueueService {
       console.log(`[SYSTEM NAME RESOLVED] userId=${userId} systemId=${systemId} systemName=${systemName}`);
       
       // Get ALL current metrics for this system - NO LIMIT
-      const metricsResult = await pool.query(`
-        SELECT * FROM metrics 
-        WHERE user_id = $1 AND system_id = $2 
-        ORDER BY test_date DESC
-      `, [userId, systemId]);
+        const metricsResult = await pool.query(`
+          SELECT * FROM metrics 
+          WHERE user_id = $1 AND system_id = $2 AND COALESCE(exclude_from_analysis, false) = false
+          ORDER BY test_date DESC
+        `, [userId, systemId]);
       
       // 2. DATA FETCHED FOR AI LOGGING
       console.log(`[AI INPUT METRICS] userId=${userId} systemId=${systemId} count=${metricsResult.rows.length}`);

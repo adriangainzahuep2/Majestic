@@ -47,7 +47,8 @@ class AuthService {
       { 
         userId: user.id, 
         email: user.email,
-        name: user.name 
+        name: user.name,
+        is_demo: !!user.is_demo
       },
       this.jwtSecret,
       { expiresIn: '7d' }

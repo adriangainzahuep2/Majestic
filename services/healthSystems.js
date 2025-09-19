@@ -307,7 +307,7 @@ class HealthSystemsService {
         SELECT m.*, hs.name as system_name
         FROM metrics m
         JOIN health_systems hs ON m.system_id = hs.id
-        WHERE m.user_id = $1
+        WHERE m.user_id = $1 AND COALESCE(m.exclude_from_analysis, false) = false
         ORDER BY m.system_id, m.test_date DESC
       `, [userId]);
 
@@ -368,7 +368,7 @@ class HealthSystemsService {
         FROM metrics m
         LEFT JOIN uploads u ON m.upload_id = u.id
         WHERE m.user_id = $1 AND m.system_id = $2
-        ORDER BY m.test_date DESC NULLS LAST, m.is_key_metric DESC
+        ORDER BY m.test_date DESC NULLS LAST, COALESCE(m.is_key_metric, false) DESC
       `, [userId, systemId]);
 
       // Get custom metrics for this system (user's private + approved global)
@@ -449,7 +449,7 @@ class HealthSystemsService {
                m.test_date, m.created_at, m.reference_range,
                'lab' as source
         FROM metrics m
-        WHERE m.user_id = $1 AND m.system_id = $2 AND m.is_key_metric = true
+        WHERE m.user_id = $1 AND m.system_id = $2 AND m.is_key_metric = true AND COALESCE(m.exclude_from_analysis, false) = false
         ORDER BY m.metric_name, m.test_date ASC, m.created_at ASC
       `, [userId, systemId]);
 
@@ -464,7 +464,7 @@ class HealthSystemsService {
 
       // Process lab metrics
       const metricData = {};
-      const referenceMetrics = require('../public/data/metrics.json');
+      const catalog = require('../shared/metricsCatalog');
 
       // Add lab data points
       for (const row of labMetricsResult.rows) {
@@ -571,18 +571,11 @@ class HealthSystemsService {
         
         // Only include metrics with ≥ 2 data points
         if (deduplicatedSeries.length >= 2) {
-          // Look up reference range from metrics.json
+          // Look up reference range from unified catalog
           let rangeBand = null;
-          const referenceData = referenceMetrics.find(ref => 
-            ref.metric && ref.metric.toLowerCase() === metricName.toLowerCase()
-          );
-          
-          if (referenceData && referenceData.normalRangeMin !== undefined && referenceData.normalRangeMax !== undefined) {
-            rangeBand = {
-              min: referenceData.normalRangeMin,
-              max: referenceData.normalRangeMax,
-              source: "Baseline"
-            };
+          const range = catalog.getRangeForName(metricName);
+          if (range && range.min !== undefined && range.max !== undefined) {
+            rangeBand = { min: range.min, max: range.max, source: "Baseline" };
           }
 
           trendsResponse.push({

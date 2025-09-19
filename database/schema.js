@@ -40,6 +40,26 @@ async function initializeDatabase() {
       );
     `);
 
+    // Ensure profile-related columns exist on users table for profile routes
+    await client.query(`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS preferred_unit_system VARCHAR(10),
+        ADD COLUMN IF NOT EXISTS sex VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS date_of_birth DATE,
+        ADD COLUMN IF NOT EXISTS height_in INTEGER,
+        ADD COLUMN IF NOT EXISTS weight_lb DECIMAL(5,2),
+        ADD COLUMN IF NOT EXISTS ethnicity VARCHAR(100),
+        ADD COLUMN IF NOT EXISTS country_of_residence VARCHAR(3),
+        ADD COLUMN IF NOT EXISTS smoker BOOLEAN,
+        ADD COLUMN IF NOT EXISTS packs_per_week DECIMAL(3,1),
+        ADD COLUMN IF NOT EXISTS alcohol_drinks_per_week INTEGER,
+        ADD COLUMN IF NOT EXISTS pregnant BOOLEAN,
+        ADD COLUMN IF NOT EXISTS pregnancy_start_date DATE,
+        ADD COLUMN IF NOT EXISTS cycle_phase VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS profile_completed BOOLEAN DEFAULT false,
+        ADD COLUMN IF NOT EXISTS profile_updated_at TIMESTAMP
+    `);
+
     await client.query(`
       CREATE TABLE IF NOT EXISTS health_systems (
         id INTEGER PRIMARY KEY,
@@ -83,6 +103,15 @@ async function initializeDatabase() {
       );
     `);
 
+    // Ensure columns expected by services exist
+    await client.query(`
+      ALTER TABLE metrics
+        ADD COLUMN IF NOT EXISTS metric_unit VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS system_id INTEGER REFERENCES health_systems(id),
+        ADD COLUMN IF NOT EXISTS exclude_from_analysis BOOLEAN DEFAULT false,
+        ADD COLUMN IF NOT EXISTS review_reason TEXT;
+    `);
+
     await client.query(`
       CREATE TABLE IF NOT EXISTS questionnaire_responses (
         id SERIAL PRIMARY KEY,
@@ -91,6 +120,28 @@ async function initializeDatabase() {
         question TEXT NOT NULL,
         response TEXT NOT NULL,
         response_date DATE DEFAULT CURRENT_DATE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Create user_chronic_conditions table for profile data
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_chronic_conditions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+        condition_name VARCHAR(200) NOT NULL,
+        status VARCHAR(20) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Create user_allergies table for profile data
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_allergies (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+        allergy_type VARCHAR(40) NOT NULL,
+        allergen_name VARCHAR(200) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -106,6 +157,14 @@ async function initializeDatabase() {
         processing_time_ms INTEGER,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Align columns used by services
+    await client.query(`
+      ALTER TABLE ai_outputs_log
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS system_id INTEGER REFERENCES health_systems(id),
+        ADD COLUMN IF NOT EXISTS is_current BOOLEAN DEFAULT true;
     `);
 
     // Create user_custom_metrics table for custom metric types
@@ -157,6 +216,111 @@ async function initializeDatabase() {
       `, [system.id, system.name, system.description]);
     }
 
+    // Create pending_metric_suggestions table for unmatched metrics
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS pending_metric_suggestions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        upload_id INTEGER REFERENCES uploads(id) ON DELETE CASCADE,
+        unmatched_metrics JSONB NOT NULL,
+        ai_suggestions JSONB,
+        test_date DATE,
+        status VARCHAR(50) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, upload_id)
+      );
+    `);
+
+    // Create custom_reference_ranges table for user-defined normal ranges
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS custom_reference_ranges (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        metric_name VARCHAR(255) NOT NULL,
+        min_value DECIMAL NOT NULL,
+        max_value DECIMAL NOT NULL,
+        units VARCHAR(50) NOT NULL,
+        medical_condition VARCHAR(100) NOT NULL,
+        condition_details TEXT,
+        notes TEXT,
+        valid_from DATE,
+        valid_until DATE,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, metric_name, medical_condition, valid_from)
+      );
+    `);
+
+    // =====================
+    // ADMIN MASTER TABLES
+    // =====================
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS master_metrics (
+        metric_id VARCHAR(100) PRIMARY KEY,
+        metric_name VARCHAR(255) NOT NULL,
+        system_id INTEGER REFERENCES health_systems(id),
+        canonical_unit VARCHAR(50),
+        conversion_group_id VARCHAR(100),
+        normal_min DECIMAL(10,3),
+        normal_max DECIMAL(10,3),
+        is_key_metric BOOLEAN DEFAULT false,
+        source VARCHAR(100),
+        explanation TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS master_metric_synonyms (
+        id SERIAL PRIMARY KEY,
+        synonym_id VARCHAR(100),
+        metric_id VARCHAR(100) REFERENCES master_metrics(metric_id) ON DELETE CASCADE,
+        synonym_name VARCHAR(255) NOT NULL,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS master_conversion_groups (
+        conversion_group_id VARCHAR(100) PRIMARY KEY,
+        canonical_unit VARCHAR(50),
+        alt_unit VARCHAR(50),
+        to_canonical_formula VARCHAR(255),
+        from_canonical_formula VARCHAR(255),
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS master_versions (
+        version_id SERIAL PRIMARY KEY,
+        change_summary TEXT NOT NULL,
+        created_by VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        xlsx_path TEXT,
+        data_hash VARCHAR(128),
+        added_count INTEGER DEFAULT 0,
+        changed_count INTEGER DEFAULT 0,
+        removed_count INTEGER DEFAULT 0
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS master_snapshots (
+        version_id INTEGER REFERENCES master_versions(version_id) ON DELETE CASCADE,
+        metrics_json JSONB,
+        synonyms_json JSONB,
+        conversion_groups_json JSONB,
+        PRIMARY KEY(version_id)
+      );
+    `);
+
     // Create indexes for performance
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_metrics_user_system ON metrics(user_id, system_id);
@@ -167,6 +331,9 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_imaging_studies_type_date ON imaging_studies(study_type, test_date);
       CREATE INDEX IF NOT EXISTS idx_user_custom_metrics_user_system ON user_custom_metrics(user_id, system_id);
       CREATE INDEX IF NOT EXISTS idx_user_custom_metrics_review ON user_custom_metrics(source_type, review_status);
+      CREATE INDEX IF NOT EXISTS idx_pending_metrics_user_status ON pending_metric_suggestions(user_id, status);
+      CREATE INDEX IF NOT EXISTS idx_custom_ranges_user_metric ON custom_reference_ranges(user_id, metric_name);
+      CREATE INDEX IF NOT EXISTS idx_custom_ranges_validity ON custom_reference_ranges(valid_from, valid_until, is_active);
     `);
 
     console.log('Database schema initialized successfully');

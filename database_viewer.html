@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Majestic Database Viewer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #1a1a1a; color: #ffffff; }
+        .card { background: #2a2a2a; border: 1px solid #444; }
+        .table-dark { background: #333; }
+        .metric-high { color: #ff6b6b; }
+        .metric-normal { color: #51cf66; }
+        .metric-low { color: #ffd43b; }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1 class="text-center mb-4">🔍 Majestic Database Viewer</h1>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>👥 Users</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="users-content">Loading...</div>
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>📁 Uploads</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="uploads-content">Loading...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>📊 Metrics Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="metrics-summary">Loading...</div>
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>🎯 Custom Ranges</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="ranges-content">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>📈 Detailed Metrics</h5>
+            </div>
+            <div class="card-body">
+                <div id="metrics-content">Loading...</div>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>💡 Pending Suggestions</h5>
+            </div>
+            <div class="card-body">
+                <div id="suggestions-content">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadDatabaseData() {
+            try {
+                // Users
+                const usersResponse = await fetch('/api/debug/users');
+                const usersData = await usersResponse.json();
+                document.getElementById('users-content').innerHTML = renderUsers(usersData.users || []);
+                
+                // Uploads
+                const uploadsResponse = await fetch('/api/debug/uploads');
+                const uploadsData = await uploadsResponse.json();
+                document.getElementById('uploads-content').innerHTML = renderUploads(uploadsData.uploads || []);
+                
+                // Metrics
+                const metricsResponse = await fetch('/api/debug/metrics');
+                const metricsData = await metricsResponse.json();
+                document.getElementById('metrics-summary').innerHTML = renderMetricsSummary(metricsData.metrics || []);
+                document.getElementById('metrics-content').innerHTML = renderMetrics(metricsData.metrics || []);
+                
+                // Custom Ranges
+                const rangesResponse = await fetch('/api/debug/ranges');
+                const rangesData = await rangesResponse.json();
+                document.getElementById('ranges-content').innerHTML = renderRanges(rangesData.ranges || []);
+                
+                // Suggestions
+                const suggestionsResponse = await fetch('/api/debug/suggestions');
+                const suggestionsData = await suggestionsResponse.json();
+                document.getElementById('suggestions-content').innerHTML = renderSuggestions(suggestionsData.suggestions || []);
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.body.innerHTML = '<div class="alert alert-danger">Error loading database data. Make sure the server is running.</div>';
+            }
+        }
+        
+        function renderUsers(users) {
+            if (users.length === 0) return '<p class="text-muted">No users found</p>';
+            
+            return users.map(user => `
+                <div class="border-bottom pb-2 mb-2">
+                    <strong>ID ${user.id}:</strong> ${user.email}<br>
+                    <small class="text-muted">Name: ${user.name || 'N/A'}</small><br>
+                    <small class="text-muted">Created: ${new Date(user.created_at).toLocaleString()}</small>
+                </div>
+            `).join('');
+        }
+        
+        function renderUploads(uploads) {
+            if (uploads.length === 0) return '<p class="text-muted">No uploads found</p>';
+            
+            return uploads.map(upload => `
+                <div class="border-bottom pb-2 mb-2">
+                    <strong>ID ${upload.id}:</strong> ${upload.filename}<br>
+                    <small class="text-muted">Type: ${upload.file_type} | Status: ${upload.processing_status}</small><br>
+                    <small class="text-muted">Date: ${new Date(upload.created_at).toLocaleString()}</small>
+                </div>
+            `).join('');
+        }
+        
+        function renderMetricsSummary(metrics) {
+            if (metrics.length === 0) return '<p class="text-muted">No metrics found</p>';
+            
+            const summary = metrics.reduce((acc, metric) => {
+                acc.total++;
+                acc[metric.status] = (acc[metric.status] || 0) + 1;
+                return acc;
+            }, { total: 0 });
+            
+            return `
+                <p><strong>Total Metrics:</strong> ${summary.total}</p>
+                <p><span class="metric-normal">Normal:</span> ${summary.Normal || 0}</p>
+                <p><span class="metric-high">High:</span> ${summary.High || 0}</p>
+                <p><span class="metric-low">Low:</span> ${summary.Low || 0}</p>
+            `;
+        }
+        
+        function renderMetrics(metrics) {
+            if (metrics.length === 0) return '<p class="text-muted">No metrics found</p>';
+            
+            // Group by test date
+            const groupedMetrics = metrics.reduce((acc, metric) => {
+                const date = metric.test_date.split('T')[0];
+                if (!acc[date]) acc[date] = [];
+                acc[date].push(metric);
+                return acc;
+            }, {});
+            
+            return Object.entries(groupedMetrics).map(([date, dateMetrics]) => `
+                <h6 class="mt-3">${date} (${dateMetrics.length} metrics)</h6>
+                <div class="row">
+                    ${dateMetrics.map(metric => `
+                        <div class="col-md-6 mb-2">
+                            <div class="card card-body p-2">
+                                <strong class="metric-${metric.status.toLowerCase()}">${metric.metric_name}</strong><br>
+                                <small>${metric.metric_value} ${metric.metric_unit || ''} [${metric.status}]</small>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+        }
+        
+        function renderRanges(ranges) {
+            if (ranges.length === 0) return '<p class="text-muted">No custom ranges found</p>';
+            
+            return ranges.map(range => `
+                <div class="border-bottom pb-2 mb-2">
+                    <strong>${range.metric_name}</strong><br>
+                    <small>Range: ${range.min_value}-${range.max_value} ${range.units}</small><br>
+                    <small class="text-muted">Condition: ${range.medical_condition}</small><br>
+                    <small class="text-muted">Period: ${range.valid_from || 'N/A'} to ${range.valid_until || 'ongoing'}</small>
+                </div>
+            `).join('');
+        }
+        
+        function renderSuggestions(suggestions) {
+            if (suggestions.length === 0) return '<p class="text-muted">No pending suggestions found</p>';
+            
+            return suggestions.map(suggestion => `
+                <div class="border-bottom pb-2 mb-2">
+                    <strong>Suggestion ID ${suggestion.id}</strong><br>
+                    <small class="text-muted">Date: ${suggestion.test_date} | Status: ${suggestion.status}</small><br>
+                    <small>Unmatched metrics: ${JSON.parse(suggestion.unmatched_metrics || '[]').length}</small>
+                </div>
+            `).join('');
+        }
+        
+        // Load data when page loads
+        loadDatabaseData();
+    </script>
+</body>
+</html>

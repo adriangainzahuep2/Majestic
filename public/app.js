@@ -1,14 +1,36 @@
 // AI Health Dashboard Frontend Application
 class HealthDashboard {
     constructor() {
-        this.apiBase = '/api';
-        this.token = localStorage.getItem('authToken');
-        this.user = null;
-        this.dashboard = null;
+        this.apiBase = '/api'; 
+        this.jwtToken = null;
+        this.token = null; // legacy compatibility
+        this.userProfile = null;
+        this.googleClientId = null;
+
         this.systemsData = new Map();
-        this.isRefreshingInsights = false;
-        this.insightsPollingInterval = null;
+        this.currentProfile = null; // holds last loaded normalized profile
         
+        this.initializeApp();
+    }
+
+    async initializeApp() {
+        // Always fetch server config first
+        try {
+            const config = await this.apiCall('/auth/config');
+            if (config && config.hasGoogleAuth) {
+                this.googleClientId = config.googleClientId;
+                this.initializeGoogleSignIn(config);
+            } else {
+                console.log('Google Auth not configured on server.');
+                document.getElementById('google-signin-button').style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Failed to fetch auth config:', error);
+            this.showToast('error', 'Config Error', 'Could not load authentication configuration.');
+            document.getElementById('google-signin-button').style.display = 'none';
+        }
+
+        // Now initialize the rest of the app
         this.init();
     }
 
@@ -67,23 +89,30 @@ class HealthDashboard {
     }
 
     async init() {
+        console.log('[INIT] Initializing Health Dashboard application...');
+
+        // Setup UI event listeners
         this.setupEventListeners();
-        
-        if (this.token) {
+
+        // Check for token in localStorage on init
+        this.jwtToken = localStorage.getItem('jwtToken') || localStorage.getItem('authToken') || null;
+        this.token = this.jwtToken; // keep in sync for legacy calls
+
+        if (this.jwtToken) {
             console.log('[INIT] Found token, attempting to load user profile...');
             try {
                 await this.loadUserProfile();
-                this.showApp();
+                await this.showApp();
             } catch (error) {
                 console.error('Failed to load user profile on init:', error);
-                // Clear invalid token and show login
+                localStorage.removeItem('jwtToken');
                 localStorage.removeItem('authToken');
+                this.jwtToken = null;
                 this.token = null;
-                this.showLogin();
+                this.showLoginView();
             }
         } else {
-            console.log('[INIT] No token found, showing login');
-            this.showLogin();
+            this.showLoginView();
         }
     }
 
@@ -100,6 +129,10 @@ class HealthDashboard {
         });
         document.getElementById('backToApp').addEventListener('click', () => this.showApp());
         document.getElementById('cancelProfile').addEventListener('click', () => this.showApp());
+        
+        // Custom reference ranges
+        document.getElementById('addCustomRangeBtn').addEventListener('click', () => this.showAddCustomRangeModal());
+        document.getElementById('saveCustomRangeBtn').addEventListener('click', () => this.saveCustomRange());
         
         // Tab navigation
         document.getElementById('dashboard-tab').addEventListener('click', () => this.loadDashboard());
@@ -140,77 +173,95 @@ class HealthDashboard {
 
     // Authentication Methods
     async demoLogin() {
-        this.showLoading(true);
+        console.log('Attempting demo login...');
+        this.showLoading('Logging in as Demo User...');
         try {
-            const response = await fetch(`${this.apiBase}/auth/demo`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-            const data = await response.json();
+            const response = await this.apiCall('/auth/demo', 'POST');
             
-            if (data.success) {
-                this.token = data.token;
-                this.user = data.user;
-                localStorage.setItem('authToken', this.token);
-                this.showApp();
+            this.jwtToken = response.token;
+            this.token = response.token; // sync legacy
+            localStorage.setItem('jwtToken', this.jwtToken);
+            localStorage.setItem('authToken', this.jwtToken);
+            
+            if (response.success) {
+                this.user = response.user;
+                await this.showApp();
                 this.showToast('success', 'Welcome!', 'Successfully logged in with demo account');
+                // Optionally trigger background checks
+                this.checkPendingMetricSuggestions().catch(()=>{});
             } else {
-                throw new Error(data.message || 'Login failed');
+                throw new Error(response.message || 'Login failed');
             }
         } catch (error) {
             console.error('Demo login error:', error);
-            this.showToast('error', 'Login Failed', error.message);
+            this.showToast('error', 'Demo Login Failed', error.message || 'Could not sign in as demo');
         } finally {
             this.showLoading(false);
         }
     }
 
     async googleLogin() {
-        try {
-            // Get Google Client ID from backend
-            const configResponse = await fetch(`${this.apiBase}/auth/config`);
-            const config = await configResponse.json();
-            
-            if (!config.googleClientId) {
-                this.showToast('error', 'Configuration Error', 'Google OAuth not configured. Please contact support.');
-                return;
-            }
-
-            // Check if Google Sign-In library is loaded
-            if (!window.google || !window.google.accounts) {
-                this.showToast('error', 'Google Library Error', 'Google Sign-In library not loaded. Please refresh and try again.');
-                return;
-            }
-
-            // Initialize Google Sign-In
-            window.google.accounts.id.initialize({
-                client_id: config.googleClientId,
-                callback: this.handleGoogleSignIn.bind(this)
-            });
-
-            // Prompt the user to sign in
-            window.google.accounts.id.prompt((notification) => {
-                if (notification.isNotDisplayed()) {
-                    this.showToast('error', 'Google OAuth Error', 'Google Sign-In prompt blocked. This may be due to domain configuration or browser settings.');
-                    return;
-                }
-                if (notification.isSkippedMoment()) {
-                    // User dismissed the prompt - show popup as alternative
-                    this.showGoogleSignInPopup(config.googleClientId);
-                }
-            });
-        } catch (error) {
-            console.error('Google login initialization error:', error);
-            this.showToast('error', 'Google OAuth Failed', `Authentication error: ${error.message}`);
+        if (!this.googleClientId) {
+            this.showToast('error', 'Configuration Error', 'Google OAuth not configured. Please contact support.');
+            return;
         }
+
+        try {
+            // Ensure GSI library is loaded
+            if (typeof window.google === 'undefined' || typeof window.google.accounts === 'undefined') {
+                await new Promise(resolve => {
+                    const interval = setInterval(() => {
+                        if (typeof window.google !== 'undefined' && typeof window.google.accounts !== 'undefined') {
+                            clearInterval(interval);
+                            resolve();
+                        }
+                    }, 100);
+                });
+            }
+
+            // Trigger popup sign-in
+            this.showGoogleSignInPopup(this.googleClientId);
+        } catch (error) {
+            console.error('Google Sign-In prompt error:', error);
+            this.showToast('error', 'Google Auth Error', 'Google Sign-In prompt blocked. Please allow popups for this site.');
+        }
+    }
+
+    async initializeGoogleSignIn(config) {
+        if (!config || !config.hasGoogleAuth) {
+            document.getElementById('google-signin-button').style.display = 'none';
+            return;
+        }
+
+        // Wait for the GSI library to be loaded
+        if (typeof window.google === 'undefined' || typeof window.google.accounts === 'undefined') {
+            await new Promise(resolve => {
+                const interval = setInterval(() => {
+                    if (typeof window.google !== 'undefined' && typeof window.google.accounts !== 'undefined') {
+                        clearInterval(interval);
+                        resolve();
+                    }
+                }, 100);
+            });
+        }
+        
+        // Initialize Google Sign-In
+        window.google.accounts.id.initialize({
+            client_id: config.googleClientId,
+            callback: this.handleGoogleSignIn.bind(this),
+            use_fedcm_for_prompt: false
+        });
+
+        // Prompt the user to sign in
+        // google.accounts.id.prompt(); 
     }
 
     showGoogleSignInPopup(clientId) {
         try {
             window.google.accounts.id.initialize({
                 client_id: clientId,
-                callback: this.handleGoogleSignIn.bind(this)
+                callback: this.handleGoogleSignIn.bind(this),
+                use_fedcm_for_prompt: false,
             });
             
             // Create a temporary button and click it to trigger popup
@@ -294,10 +345,14 @@ class HealthDashboard {
     }
 
     async loadUserProfile() {
-        const response = await this.apiCall('/auth/me', 'GET');
-        if (response.user) {
-            this.user = response.user;
-            document.getElementById('userName').textContent = this.user.name || this.user.email;
+        if (!this.jwtToken) return null;
+        try {
+            const profile = await this.apiCall('/auth/me');
+            this.userProfile = profile;
+            this.updateUserUI(profile);
+        } catch (error) {
+            console.error('Failed to load user profile:', error);
+            this.showToast('error', 'Profile Load Failed', error.message);
         }
     }
 
@@ -352,24 +407,29 @@ class HealthDashboard {
 
     // Dashboard Methods
     async loadDashboard() {
-        this.showLoading(true);
         try {
-            const data = await this.apiCall('/dashboard', 'GET');
-            this.dashboard = data;
-            this.renderDashboard();
+            const data = await this.apiCall('/dashboard');
+            const systems = Array.isArray(data.systems) ? data.systems : (Array.isArray(data.dashboard) ? data.dashboard : []);
+            this.renderDashboard(systems);
+            this.systemsData = new Map(systems.map(s => [s.id, s]));
         } catch (error) {
             console.error('Failed to load dashboard:', error);
-            this.showToast('error', 'Dashboard Error', 'Failed to load dashboard data');
-        } finally {
-            this.showLoading(false);
+            this.showToast('error', 'Dashboard', error.message || 'Failed to load dashboard');
         }
     }
 
-    renderDashboard() {
-        if (!this.dashboard) return;
+    renderDashboard(systems) {
+        if (!systems) return;
 
         // Update summary stats
-        const summary = this.dashboard.summary;
+        const summary = {
+            recent_metrics: systems.reduce((sum, system) => sum + system.keyMetricsCount, 0),
+            systems_with_data: systems.length,
+            recent_uploads: systems.reduce((sum, system) => sum + system.recentUploads, 0),
+            green_systems: systems.filter(system => system.color === 'green').length,
+            yellow_systems: systems.filter(system => system.color === 'yellow').length,
+            red_systems: systems.filter(system => system.color === 'red').length
+        };
         document.getElementById('totalMetrics').textContent = summary.recent_metrics;
         document.getElementById('systemsWithData').textContent = summary.systems_with_data;
         document.getElementById('recentUploads').textContent = summary.recent_uploads;
@@ -380,7 +440,7 @@ class HealthDashboard {
         const tilesContainer = document.getElementById('systemTiles');
         tilesContainer.innerHTML = '';
 
-        this.dashboard.dashboard.forEach(system => {
+        systems.forEach(system => {
             const tile = this.createSystemTile(system);
             tilesContainer.appendChild(tile);
         });
@@ -423,18 +483,24 @@ class HealthDashboard {
     }
 
     async showSystemDetails(systemId) {
-        this.showLoading(true);
+        this.showLoading('Loading System Details...');
         try {
-            // Fetch system metrics and visual studies in parallel
-            const [metricsData, studiesData] = await Promise.all([
-                this.apiCall(`/metrics/system/${systemId}`, 'GET'),
-                this.apiCall(`/imaging-studies/system/${systemId}`, 'GET').catch(() => ({ studies: [] }))
+            const [metrics, studies, insights] = await Promise.all([
+                this.apiCall(`/metrics/system/${systemId}`),
+                this.apiCall(`/imaging-studies/system/${systemId}`),
+                this.apiCall(`/dashboard/insights/${systemId}`)
             ]);
-            
+
+            const system = this.systemsData.get(systemId);
+            if (!system) {
+                throw new Error('System not found');
+            }
+
             // Combine data
             const combinedData = {
-                ...metricsData,
-                studies: studiesData.studies || []
+                ...metrics,
+                studies: studies.studies || [],
+                insights: insights.insights || []
             };
             
             // Store current system data for range analysis
@@ -760,20 +826,34 @@ class HealthDashboard {
                 const normalRangeMin = parseFloat(minVal);
                 const normalRangeMax = parseFloat(maxVal);
                 const rangeUnits = units?.trim() || metric.metric_unit || '';
+                // Determine if this stored range differs from baseline (catalog)
+                let isAdjusted = false;
+                try {
+                    const baseline = window.metricUtils ? window.metricUtils.findMetricMatch(metric.metric_name, systemData.system?.name || systemData.name, systemData.customMetrics || []) : null;
+                    if (baseline) {
+                        const bMin = baseline.normalRangeMin;
+                        const bMax = baseline.normalRangeMax;
+                        const bUnits = baseline.units || '';
+                        if ((typeof bMin === 'number' && typeof bMax === 'number') && (bMin !== normalRangeMin || bMax !== normalRangeMax || (bUnits || '') !== rangeUnits)) {
+                            isAdjusted = true;
+                        }
+                    }
+                } catch (_) {}
                 
-                const status = window.metricUtils ? 
-                    window.metricUtils.calculateStatus(metric.metric_value, normalRangeMin, normalRangeMax) : 
+                const statusText = window.metricUtils ? 
+                    window.metricUtils.calculateStatusSync(metric.metric_value, normalRangeMin, normalRangeMax) : 
                     (metric.metric_value >= normalRangeMin && metric.metric_value <= normalRangeMax ? 'Normal' : 'Out of Range');
-                const statusClass = status.toLowerCase().replace(' ', '-');
+                const statusClass = statusText.toLowerCase().replace(' ', '-');
                 const rangeBar = window.metricUtils ? 
                     window.metricUtils.generateMicroRangeBar(metric.metric_value, normalRangeMin, normalRangeMax) : '';
                 
                 rangeBlock = `
                     <div class="metric-range-block">
-                        <div class="metric-status-chip ${statusClass}">${status}</div>
+                        <div class="metric-status-chip ${statusClass}">${statusText}</div>
                         ${rangeBar}
                         <div class="normal-range-caption">
                             Normal range: ${normalRangeMin}–${normalRangeMax} ${rangeUnits}
+                            ${isAdjusted ? '<span class="badge bg-warning text-dark ms-2">Adjusted range</span>' : '<span class="badge bg-secondary ms-2">Baseline</span>'}
                             <span class="info-icon" data-metric="${metric.metric_name}" data-bs-toggle="tooltip" 
                                   title="Custom reference range">i</span>
                         </div>
@@ -789,16 +869,17 @@ class HealthDashboard {
                 window.metricUtils.findMetricMatch(metric.metric_name, systemData.system?.name || systemData.name, customMetrics) : null;
             
             if (metricMatch) {
-                const status = window.metricUtils.calculateStatus(metric.metric_value, metricMatch.normalRangeMin, metricMatch.normalRangeMax);
-                const statusClass = status.toLowerCase().replace(' ', '-');
+                const statusText = window.metricUtils.calculateStatusSync(metric.metric_value, metricMatch.normalRangeMin, metricMatch.normalRangeMax);
+                const statusClass = statusText.toLowerCase().replace(' ', '-');
                 const rangeBar = window.metricUtils.generateMicroRangeBar(metric.metric_value, metricMatch.normalRangeMin, metricMatch.normalRangeMax);
                 
                 rangeBlock = `
                     <div class="metric-range-block">
-                        <div class="metric-status-chip ${statusClass}">${status}</div>
+                        <div class="metric-status-chip ${statusClass}">${statusText}</div>
                         ${rangeBar}
                         <div class="normal-range-caption">
                             Normal range: ${metricMatch.normalRangeMin}–${metricMatch.normalRangeMax}${metricMatch.units ? ` ${metricMatch.units}` : ''}
+                            <span class="badge bg-secondary ms-2">Baseline</span>
                             <span class="info-icon" data-metric="${metric.metric_name}" data-bs-toggle="tooltip" 
                                   title="${this.generateTooltipTitle(metricMatch, metric.metric_name)}">i</span>
                         </div>
@@ -855,13 +936,100 @@ class HealthDashboard {
                         </div>
                     </div>
                 </div>
+                <div class="row mt-2">
+                    <div class="col-md-12">
+                        <div class="p-2" style="background:#2C2C2E;border-radius:8px;border:1px solid #3A3A3C;">
+                            <div class="form-check form-switch d-flex align-items-center">
+                                <input class="form-check-input" type="checkbox" id="inline-range-enable-${metric.id}">
+                                <label class="form-check-label ms-2" for="inline-range-enable-${metric.id}" style="color:#EBEBF5;">Edit Reference Range</label>
+                                <span id="custom-range-status-${metric.id}" class="badge bg-info text-dark ms-3 d-none">Custom</span>
+                                <span id="current-range-text-${metric.id}" class="text-muted small ms-2"></span>
+                            </div>
+                            <div id="inline-range-fields-${metric.id}" class="row mt-2 d-none">
+                                <input type="hidden" id="inline-range-id-${metric.id}" value="">
+                                <div class="col-md-2">
+                                    <label class="form-label" style="color:#FFFFFF; font-size:12px;">Min</label>
+                                    <input type="number" step="0.01" class="form-control" id="inline-min-${metric.id}" placeholder="Min">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label" style="color:#FFFFFF; font-size:12px;">Max</label>
+                                    <input type="number" step="0.01" class="form-control" id="inline-max-${metric.id}" placeholder="Max">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label" style="color:#FFFFFF; font-size:12px;">Units</label>
+                                    <select class="form-select" id="inline-units-${metric.id}">
+                                        <option value="">Select unit</option>
+                                        <option>mg/dL</option>
+                                        <option>mmHg</option>
+                                        <option>g/dL</option>
+                                        <option>%</option>
+                                        <option>U/L</option>
+                                        <option>ng/mL</option>
+                                        <option>pg/mL</option>
+                                        <option>μg/L</option>
+                                        <option>IU/mL</option>
+                                        <option>nmol/L</option>
+                                        <option>nmol/min/mL</option>
+                                        <option>Angstrom</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label" style="color:#FFFFFF; font-size:12px;">Medical Condition</label>
+                                    <select class="form-select" id="inline-condition-${metric.id}">
+                                        <option value="">Select condition...</option>
+                                        <option value="pregnancy">Pregnancy</option>
+                                        <option value="diabetes">Diabetes</option>
+                                        <option value="hypertension">Hypertension</option>
+                                        <option value="medication">Medication Effect</option>
+                                        <option value="age_related">Age-Related</option>
+                                        <option value="genetic_condition">Genetic Condition</option>
+                                        <option value="chronic_disease">Chronic Disease</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3" id="inline-condition-details-wrap-${metric.id}" style="display:none;">
+                                    <label class="form-label" style="color:#FFFFFF; font-size:12px;">Specify Condition</label>
+                                    <input type="text" class="form-control" id="inline-condition-details-${metric.id}" placeholder="Describe condition">
+                                </div>
+                                <div class="col-md-6 mt-2">
+                                    <label class="form-label" style="color:#FFFFFF; font-size:12px;">Notes</label>
+                                    <input type="text" class="form-control" id="inline-notes-${metric.id}" placeholder="Optional notes">
+                                </div>
+                                <div class="col-md-3 mt-2">
+                                    <label class="form-label" style="color:#FFFFFF; font-size:12px;">Valid From</label>
+                                    <input type="date" class="form-control" id="inline-valid-from-${metric.id}">
+                                </div>
+                                <div class="col-md-3 mt-2">
+                                    <label class="form-label" style="color:#FFFFFF; font-size:12px;">Valid Until</label>
+                                    <input type="date" class="form-control" id="inline-valid-until-${metric.id}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-6">
+                        <div class="form-check form-switch d-flex align-items-center">
+                            <input class="form-check-input" type="checkbox" id="inline-exclude-${metric.id}" ${metric.exclude_from_analysis ? 'checked' : ''}>
+                            <label class="form-check-label ms-2" for="inline-exclude-${metric.id}" style="color:#EBEBF5;">Exclude from analysis</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6" id="inline-exclude-reason-wrap-${metric.id}" style="display:${metric.exclude_from_analysis ? 'block' : 'none'};">
+                        <input type="text" class="form-control" id="inline-exclude-reason-${metric.id}" placeholder="Reason (optional)" value="${metric.review_reason || ''}">
+                    </div>
+                </div>
             </div>
         `;
+
+        const customTag = (metric.reference_range || (metric.source && String(metric.source).toLowerCase().includes('user edited'))) 
+            ? '<span class="badge bg-info text-dark ms-2">Custom</span>' 
+            : '';
+        const reviewTag = metric.exclude_from_analysis ? '<span class="badge bg-warning text-dark ms-2 badge-review">Review Value</span>' : '';
 
         return `
             <tr id="metric-row-${metric.id}" data-metric-id="${metric.id}" data-test-date="${metric.test_date}">
                 <td style="color: #FFFFFF; font-weight: 600;">
-                    <span class="metric-name">${metric.metric_name}</span>
+                    <span class="metric-name">${metric.metric_name}</span>${customTag}${reviewTag}
                     ${needsReview ? '<span class="needs-review-indicator">NEEDS REVIEW</span>' : ''}
                 </td>
                 <td style="color: #FFFFFF;" class="metric-value">${metric.metric_value || '-'}${metric.metric_unit ? ` ${metric.metric_unit}` : ''}</td>
@@ -1465,12 +1633,12 @@ class HealthDashboard {
             
         if (rangeCell && window.metricUtils && metricMatch) {
             if (updatedMetric.metric_value) {
-                const status = window.metricUtils.calculateStatus(
+                const statusText = window.metricUtils.calculateStatusSync(
                     updatedMetric.metric_value, 
                     metricMatch.normalRangeMin, 
                     metricMatch.normalRangeMax
                 );
-                const statusClass = status.toLowerCase().replace(' ', '-');
+                const statusClass = statusText.toLowerCase().replace(' ', '-');
                 const rangeBar = window.metricUtils.generateMicroRangeBar(
                     updatedMetric.metric_value, 
                     metricMatch.normalRangeMin, 
@@ -1479,7 +1647,7 @@ class HealthDashboard {
                 
                 rangeCell.innerHTML = `
                     <div class="metric-range-block">
-                        <div class="metric-status-chip ${statusClass}">${status}</div>
+                        <div class="metric-status-chip ${statusClass}">${statusText}</div>
                         ${rangeBar}
                         <div class="normal-range-caption">
                             Normal range: ${metricMatch.normalRangeMin}–${metricMatch.normalRangeMax}${metricMatch.units ? ` ${metricMatch.units}` : ''}
@@ -1497,6 +1665,38 @@ class HealthDashboard {
                     <div style="color: #8E8E93; font-size: 11px; margin-top: 4px;">Reference range not available</div>
                 </div>
             `;
+        }
+
+        // Badge for extreme values excluded from analysis
+        const nameCell2 = metricRow.querySelector('td:first-child');
+        if (nameCell2) {
+            let badge = nameCell2.querySelector('.badge-review');
+            let shouldBadge = !!updatedMetric.exclude_from_analysis;
+
+            // Fallback auto-detect if not flagged by backend
+            if (!shouldBadge && window.metricUtils && metricMatch && updatedMetric.metric_value != null) {
+                const v = parseFloat(updatedMetric.metric_value);
+                const bMin = typeof metricMatch.normalRangeMin === 'number' ? metricMatch.normalRangeMin : null;
+                const bMax = typeof metricMatch.normalRangeMax === 'number' ? metricMatch.normalRangeMax : null;
+                if (bMax && v > bMax * 50) shouldBadge = true;
+                if (bMin && bMin > 0 && v < bMin / 50) shouldBadge = true;
+
+                // If extreme detected, persist exclusion silently
+                if (shouldBadge) {
+                    try {
+                        this.apiCall(`/metrics/${metricId}`, 'PUT', { exclude_from_analysis: true, review_reason: 'Auto-flagged on render' });
+                        updatedMetric.exclude_from_analysis = true;
+                    } catch(_) {}
+                }
+            }
+            if (shouldBadge && !badge) {
+                badge = document.createElement('span');
+                badge.className = 'badge bg-warning text-dark ms-2 badge-review';
+                badge.textContent = 'Review Value';
+                nameCell2.appendChild(badge);
+            } else if (!shouldBadge && badge) {
+                badge.remove();
+            }
         }
     }
 
@@ -1838,26 +2038,40 @@ class HealthDashboard {
     }
 
     async editMetric(metricId) {
+        try { console.log('[EDIT_METRIC] Click', { metricId }); } catch (_) {}
         const editRow = document.getElementById(`edit-row-${metricId}`);
         const editForm = document.getElementById(`edit-form-${metricId}`);
         const displayRow = document.getElementById(`metric-row-${metricId}`);
+        try { console.log('[EDIT_METRIC] Elements', { hasEditRow: !!editRow, hasEditForm: !!editForm, hasDisplayRow: !!displayRow }); } catch (_) {}
         
-        // Show edit form and hide display row
-        displayRow.classList.add('d-none');
+        // Show edit form below without hiding display row
         editRow.classList.remove('d-none');
+        editRow.style.display = 'table-row';
+        if (!editForm) { console.warn('[EDIT_METRIC] Missing edit form container'); }
+        // Force reveal any nested d-none just in case
+        try {
+            editRow.querySelectorAll('.d-none').forEach(el => el.classList.remove('d-none'));
+        } catch(_) {}
         
         // Populate metric dropdown with available options
         const selectElement = document.getElementById(`edit-metric-${metricId}`);
         const systemId = selectElement.dataset.systemId;
         const currentMetric = selectElement.value;
+        try { console.log('[EDIT_METRIC] Dropdown', { systemId, currentMetric }); } catch (_) {}
         
         if (systemId) {
             await this.populateMetricDropdown(selectElement, systemId, currentMetric);
+            try { console.log('[EDIT_METRIC] Dropdown populated'); } catch (_) {}
             
             // Add change handler for "+ Add New Metric" option
             selectElement.addEventListener('change', (e) => {
                 if (e.target.value === '__ADD_NEW__') {
                     this.showInlineCustomMetricModal(systemId, metricId);
+                } else {
+                    // Update custom range status preview when metric changes
+                    const dateVal = document.getElementById(`edit-date-${metricId}`)?.value || null;
+                    this.updateCustomRangePreview(metricId, e.target.value, dateVal);
+                    try { console.log('[EDIT_METRIC] Metric changed', { value: e.target.value, dateVal }); } catch (_) {}
                 }
             });
         }
@@ -1875,12 +2089,121 @@ class HealthDashboard {
                     const month = String(dateObj.getMonth() + 1).padStart(2, '0');
                     const day = String(dateObj.getDate()).padStart(2, '0');
                     dateInput.value = `${year}-${month}-${day}`;
+                    try { console.log('[EDIT_METRIC] Pre-populated date', { value: dateInput.value }); } catch (_) {}
+                }
+            }
+            // Initial preview of custom range status and wire up inline range controls
+            const currentName = selectElement.value;
+            const dateVal = document.getElementById(`edit-date-${metricId}`)?.value || null;
+            this.updateCustomRangePreview(metricId, currentName, dateVal);
+            try { console.log('[EDIT_METRIC] Initial range preview', { currentName, dateVal }); } catch (_) {}
+
+            // Toggle inline editor visibility
+            const toggle = document.getElementById(`inline-range-enable-${metricId}`);
+            const fields = document.getElementById(`inline-range-fields-${metricId}`);
+            if (toggle && fields) {
+                toggle.addEventListener('change', async (e) => {
+                    fields.classList.toggle('d-none', !e.target.checked);
+                    if (e.target.checked) {
+                        await this.prefillInlineRange(metricId, currentName, dateVal);
+                        try { console.log('[EDIT_METRIC] Inline range enabled and prefilled'); } catch (_) {}
+                    }
+                });
+
+                // Change handler for condition 'other'
+                const condSel = document.getElementById(`inline-condition-${metricId}`);
+                const condWrap = document.getElementById(`inline-condition-details-wrap-${metricId}`);
+                if (condSel && condWrap) {
+                    condSel.addEventListener('change', (ev) => {
+                        condWrap.style.display = ev.target.value === 'other' ? 'block' : 'none';
+                        try { console.log('[EDIT_METRIC] Condition changed', { value: ev.target.value }); } catch (_) {}
+                    });
+                }
+
+                // Wire exclude toggle
+                const exToggle = document.getElementById(`inline-exclude-${metric.id}`);
+                const exWrap = document.getElementById(`inline-exclude-reason-wrap-${metric.id}`);
+                if (exToggle && exWrap) {
+                    exToggle.addEventListener('change', (ev) => {
+                        exWrap.style.display = ev.target.checked ? 'block' : 'none';
+                        try { console.log('[EDIT_METRIC] Exclude toggled', { checked: ev.target.checked }); } catch (_) {}
+                    });
                 }
             }
         }
         
         editRow.classList.remove('d-none');
         editForm.classList.remove('d-none');
+        editForm.style.display = 'block';
+        try { console.log('[EDIT_METRIC] Form displayed'); } catch (_) {}
+        try { editRow.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(_) {}
+    }
+
+    async prefillInlineRange(metricId, metricName, testDate) {
+        try {
+            const res = await this.apiCall(`/custom-reference-ranges/metric/${encodeURIComponent(metricName)}${testDate ? `?testDate=${encodeURIComponent(testDate)}` : ''}`, 'GET');
+            const r = res && res.custom_range;
+            if (r) {
+                document.getElementById(`inline-range-id-${metricId}`).value = r.id;
+                document.getElementById(`inline-min-${metricId}`).value = r.min_value;
+                document.getElementById(`inline-max-${metricId}`).value = r.max_value;
+                document.getElementById(`inline-units-${metricId}`).value = r.units;
+                document.getElementById(`inline-condition-${metricId}`).value = r.medical_condition || '';
+                if (r.medical_condition === 'other') {
+                    const wrap = document.getElementById(`inline-condition-details-wrap-${metricId}`);
+                    if (wrap) wrap.style.display = 'block';
+                    document.getElementById(`inline-condition-details-${metricId}`).value = r.condition_details || '';
+                }
+                document.getElementById(`inline-notes-${metricId}`).value = r.notes || '';
+                if (r.valid_from) document.getElementById(`inline-valid-from-${metricId}`).value = r.valid_from;
+                if (r.valid_until) document.getElementById(`inline-valid-until-${metricId}`).value = r.valid_until;
+            } else {
+                // Default prefill from catalog if available
+                const match = window.metricUtils ? window.metricUtils.findMetricMatch(metricName) : null;
+                if (match) {
+                    document.getElementById(`inline-units-${metricId}`).value = match.units || '';
+                    if (match.normalRangeMin != null) document.getElementById(`inline-min-${metricId}`).value = match.normalRangeMin;
+                    if (match.normalRangeMax != null) document.getElementById(`inline-max-${metricId}`).value = match.normalRangeMax;
+                }
+                const defDate = testDate || new Date().toISOString().split('T')[0];
+                document.getElementById(`inline-valid-from-${metricId}`).value = defDate;
+                document.getElementById(`inline-valid-until-${metricId}`).value = defDate;
+            }
+        } catch (_) {}
+    }
+
+    async updateCustomRangePreview(metricId, metricName, testDate) {
+        try {
+            const res = await this.apiCall(`/custom-reference-ranges/metric/${encodeURIComponent(metricName)}${testDate ? `?testDate=${encodeURIComponent(testDate)}` : ''}`, 'GET');
+            const hasCustom = res && res.custom_range;
+            const tag = document.getElementById(`custom-range-status-${metricId}`);
+            const txt = document.getElementById(`current-range-text-${metricId}`);
+            if (tag) tag.classList.toggle('d-none', !hasCustom);
+            if (txt) {
+                if (hasCustom) {
+                    const r = res.custom_range;
+                    txt.textContent = `Current: ${r.min_value} - ${r.max_value} ${r.units} (${r.medical_condition})`;
+                } else {
+                    txt.textContent = 'No custom range';
+                }
+            }
+        } catch (e) {
+            // Silent fail for preview
+        }
+    }
+
+    openEditRangeFor(metricId) {
+        const metricName = document.getElementById(`edit-metric-${metricId}`)?.value;
+        if (!metricName) {
+            this.showToast('warning', 'Select Metric', 'Please select a metric first');
+            return;
+        }
+        // Store options for the modal
+        this._customRangeModalOptions = {
+            preselectMetricName: metricName,
+            lockMetricSelection: true
+        };
+        this.showAddCustomRangeModal(null, this._customRangeModalOptions);
     }
 
     cancelMetricEdit(metricId) {
@@ -1896,20 +2219,103 @@ class HealthDashboard {
 
     async saveMetricEdit(metricId) {
         try {
+            console.log('[SAVE_METRIC_EDIT] Submit', { metricId });
             const metricName = document.getElementById(`edit-metric-${metricId}`).value;
             const metricValue = document.getElementById(`edit-value-${metricId}`).value;
             const metricUnit = document.getElementById(`edit-unit-${metricId}`).value;
             const testDate = document.getElementById(`edit-date-${metricId}`).value;
+            const rangeToggle = document.getElementById(`inline-range-enable-${metricId}`);
+            const applyRange = !!(rangeToggle && rangeToggle.checked);
 
-            const response = await this.apiCall(`/metrics/${metricId}`, 'PUT', {
-                metric_name: metricName,
-                metric_value: parseFloat(metricValue),
+            // Build minimal update payload to avoid name validation when not changing name
+            const displayRow = document.getElementById(`metric-row-${metricId}`);
+            const originalName = displayRow?.querySelector('.metric-name')?.textContent || metricName;
+            const updates = {
+                metric_value: metricValue !== '' ? parseFloat(metricValue) : null,
                 metric_unit: metricUnit,
-                test_date: testDate,
-                source: 'User Edited'
-            });
+                test_date: testDate || null
+            };
+            if (metricName && metricName !== originalName) {
+                updates.metric_name = metricName;
+            }
+            if (applyRange) {
+                const min = document.getElementById(`inline-min-${metricId}`).value;
+                const max = document.getElementById(`inline-max-${metricId}`).value;
+                const units = document.getElementById(`inline-units-${metricId}`).value;
+                if (min && max && units) {
+                    updates.reference_range = `${min}-${max} ${units}`;
+                }
+            }
+
+            // Auto-flag extreme outliers to be excluded from analysis (but still saved)
+            try {
+                const valNum = updates.metric_value;
+                if (valNum != null) {
+                    // Compute baseline range for rough sanity check
+                    const systemData = this.currentSystemData || {};
+                    const customMetrics = systemData.customMetrics || [];
+                    const match = window.metricUtils ? window.metricUtils.findMetricMatch(metricName, systemData.system?.name || systemData.name, customMetrics) : null;
+                    let bMin = null, bMax = null;
+                    if (match) { bMin = match.normalRangeMin; bMax = match.normalRangeMax; }
+                    // If known range and value is wildly out (e.g., > 50x max or < 1/50 min), flag
+                    if (typeof bMax === 'number' && valNum > bMax * 50) {
+                        updates.exclude_from_analysis = true;
+                        updates.review_reason = 'Auto-flagged extreme high value';
+                    } else if (typeof bMin === 'number' && bMin > 0 && valNum < bMin / 50) {
+                        updates.exclude_from_analysis = true;
+                        updates.review_reason = 'Auto-flagged extreme low value';
+                    }
+                }
+            } catch (_) {}
+
+            // Manual exclude toggle
+            const excludeToggle = document.getElementById(`inline-exclude-${metricId}`);
+            if (excludeToggle) {
+                updates.exclude_from_analysis = !!excludeToggle.checked;
+                const reasonInput = document.getElementById(`inline-exclude-reason-${metricId}`);
+                if (updates.exclude_from_analysis && reasonInput && reasonInput.value) {
+                    updates.review_reason = reasonInput.value;
+                } else if (!updates.exclude_from_analysis) {
+                    updates.review_reason = null;
+                }
+            }
+
+            console.log('[SAVE_METRIC_EDIT] Updates payload', updates);
+            const response = await this.apiCall(`/metrics/${metricId}`, 'PUT', updates);
+            console.log('[SAVE_METRIC_EDIT] Response', response);
 
             if (response.success) {
+                // If range editing is enabled, persist custom range
+                if (applyRange) {
+                    const rangeId = document.getElementById(`inline-range-id-${metricId}`).value;
+                    const payload = {
+                        metric_name: metricName,
+                        min_value: parseFloat(document.getElementById(`inline-min-${metricId}`).value),
+                        max_value: parseFloat(document.getElementById(`inline-max-${metricId}`).value),
+                        units: document.getElementById(`inline-units-${metricId}`).value,
+                        medical_condition: document.getElementById(`inline-condition-${metricId}`).value || 'other',
+                        condition_details: document.getElementById(`inline-condition-details-${metricId}`).value || null,
+                        notes: document.getElementById(`inline-notes-${metricId}`).value || '',
+                        valid_from: document.getElementById(`inline-valid-from-${metricId}`).value || new Date().toISOString().split('T')[0],
+                        valid_until: document.getElementById(`inline-valid-until-${metricId}`).value || null
+                    };
+
+                    if (!payload.metric_name || !payload.min_value || !payload.max_value || !payload.units) {
+                        this.showToast('warning', 'Validation', 'Please complete the reference range fields');
+                    } else if (payload.min_value >= payload.max_value) {
+                        this.showToast('warning', 'Validation', 'Min must be less than Max');
+                    } else {
+                        try {
+                            const method = rangeId ? 'PUT' : 'POST';
+                            const url = rangeId ? `/custom-reference-ranges/${rangeId}` : '/custom-reference-ranges';
+                            await this.apiCall(url, method, payload);
+                            this.showToast('success', 'Custom Range', rangeId ? 'Range updated' : 'Range created');
+                        } catch (e) {
+                            this.showToast('error', 'Custom Range', e.message || 'Failed to save range');
+                        }
+                    }
+                }
+
                 this.showToast('success', 'Metric Updated', 'Metric updated. AI insights and daily plan refreshed.');
                 
                 // Update the metric row in the table immediately
@@ -2015,93 +2421,36 @@ class HealthDashboard {
     async loadDailyPlan() {
         this.showLoading(true);
         try {
-            const data = await this.apiCall('/dashboard/daily-plan', 'GET');
-            this.renderDailyPlan(data.daily_plan);
+            const data = await this.apiCall('/dashboard/daily-plan');
+            const planList = document.getElementById('daily-plan-list');
+            if (!planList) return;
+
+            planList.innerHTML = '';
+
+            data.daily_plan.forEach(plan => {
+                const planItem = document.createElement('div');
+                planItem.className = 'daily-plan-item mb-3';
+                planItem.innerHTML = `
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">${plan.title}</h5>
+                            <p class="card-text">${plan.description}</p>
+                            <p class="card-text"><strong>Date:</strong> ${new Date(plan.date).toLocaleDateString()}</p>
+                            <p class="card-text"><strong>Status:</strong> ${plan.status}</p>
+                            <p class="card-text"><strong>Priority:</strong> ${plan.priority}</p>
+                            <p class="card-text"><strong>Category:</strong> ${plan.category}</p>
+                            <p class="card-text"><strong>Actions:</strong> ${plan.actions.join(', ')}</p>
+                        </div>
+                    </div>
+                `;
+                planList.appendChild(planItem);
+            });
         } catch (error) {
             console.error('Failed to load daily plan:', error);
             this.showToast('error', 'Daily Plan', 'Failed to load daily plan');
         } finally {
             this.showLoading(false);
         }
-    }
-
-    renderDailyPlan(dailyPlan) {
-        const container = document.getElementById('dailyPlanContent');
-        
-        if (!dailyPlan) {
-            container.innerHTML = `
-                <div class="card">
-                    <div class="card-body text-center py-5">
-                        <i class="fas fa-calendar-plus fa-3x text-muted mb-3"></i>
-                        <h4>No Daily Plan Available</h4>
-                        <p class="text-muted mb-4">Upload some health data to generate your personalized daily plan</p>
-                        <button class="btn btn-primary" onclick="document.getElementById('uploads-tab').click()">
-                            <i class="fas fa-upload me-2"></i>Upload Health Data
-                        </button>
-                    </div>
-                </div>
-            `;
-            return;
-        }
-
-        container.innerHTML = `
-            <div class="card">
-                <div class="card-header">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
-                            <i class="fas fa-calendar-day me-2"></i>
-                            Daily Plan for ${dailyPlan.plan_date ? new Date(dailyPlan.plan_date).toLocaleDateString() : 'Today'}
-                        </h5>
-                        <small class="text-muted">
-                            Generated: ${dailyPlan.generated_at ? new Date(dailyPlan.generated_at).toLocaleString() : 'Recently'}
-                        </small>
-                    </div>
-                </div>
-                <div class="card-body">
-                    ${dailyPlan.key_focus_areas && dailyPlan.key_focus_areas.length > 0 ? `
-                        <div class="mb-4">
-                            <h6 class="text-muted mb-2">Focus Areas:</h6>
-                            <div class="d-flex flex-wrap gap-2">
-                                ${dailyPlan.key_focus_areas.map(area => `
-                                    <span class="badge bg-primary">${area}</span>
-                                `).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
-
-                    ${dailyPlan.recommendations && dailyPlan.recommendations.length > 0 ? `
-                        <div class="mb-4">
-                            <h6 class="text-muted mb-3">Recommendations:</h6>
-                            <div class="row">
-                                ${dailyPlan.recommendations.map((rec, index) => `
-                                    <div class="col-md-6 mb-3">
-                                        <div class="card h-100 border-${rec.priority === 'high' ? 'danger' : rec.priority === 'medium' ? 'warning' : 'success'}">
-                                            <div class="card-body">
-                                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                                    <span class="badge bg-secondary">${rec.category}</span>
-                                                    <span class="badge bg-${rec.priority === 'high' ? 'danger' : rec.priority === 'medium' ? 'warning' : 'success'}">${rec.priority}</span>
-                                                </div>
-                                                <h6 class="card-title">${rec.action}</h6>
-                                                <p class="card-text text-muted small">${rec.reason}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
-
-                    ${dailyPlan.estimated_compliance_time_minutes ? `
-                        <div class="text-center">
-                            <small class="text-muted">
-                                <i class="fas fa-clock me-1"></i>
-                                Estimated time: ${dailyPlan.estimated_compliance_time_minutes} minutes
-                            </small>
-                        </div>
-                    ` : ''}
-                </div>
-            </div>
-        `;
     }
 
     async regenerateDailyPlan() {
@@ -2315,85 +2664,35 @@ class HealthDashboard {
     }
 
     async loadUploads() {
-        this.showLoading(true);
         try {
-            const data = await this.apiCall('/uploads', 'GET');
-            this.renderUploadsList(data.uploads);
+            const resp = await this.apiCall('/uploads?limit=5');
+            const uploads = Array.isArray(resp)
+                ? resp
+                : (resp.uploads || resp.data?.uploads || resp.rows || []);
+            this.renderUploads(uploads);
         } catch (error) {
             console.error('Failed to load uploads:', error);
-            this.showToast('error', 'Uploads', 'Failed to load upload history');
+            this.showToast('error', 'Uploads', error.message || 'Failed to load uploads');
         } finally {
             this.showLoading(false);
         }
     }
 
-    renderUploadsList(uploads) {
+    renderUploads(uploads) {
         const container = document.getElementById('uploadsList');
-        
-        if (uploads.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-state-icon">
-                        <i class="fas fa-cloud-arrow-up"></i>
-                    </div>
-                    <div class="empty-state-title">No uploads yet</div>
-                    <div class="empty-state-text">Upload your first health document to get started</div>
-                </div>
-            `;
+        if (!container) return;
+        const items = Array.isArray(uploads) ? uploads : [];
+        container.innerHTML = '';
+        if (items.length === 0) {
+            container.innerHTML = '<div class="text-muted">No uploads yet.</div>';
             return;
         }
-
-        container.innerHTML = `
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th style="color: #FFFFFF; background-color: #2C2C2E;">Filename</th>
-                            <th style="color: #FFFFFF; background-color: #2C2C2E;">Type</th>
-                            <th style="color: #FFFFFF; background-color: #2C2C2E;">Status</th>
-                            <th style="color: #FFFFFF; background-color: #2C2C2E;">Upload Date</th>
-                            <th style="color: #FFFFFF; background-color: #2C2C2E;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${uploads.map(upload => `
-                            <tr>
-                                <td style="color: #FFFFFF;">
-                                    <i class="fas fa-file me-2" style="color: #ABABAB;"></i>
-                                    ${upload.filename}
-                                </td>
-                                <td>
-                                    <span class="badge bg-secondary">${upload.upload_type}</span>
-                                </td>
-                                <td>
-                                    <span class="badge bg-${this.getStatusColor(upload.processing_status)}">
-                                        ${upload.processing_status}
-                                    </span>
-                                </td>
-                                <td style="color: #EBEBF5;">
-                                    ${new Date(upload.created_at).toLocaleString()}
-                                </td>
-                                <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-outline-primary" onclick="app.viewUploadDetails(${upload.id})" style="color: #007AFF; border-color: #007AFF;">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        ${upload.processing_status === 'failed' ? `
-                                            <button class="btn btn-outline-warning" onclick="app.retryUpload(${upload.id})">
-                                                <i class="fas fa-redo"></i>
-                                            </button>
-                                        ` : ''}
-                                        <button class="btn btn-outline-danger" onclick="app.deleteUpload(${upload.id})">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
+        container.innerHTML = items.map(u => `
+            <div class="upload-item">
+                <div><strong>${u.filename || 'Untitled'}</strong></div>
+                <div class="small text-muted">Status: ${u.processing_status || 'unknown'} | ${u.created_at ? new Date(u.created_at).toLocaleString() : ''}</div>
             </div>
-        `;
+        `).join('');
     }
 
     getStatusColor(status) {
@@ -2548,8 +2847,10 @@ class HealthDashboard {
             ...customHeaders  // Merge custom headers
         };
 
-        if (this.token) {
-            headers['Authorization'] = `Bearer ${this.token}`;
+        // Prefer fresh in-memory token, fallback to localStorage
+        const bearer = this.jwtToken || this.token || localStorage.getItem('jwtToken') || localStorage.getItem('authToken');
+        if (bearer) {
+            headers['Authorization'] = `Bearer ${bearer}`;
         }
 
         const config = {
@@ -2558,15 +2859,25 @@ class HealthDashboard {
         };
 
         if (data && method !== 'GET') {
-            config.body = JSON.stringify(data);
+            // Allow FormData
+            if (data instanceof FormData) {
+                delete headers['Content-Type'];
+                config.body = data;
+            } else {
+                config.body = JSON.stringify(data);
+            }
         }
 
         const response = await fetch(`${this.apiBase}${endpoint}`, config);
         
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            let errorData = {};
+            try {
+                errorData = await response.json();
+            } catch (_) {
+                errorData = { error: 'Unknown error', message: response.statusText };
+            }
             
-            // Handle 401 specifically for session expiry
             if (response.status === 401) {
                 this.handleSessionExpiry();
                 throw new Error(errorData.message || 'Session expired - please sign in again');
@@ -2676,6 +2987,7 @@ class HealthDashboard {
             // Handle both flat response and wrapped response for backwards compatibility
             const profileData = response.profile || response;
             const normalizedProfile = this.normalizeProfileResponse(profileData);
+            this.currentProfile = normalizedProfile;
             
             // Create privacy-safe summary for logging
             const profileSummary = this.createClientProfileSummary(profileData);
@@ -2687,7 +2999,11 @@ class HealthDashboard {
                 summary: profileSummary
             });
             
-            this.populateProfileForm(normalizedProfile);
+            this.populateProfileForm(normalizedProfile, profileData.allergies || []);
+            this.expandProfileSections(normalizedProfile);
+            
+            // Load custom reference ranges
+            this.loadCustomReferenceRanges();
             
         } catch (error) {
             const duration = performance.now() - startTime;
@@ -2714,7 +3030,7 @@ class HealthDashboard {
         }
     }
 
-    populateProfileForm(profile) {
+    populateProfileForm(profile, allergies = []) {
         if (!profile) return;
         
         // Set unit system preference
@@ -2724,7 +3040,13 @@ class HealthDashboard {
         
         // Demographics - use null-safe values
         document.getElementById('sex').value = profile.sex || '';
-        document.getElementById('dateOfBirth').value = profile.dateOfBirth || '';
+        // Convert ISO date to YYYY-MM-DD format for date input
+        if (profile.dateOfBirth) {
+            const dobDate = new Date(profile.dateOfBirth);
+            document.getElementById('dateOfBirth').value = dobDate.toISOString().split('T')[0];
+        } else {
+            document.getElementById('dateOfBirth').value = '';
+        }
         
         // Height and weight from canonical storage
         if (profile.heightIn !== null && profile.heightIn !== undefined) {
@@ -2768,7 +3090,9 @@ class HealthDashboard {
         if (profile.pregnant === true || profile.pregnant === false) {
             document.getElementById('pregnant').value = profile.pregnant.toString();
             if (profile.pregnant && profile.pregnancyStartDate) {
-                document.getElementById('pregnancyStartDate').value = profile.pregnancyStartDate;
+                // Convert ISO date to YYYY-MM-DD format for date input
+                const pregnancyDate = new Date(profile.pregnancyStartDate);
+                document.getElementById('pregnancyStartDate').value = pregnancyDate.toISOString().split('T')[0];
                 document.getElementById('pregnancyDateContainer').classList.remove('d-none');
             }
         } else {
@@ -2784,6 +3108,25 @@ class HealthDashboard {
         
         // Show reproductive section if sex is female
         this.toggleReproductiveSection();
+
+        // Allergies & intolerances: mark checkboxes based on stored records
+        try {
+            // Uncheck all first
+            const allCbs = Array.from(document.querySelectorAll('#allergiesCollapse input[type="checkbox"]'));
+            allCbs.forEach(cb => { cb.checked = false; });
+            // Mark those present in DB response by matching type and value
+            if (Array.isArray(allergies) && allergies.length > 0) {
+                allergies.forEach(a => {
+                    const type = (a.allergy_type || a.type || '').toString();
+                    const name = (a.allergen_name || a.name || '').toString();
+                    if (!type || !name) return;
+                    const match = allCbs.find(cb => (cb.dataset.type || '') === type && (cb.value || '') === name);
+                    if (match) match.checked = true;
+                });
+            }
+        } catch (e) {
+            console.warn('Allergies populate warning:', e);
+        }
     }
 
     async loadCountries() {
@@ -2798,6 +3141,10 @@ class HealthDashboard {
                 option.textContent = country.name;
                 select.appendChild(option);
             });
+            // Re-select previously loaded country if any
+            if (this.currentProfile && this.currentProfile.countryOfResidence) {
+                select.value = this.currentProfile.countryOfResidence;
+            }
         } catch (error) {
             console.error('Failed to load countries:', error);
             document.getElementById('countryOfResidence').innerHTML = '<option value="">Error loading countries</option>';
@@ -2882,11 +3229,27 @@ class HealthDashboard {
             heightSI.classList.add('d-none');
             weightUS.classList.remove('d-none');
             weightSI.classList.add('d-none');
+            
+            // Disable validation for hidden metric inputs
+            document.getElementById('heightCm').disabled = true;
+            document.getElementById('weightKg').disabled = true;
+            // Enable validation for visible US inputs
+            document.getElementById('heightFeet').disabled = false;
+            document.getElementById('heightInches').disabled = false;
+            document.getElementById('weightLbs').disabled = false;
         } else {
             heightUS.classList.add('d-none');
             heightSI.classList.remove('d-none');
             weightUS.classList.add('d-none');
             weightSI.classList.remove('d-none');
+            
+            // Disable validation for hidden US inputs
+            document.getElementById('heightFeet').disabled = true;
+            document.getElementById('heightInches').disabled = true;
+            document.getElementById('weightLbs').disabled = true;
+            // Enable validation for visible metric inputs
+            document.getElementById('heightCm').disabled = false;
+            document.getElementById('weightKg').disabled = false;
         }
     }
 
@@ -3248,6 +3611,665 @@ class HealthDashboard {
             trimesterSpan.textContent = `${trimester} (${weeks} weeks)`;
         } else {
             trimesterSpan.textContent = '-';
+        }
+    }
+
+    // Expand collapsible sections if we have any pre-existing profile data
+    expandProfileSections(profile) {
+        try {
+            const hasDemo = !!(profile.sex || profile.dateOfBirth || profile.ethnicity || profile.countryOfResidence);
+            if (hasDemo) {
+                const demo = document.getElementById('demographicsCollapse');
+                if (demo && !demo.classList.contains('show')) demo.classList.add('show');
+            }
+            // Expand lifestyle if any field present
+            const hasLifestyle = (profile.smoker !== null) || (profile.alcoholDrinksPerWeek !== null);
+            if (hasLifestyle) {
+                const life = document.getElementById('lifestyleCollapse');
+                if (life && !life.classList.contains('show')) life.classList.add('show');
+            }
+            // Expand reproductive for female/pregnant data
+            const hasRepro = (profile.pregnant !== null) || (profile.pregnancyStartDate !== null) || (profile.cyclePhase);
+            if (hasRepro) {
+                const rep = document.getElementById('reproductiveCollapse');
+                if (rep && !rep.classList.contains('show')) rep.classList.add('show');
+            }
+            // Expand allergies/conditions if lists will be marked separately
+            const cond = document.getElementById('conditionsCollapse');
+            if (cond && !cond.classList.contains('show')) cond.classList.add('show');
+            const allg = document.getElementById('allergiesCollapse');
+            if (allg && !allg.classList.contains('show')) allg.classList.add('show');
+        } catch (e) {
+            console.warn('expandProfileSections warning:', e);
+        }
+    }
+
+    // ========================================
+    // METRIC SUGGESTIONS MANAGEMENT
+    // ========================================
+
+    async checkPendingMetricSuggestions() {
+        try {
+            const response = await this.apiCall('/metric-suggestions/pending');
+            if (response && response.pending_suggestions && response.pending_suggestions.length > 0) {
+                this.showPendingMetricsNotification(response.pending_suggestions.length);
+            }
+        } catch (error) {
+            console.error('Failed to check pending metric suggestions:', error);
+        }
+    }
+
+    showPendingMetricsNotification(count) {
+        const alert = document.getElementById('pendingMetricsAlert');
+        const countSpan = document.getElementById('pendingCount');
+        
+        if (alert && countSpan) {
+            countSpan.textContent = count;
+            alert.classList.remove('d-none');
+        }
+    }
+
+    hidePendingMetricsNotification() {
+        const alert = document.getElementById('pendingMetricsAlert');
+        if (alert) {
+            alert.classList.add('d-none');
+        }
+    }
+
+    async showMetricSuggestions() {
+        const modal = new bootstrap.Modal(document.getElementById('metricSuggestionsModal'));
+        modal.show();
+        
+        // Show loading state
+        document.getElementById('suggestionsLoading').classList.remove('d-none');
+        document.getElementById('suggestionsList').classList.add('d-none');
+        document.getElementById('noSuggestions').classList.add('d-none');
+        
+        try {
+            const response = await this.apiCall('/metric-suggestions/pending', 'GET');
+            
+            if (response.pending_suggestions && response.pending_suggestions.length > 0) {
+                this.renderMetricSuggestions(response.pending_suggestions);
+            } else {
+                document.getElementById('suggestionsLoading').classList.add('d-none');
+                document.getElementById('noSuggestions').classList.remove('d-none');
+            }
+        } catch (error) {
+            console.error('Failed to load metric suggestions:', error);
+            this.showToast('error', 'Error', 'Failed to load metric suggestions');
+            document.getElementById('suggestionsLoading').classList.add('d-none');
+        }
+    }
+
+    renderMetricSuggestions(suggestions) {
+        const container = document.getElementById('suggestionsList');
+        let html = '';
+
+        // Add summary stats
+        const totalUnmatched = suggestions.reduce((sum, s) => sum + (s.unmatched_metrics?.length || 0), 0);
+        const totalSuggestions = suggestions.reduce((sum, s) => sum + (s.ai_suggestions?.suggestions?.length || 0), 0);
+
+        html += `
+            <div class="suggestions-stats">
+                <div class="row">
+                    <div class="col-4 text-center">
+                        <div class="stat-number">${suggestions.length}</div>
+                        <div class="stat-label">Uploads</div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div class="stat-number">${totalUnmatched}</div>
+                        <div class="stat-label">Unmatched Metrics</div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div class="stat-number">${totalSuggestions}</div>
+                        <div class="stat-label">AI Suggestions</div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        suggestions.forEach((suggestion, index) => {
+            html += this.renderSuggestionItem(suggestion, index);
+        });
+
+        container.innerHTML = html;
+        document.getElementById('suggestionsLoading').classList.add('d-none');
+        document.getElementById('suggestionsList').classList.remove('d-none');
+        
+        this.updateApproveButtonState();
+    }
+
+    renderSuggestionItem(suggestion, index) {
+        const uploadDate = new Date(suggestion.upload_date).toLocaleDateString();
+        const aiSuggestions = suggestion.ai_suggestions?.suggestions || [];
+        
+        let html = `
+            <div class="suggestion-item" data-suggestion-id="${suggestion.id}">
+                <div class="upload-context">
+                    <i class="fas fa-file-medical me-2"></i>
+                    <strong>${suggestion.upload_filename}</strong> 
+                    uploaded on ${uploadDate}
+                </div>
+        `;
+
+        // Render ALL unmatched metrics to maintain parity, showing AI suggestion when available
+        const unmatched = suggestion.unmatched_metrics || [];
+        if (unmatched.length === 0) {
+            html += `
+                <div class="alert alert-secondary">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No unmatched metrics for this upload.
+                </div>
+            `;
+        } else {
+            unmatched.forEach(original => {
+                const aiSuggestion = aiSuggestions.find(s => s.original_name === original.name);
+                const bestMatch = aiSuggestion?.suggested_matches && aiSuggestion.suggested_matches[0];
+                if (bestMatch) {
+                    const confidence = bestMatch.confidence || 0;
+                    const confidenceClass = confidence >= 0.8 ? 'confidence-high' : confidence >= 0.6 ? 'confidence-medium' : 'confidence-low';
+                    const confidenceText = confidence >= 0.8 ? 'High' : confidence >= 0.6 ? 'Medium' : 'Low';
+
+                    html += `
+                        <div class="metric-match-section">
+                            <div class="d-flex align-items-center mb-2">
+                                <input type="checkbox" class="suggestion-checkbox" 
+                                       data-suggestion-id="${suggestion.id}"
+                                       data-original-name="${original.name}"
+                                       data-suggested-name="${bestMatch.standard_name}"
+                                       onchange="healthDashboard.updateApproveButtonState()">
+                                
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center flex-wrap">
+                                        <span class="original-metric">${original.name}</span>
+                                        <i class="fas fa-arrow-right suggestion-arrow"></i>
+                                        <span class="suggested-metric">${bestMatch.standard_name}</span>
+                                        <span class="confidence-badge ${confidenceClass} ms-2">
+                                            ${confidenceText} (${Math.round(confidence * 100)}%)
+                                        </span>
+                                    </div>
+                                    <div class="mt-2">
+                                        <span class="metric-value-display">
+                                            Value: ${original.value} ${original.unit || ''}
+                                        </span>
+                                    </div>
+                                    ${bestMatch.reason ? `
+                                        <div class="suggestion-reason">
+                                            <i class="fas fa-lightbulb me-1"></i>
+                                            ${bestMatch.reason}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // Show unmatched without AI suggestion
+                    html += `
+                        <div class="metric-match-section">
+                            <div class="d-flex align-items-center mb-2">
+                                <input type="checkbox" class="suggestion-checkbox" disabled title="No AI suggestion available">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center flex-wrap">
+                                        <span class="original-metric">${original.name}</span>
+                                        <i class="fas fa-arrow-right suggestion-arrow"></i>
+                                        <span class="suggested-metric text-muted">No AI suggestion</span>
+                                    </div>
+                                    <div class="mt-2">
+                                        <span class="metric-value-display">
+                                            Value: ${original.value} ${original.unit || ''}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        html += `</div>`;
+        return html;
+    }
+
+    updateApproveButtonState() {
+        const checkboxes = document.querySelectorAll('.suggestion-checkbox:checked');
+        const button = document.getElementById('approveSelectedBtn');
+        
+        if (button) {
+            button.disabled = checkboxes.length === 0;
+            button.innerHTML = checkboxes.length > 0 ? 
+                `<i class="fas fa-check me-2"></i>Approve Selected (${checkboxes.length})` :
+                `<i class="fas fa-check me-2"></i>Approve Selected`;
+        }
+    }
+
+    async approveSelectedSuggestions() {
+        const checkboxes = document.querySelectorAll('.suggestion-checkbox:checked');
+        
+        if (checkboxes.length === 0) {
+            this.showToast('warning', 'No Selection', 'Please select at least one suggestion to approve');
+            return;
+        }
+
+        // Group approvals by suggestion ID
+        const approvalsByUpload = {};
+        
+        checkboxes.forEach(checkbox => {
+            const suggestionId = checkbox.dataset.suggestionId;
+            const originalName = checkbox.dataset.originalName;
+            const suggestedName = checkbox.dataset.suggestedName;
+            
+            if (!approvalsByUpload[suggestionId]) {
+                approvalsByUpload[suggestionId] = [];
+            }
+            
+            // Find the original metric data
+            const suggestionItem = checkbox.closest('.suggestion-item');
+            const originalMetric = {
+                name: originalName
+            };
+            
+            approvalsByUpload[suggestionId].push({
+                original_metric: originalMetric,
+                approved_standard_name: suggestedName
+            });
+        });
+
+        // Process each upload's approvals
+        try {
+            let totalApproved = 0;
+            
+            for (const [suggestionId, approvals] of Object.entries(approvalsByUpload)) {
+                const response = await this.apiCall(`/metric-suggestions/${suggestionId}/review`, 'POST', {
+                    approved_mappings: approvals,
+                    rejected_metrics: []
+                });
+                
+                totalApproved += response.approved_count || 0;
+            }
+
+            this.showToast('success', 'Success!', `Successfully approved ${totalApproved} metric mappings`);
+            
+            // Close modal and refresh suggestions
+            const modal = bootstrap.Modal.getInstance(document.getElementById('metricSuggestionsModal'));
+            if (modal) modal.hide();
+            
+            // Hide notification if no more pending
+            this.checkPendingMetricSuggestions();
+            
+            // Refresh dashboard to show new metrics
+            this.loadDashboard();
+            
+        } catch (error) {
+            console.error('Failed to approve suggestions:', error);
+            this.showToast('error', 'Error', 'Failed to approve suggestions');
+        }
+    }
+
+    // ========================================
+    // CUSTOM REFERENCE RANGES MANAGEMENT
+    // ========================================
+
+    async loadCustomReferenceRanges() {
+        try {
+            const response = await this.apiCall('/custom-reference-ranges', 'GET');
+            this.renderCustomReferenceRanges(response.custom_ranges || []);
+        } catch (error) {
+            console.error('Failed to load custom reference ranges:', error);
+        }
+    }
+
+    renderCustomReferenceRanges(ranges) {
+        const container = document.getElementById('customRangesList');
+        
+        if (!ranges || ranges.length === 0) {
+            container.innerHTML = `
+                <div class="no-custom-ranges">
+                    <i class="fas fa-sliders-h fa-2x mb-2"></i>
+                    <p class="mb-0">No custom reference ranges set</p>
+                    <small class="text-muted">Add custom ranges for specific medical conditions</small>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        ranges.forEach(range => {
+            const isActive = this.isRangeCurrentlyActive(range);
+            const conditionDisplay = range.condition_details || this.formatConditionName(range.medical_condition);
+            
+            html += `
+                <div class="custom-range-item" data-range-id="${range.id}">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <div class="range-metric-name">${range.metric_name}</div>
+                            <div class="range-values">
+                                ${range.min_value} - ${range.max_value} ${range.units}
+                            </div>
+                            <div class="range-condition">${conditionDisplay}</div>
+                            
+                            ${range.notes ? `
+                                <div class="range-notes">
+                                    <i class="fas fa-sticky-note me-1"></i>
+                                    ${range.notes}
+                                </div>
+                            ` : ''}
+                            
+                            <div class="range-validity ${isActive ? 'active' : 'expired'}">
+                                <i class="fas fa-calendar me-1"></i>
+                                ${this.formatValidityPeriod(range)}
+                                ${isActive ? '<span class="badge bg-success ms-2">Active</span>' : '<span class="badge bg-secondary ms-2">Inactive</span>'}
+                            </div>
+                        </div>
+                        
+                        <div class="range-actions">
+                            <button class="btn btn-outline-primary btn-sm" onclick="healthDashboard.editCustomRange(${range.id})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="healthDashboard.deleteCustomRange(${range.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    }
+
+    isRangeCurrentlyActive(range) {
+        const today = new Date();
+        const validFrom = range.valid_from ? new Date(range.valid_from) : null;
+        const validUntil = range.valid_until ? new Date(range.valid_until) : null;
+        
+        const isAfterStart = !validFrom || today >= validFrom;
+        const isBeforeEnd = !validUntil || today <= validUntil;
+        
+        return range.is_active && isAfterStart && isBeforeEnd;
+    }
+
+    formatConditionName(condition) {
+        const conditionNames = {
+            'pregnancy': 'Pregnancy',
+            'diabetes': 'Diabetes',
+            'hypertension': 'Hypertension',
+            'medication': 'Medication Effect',
+            'age_related': 'Age-Related',
+            'genetic_condition': 'Genetic Condition',
+            'chronic_disease': 'Chronic Disease',
+            'other': 'Other Condition'
+        };
+        return conditionNames[condition] || condition;
+    }
+
+    formatValidityPeriod(range) {
+        const formatDate = (dateStr) => {
+            if (!dateStr) return null;
+            return new Date(dateStr).toLocaleDateString();
+        };
+
+        const from = formatDate(range.valid_from);
+        const until = formatDate(range.valid_until);
+
+        if (from && until) {
+            return `${from} - ${until}`;
+        } else if (from) {
+            return `From ${from}`;
+        } else if (until) {
+            return `Until ${until}`;
+        } else {
+            return 'No date restrictions';
+        }
+    }
+
+    async showAddCustomRangeModal(rangeId = null, options = null) {
+        const modal = new bootstrap.Modal(document.getElementById('customRangeModal'));
+        const titleElement = document.getElementById('customRangeModalTitle');
+        
+        if (rangeId) {
+            titleElement.innerHTML = '<i class="fas fa-edit me-2"></i>Edit Custom Reference Range';
+            await this.loadCustomRangeForEdit(rangeId);
+        } else {
+            titleElement.innerHTML = '<i class="fas fa-plus me-2"></i>Add Custom Reference Range';
+            this.clearCustomRangeForm();
+        }
+
+        // Load available metrics
+        await this.loadAvailableMetrics();
+        
+        // If invoked from Edit Metric, preselect and optionally lock the metric name
+        if (options && options.preselectMetricName) {
+            const select = document.getElementById('metricSelect');
+            if (select) {
+                // Try to select exact match; if not present, add a temporary option
+                let found = false;
+                for (const opt of Array.from(select.options)) {
+                    if (opt.value === options.preselectMetricName) { found = true; break; }
+                }
+                if (!found) {
+                    const temp = document.createElement('option');
+                    temp.value = options.preselectMetricName;
+                    temp.textContent = options.preselectMetricName;
+                    select.appendChild(temp);
+                }
+                select.value = options.preselectMetricName;
+                // Trigger change to populate units/range info
+                select.dispatchEvent(new Event('change'));
+                if (options.lockMetricSelection) {
+                    select.setAttribute('disabled', 'disabled');
+                }
+            }
+        }
+        
+        // Setup form handlers
+        this.setupCustomRangeFormHandlers();
+        
+        modal.show();
+    }
+
+    async loadAvailableMetrics() {
+        try {
+            const response = await this.apiCall('/custom-reference-ranges/available-metrics', 'GET');
+            const select = document.getElementById('metricSelect');
+            
+            let html = '<option value="">Select a metric...</option>';
+            
+            // Add standard metrics
+            if (response.standard_metrics) {
+                html += '<optgroup label="Standard Metrics">';
+                response.standard_metrics.forEach(metric => {
+                    html += `<option value="${metric.name}" data-units="${metric.units}" data-min="${metric.normalRangeMin}" data-max="${metric.normalRangeMax}">
+                        ${metric.name} (${metric.units})
+                    </option>`;
+                });
+                html += '</optgroup>';
+            }
+            
+            // Add custom option
+            html += '<option value="custom">Custom metric name...</option>';
+            
+            select.innerHTML = html;
+        } catch (error) {
+            console.error('Failed to load available metrics:', error);
+        }
+    }
+
+    setupCustomRangeFormHandlers() {
+        const metricSelect = document.getElementById('metricSelect');
+        const customMetricGroup = document.getElementById('customMetricNameGroup');
+        const conditionSelect = document.getElementById('conditionSelect');
+        const customConditionGroup = document.getElementById('customConditionGroup');
+        const unitSelect = document.getElementById('unitSelect');
+        const standardRangeInfo = document.getElementById('standardRangeInfo');
+
+        // Handle metric selection
+        metricSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'custom') {
+                customMetricGroup.style.display = 'block';
+                standardRangeInfo.style.display = 'none';
+            } else if (e.target.value) {
+                customMetricGroup.style.display = 'none';
+                
+                // Auto-fill units from selected metric
+                const option = e.target.selectedOptions[0];
+                const units = option.dataset.units;
+                const min = option.dataset.min;
+                const max = option.dataset.max;
+                
+                if (units) {
+                    unitSelect.value = units;
+                }
+                
+                // Show standard range info
+                if (min && max) {
+                    document.getElementById('standardRangeText').textContent = `${min} - ${max} ${units}`;
+                    standardRangeInfo.style.display = 'block';
+                } else {
+                    standardRangeInfo.style.display = 'none';
+                }
+            } else {
+                customMetricGroup.style.display = 'none';
+                standardRangeInfo.style.display = 'none';
+            }
+        });
+
+        // Handle condition selection
+        conditionSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'other') {
+                customConditionGroup.style.display = 'block';
+            } else {
+                customConditionGroup.style.display = 'none';
+            }
+        });
+    }
+
+    async loadCustomRangeForEdit(rangeId) {
+        try {
+            const ranges = await this.apiCall('/custom-reference-ranges', 'GET');
+            const range = ranges.custom_ranges.find(r => r.id === rangeId);
+            
+            if (!range) {
+                throw new Error('Range not found');
+            }
+
+            // Populate form fields
+            document.getElementById('customRangeId').value = range.id;
+            document.getElementById('metricSelect').value = range.metric_name;
+            document.getElementById('minValue').value = range.min_value;
+            document.getElementById('maxValue').value = range.max_value;
+            document.getElementById('unitSelect').value = range.units;
+            document.getElementById('conditionSelect').value = range.medical_condition;
+            
+            if (range.medical_condition === 'other' && range.condition_details) {
+                document.getElementById('customConditionGroup').style.display = 'block';
+                document.getElementById('customCondition').value = range.condition_details;
+            }
+            
+            document.getElementById('rangeNotes').value = range.notes || '';
+            
+            if (range.valid_from) {
+                document.getElementById('validFrom').value = range.valid_from;
+            }
+            if (range.valid_until) {
+                document.getElementById('validUntil').value = range.valid_until;
+            }
+
+        } catch (error) {
+            console.error('Failed to load range for edit:', error);
+            this.showToast('error', 'Error', 'Failed to load range data');
+        }
+    }
+
+    clearCustomRangeForm() {
+        document.getElementById('customRangeForm').reset();
+        document.getElementById('customRangeId').value = '';
+        document.getElementById('customMetricNameGroup').style.display = 'none';
+        document.getElementById('customConditionGroup').style.display = 'none';
+        document.getElementById('standardRangeInfo').style.display = 'none';
+        
+        // Set default valid from date to today
+        document.getElementById('validFrom').value = new Date().toISOString().split('T')[0];
+    }
+
+    async saveCustomRange() {
+        try {
+            const form = document.getElementById('customRangeForm');
+            const rangeId = document.getElementById('customRangeId').value;
+            
+            // Get form data
+            const metricSelect = document.getElementById('metricSelect');
+            const metricName = metricSelect.value === 'custom' ? 
+                document.getElementById('customMetricName').value : 
+                metricSelect.value;
+            
+            const conditionSelect = document.getElementById('conditionSelect');
+            const condition = conditionSelect.value;
+            const conditionDetails = condition === 'other' ? 
+                document.getElementById('customCondition').value : null;
+
+            const data = {
+                metric_name: metricName,
+                min_value: parseFloat(document.getElementById('minValue').value),
+                max_value: parseFloat(document.getElementById('maxValue').value),
+                units: document.getElementById('unitSelect').value,
+                medical_condition: condition,
+                condition_details: conditionDetails,
+                notes: document.getElementById('rangeNotes').value,
+                valid_from: document.getElementById('validFrom').value,
+                valid_until: document.getElementById('validUntil').value || null
+            };
+
+            // Validation
+            if (!data.metric_name || !data.min_value || !data.max_value || !data.units || !data.medical_condition) {
+                this.showToast('warning', 'Validation Error', 'Please fill in all required fields');
+                return;
+            }
+
+            if (data.min_value >= data.max_value) {
+                this.showToast('warning', 'Validation Error', 'Minimum value must be less than maximum value');
+                return;
+            }
+
+            // Save or update
+            const method = rangeId ? 'PUT' : 'POST';
+            const url = rangeId ? `/custom-reference-ranges/${rangeId}` : '/custom-reference-ranges';
+            
+            const response = await this.apiCall(url, method, data);
+            
+            this.showToast('success', 'Success', 
+                rangeId ? 'Custom range updated successfully' : 'Custom range created successfully'
+            );
+
+            // Close modal and refresh list
+            const modal = bootstrap.Modal.getInstance(document.getElementById('customRangeModal'));
+            modal.hide();
+            
+            this.loadCustomReferenceRanges();
+
+        } catch (error) {
+            console.error('Failed to save custom range:', error);
+            this.showToast('error', 'Error', 'Failed to save custom range');
+        }
+    }
+
+    async editCustomRange(rangeId) {
+        await this.showAddCustomRangeModal(rangeId);
+    }
+
+    async deleteCustomRange(rangeId) {
+        if (!confirm('Are you sure you want to delete this custom reference range?')) {
+            return;
+        }
+
+        try {
+            await this.apiCall(`/custom-reference-ranges/${rangeId}`, 'DELETE');
+            this.showToast('success', 'Success', 'Custom range deleted successfully');
+            this.loadCustomReferenceRanges();
+        } catch (error) {
+            console.error('Failed to delete custom range:', error);
+            this.showToast('error', 'Error', 'Failed to delete custom range');
         }
     }
 }

@@ -1,3 +1,6 @@
+// Load environment variables from .env file
+try { require('dotenv').config(); } catch (_) {}
+
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
@@ -48,6 +51,20 @@ app.use('/api/profile', authMiddleware, profileRoutes);
 // Phase 1 Unified Ingestion Pipeline Routes
 app.use('/api/ingestFile', authMiddleware, require('./routes/ingestFile'));
 app.use('/api/imaging-studies', authMiddleware, require('./routes/imagingStudies'));
+app.use('/api/metric-suggestions', authMiddleware, require('./routes/metricSuggestions'));
+app.use('/api/custom-reference-ranges', authMiddleware, require('./routes/customReferenceRanges'));
+
+// Admin routes (protected by admin allowlist)
+const adminAuth = require('./middleware/auth');
+app.use('/api/admin', adminAuth, adminAuth.adminOnly, require('./routes/admin'));
+
+// Debug routes (no auth for debugging)
+app.use('/api/debug', require('./routes/debug'));
+
+// Database viewer HTML page
+app.get('/database-viewer', (req, res) => {
+  res.sendFile(path.join(__dirname, 'database_viewer.html'));
+});
 
 
 // TEMPORARY DIAGNOSTIC ROUTE - Remove after schema verification (no auth required)
@@ -93,22 +110,24 @@ app.get('/api/__diag/ai_outputs_log_columns', async (req, res) => {
 // Public route for reference metrics data (no auth required)
 app.get('/api/metrics/reference', (req, res) => {
   try {
-    const fs = require('fs');
-    const path = require('path');
-    
-    const metricsPath = path.join(__dirname, 'src/data/metrics.json');
-    
-    if (!fs.existsSync(metricsPath)) {
-      return res.status(404).json({
-        error: 'Reference metrics data not found',
-        message: 'metrics.json file does not exist'
-      });
-    }
-    
-    const metricsData = JSON.parse(fs.readFileSync(metricsPath, 'utf8'));
-    
-    res.json(metricsData);
-    
+    const catalog = require('./shared/metricsCatalog');
+    const all = catalog.getAllMetrics();
+    res.json(all);
+  } catch (error) {
+    console.error('Get reference metrics error:', error);
+    res.status(500).json({
+      error: 'Failed to load reference metrics',
+      message: error.message
+    });
+  }
+});
+
+// Alternate public route (auth-free) to avoid router collision
+app.get('/api/reference/metrics', (req, res) => {
+  try {
+    const catalog = require('./shared/metricsCatalog');
+    const all = catalog.getAllMetrics();
+    res.json(all);
   } catch (error) {
     console.error('Get reference metrics error:', error);
     res.status(500).json({
@@ -218,9 +237,13 @@ app.use((error, req, res, next) => {
 // Initialize services and start server
 async function startServer() {
   try {
-    // Initialize database schema
+    // Initialize database schema (skippable for local smoke tests)
     console.log('Initializing database...');
-    await initializeDatabase();
+    if (process.env.SKIP_DB_INIT === 'true') {
+      console.log('SKIP_DB_INIT is true – skipping database initialization');
+    } else {
+      await initializeDatabase();
+    }
     
     // Initialize queue service (with graceful degradation)
     console.log('Initializing queue service...');

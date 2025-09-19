@@ -1,12 +1,14 @@
 const express = require('express');
 const { OAuth2Client } = require('google-auth-library');
 const authService = require('../services/auth');
+const authMiddleware = require('../middleware/auth'); // Added missing import
 
 const router = express.Router();
 
 // Initialize Google OAuth client
 const client = new OAuth2Client(
-  process.env.GOOGLE_CLIENT_ID || 'your-google-client-id'
+  process.env.GOOGLE_CLIENT_ID || 'your-google-client-id',
+  process.env.GOOGLE_CLIENT_SECRET || undefined
 );
 
 // Google OAuth login
@@ -61,47 +63,84 @@ router.post('/google', async (req, res) => {
 // Demo login (for testing without Google OAuth)
 router.post('/demo', async (req, res) => {
   try {
-    const demoUser = {
-      id: 'demo-123',
-      email: 'demo@healthapp.com',
-      name: 'Demo User',
-      picture: null
-    };
+    const demoUserIdEnv = process.env.DEMO_USER_ID;
+    const demoEmailEnv = process.env.DEMO_EMAIL;
+    const fallbackEmail = 'demo@example.com';
+    const displayName = 'Demo User';
+    const defaultAvatar = 'https://i.pravatar.cc/150?u=demo@example.com';
 
-    // Find or create demo user
-    const user = await authService.findOrCreateUser(demoUser);
+    let userRow = null;
 
-    // Generate JWT token
-    const authToken = authService.generateToken(user);
+    // 1) Prefer explicit numeric DEMO_USER_ID if provided
+    if (demoUserIdEnv && /^\d+$/.test(demoUserIdEnv)) {
+      const byId = await req.db.query('SELECT * FROM users WHERE id = $1', [parseInt(demoUserIdEnv, 10)]);
+      if (byId.rows.length > 0) {
+        userRow = byId.rows[0];
+      }
+    }
+
+    // 2) Else try DEMO_EMAIL if provided
+    if (!userRow && demoEmailEnv) {
+      const byEmail = await req.db.query('SELECT * FROM users WHERE email = $1', [demoEmailEnv]);
+      if (byEmail.rows.length > 0) {
+        userRow = byEmail.rows[0];
+      }
+    }
+
+    // 3) Else try fallback email commonly used
+    if (!userRow) {
+      const byEmail = await req.db.query('SELECT * FROM users WHERE email = $1', [fallbackEmail]);
+      if (byEmail.rows.length > 0) {
+        userRow = byEmail.rows[0];
+      }
+    }
+
+    // 4) If still not found, create or upsert a demo user (without data)
+    if (!userRow) {
+      const inserted = await req.db.query(
+        `INSERT INTO users (google_id, email, name, avatar_url)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, avatar_url = EXCLUDED.avatar_url
+         RETURNING *`,
+        ['DEMO', demoEmailEnv || fallbackEmail, displayName, defaultAvatar]
+      );
+      userRow = inserted.rows[0];
+    }
+
+    const authToken = authService.generateToken({
+      id: userRow.id,
+      email: userRow.email,
+      name: userRow.name,
+      is_demo: true,
+    });
 
     res.json({
       success: true,
       token: authToken,
       user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        avatar_url: user.avatar_url
+        id: userRow.id,
+        email: userRow.email,
+        name: userRow.name,
+        avatar_url: userRow.avatar_url || defaultAvatar,
       }
     });
-
   } catch (error) {
-    console.error('Demo auth error:', error);
+    console.error('Demo login error:', error);
     res.status(500).json({ 
-      error: 'Demo authentication failed',
+      error: 'Demo login failed',
       message: error.message 
     });
   }
 });
 
 // Get current user profile
-router.get('/me', async (req, res) => {
+router.get('/me', authMiddleware, async (req, res) => {
   try {
-    // Check if user is authenticated
     if (!req.user || !req.user.userId) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
-    
+
+    // Always load from DB so demo users get real DB-backed data
     const user = await authService.getUserById(req.user.userId);
     res.json({ user });
   } catch (error) {

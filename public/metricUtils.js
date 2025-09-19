@@ -2,7 +2,9 @@
 class MetricUtils {
     constructor() {
         this.metricsData = null;
+        this.synonymsData = null;
         this.loadMetricsData();
+        this.loadSynonymsData();
     }
 
     async loadMetricsData() {
@@ -44,8 +46,84 @@ class MetricUtils {
         }
     }
 
-    // Find matching metric from our reference data OR custom metrics
+    async loadSynonymsData() {
+        try {
+            const response = await fetch('/data/metric-synonyms.json');
+            if (response.ok) {
+                this.synonymsData = await response.json();
+                console.log('Loaded metric synonyms data');
+            } else {
+                console.warn('Could not load synonyms data');
+                this.synonymsData = { synonyms: {}, units_synonyms: {} };
+            }
+        } catch (error) {
+            console.error('Failed to load synonyms data:', error);
+            this.synonymsData = { synonyms: {}, units_synonyms: {} };
+        }
+    }
+
+    // Normalize metric name using synonyms lookup
+    normalizeMetricName(inputName) {
+        if (!this.synonymsData) return inputName;
+        
+        const inputLower = inputName.toLowerCase().trim();
+        
+        // Check each canonical metric and its synonyms
+        for (const [canonicalName, synonyms] of Object.entries(this.synonymsData.synonyms)) {
+            // Check if input matches canonical name
+            if (canonicalName.toLowerCase() === inputLower) {
+                return canonicalName;
+            }
+            
+            // Check if input matches any synonym
+            if (synonyms.some(synonym => synonym.toLowerCase() === inputLower)) {
+                return canonicalName;
+            }
+        }
+        
+        return inputName; // Return original if no match found
+    }
+
+    // Normalize units using synonyms lookup
+    normalizeUnits(inputUnit) {
+        if (!this.synonymsData || !inputUnit) return inputUnit;
+        
+        const inputLower = inputUnit.toLowerCase().trim();
+        
+        // Check each canonical unit and its synonyms
+        for (const [canonicalUnit, synonyms] of Object.entries(this.synonymsData.units_synonyms)) {
+            // Check if input matches canonical unit
+            if (canonicalUnit.toLowerCase() === inputLower) {
+                return canonicalUnit;
+            }
+            
+            // Check if input matches any synonym
+            if (synonyms.some(synonym => synonym.toLowerCase() === inputLower)) {
+                return canonicalUnit;
+            }
+        }
+        
+        return inputUnit; // Return original if no match found
+    }
+
+    // Enhanced find matching metric with synonym support
     findMetricMatch(metricName, systemName = null, customMetrics = []) {
+        // First normalize the metric name using synonyms
+        const normalizedName = this.normalizeMetricName(metricName);
+        
+        // Try with normalized name first
+        let result = this._findMetricMatchInternal(normalizedName, systemName, customMetrics);
+        
+        // If no match with normalized name, try with original name
+        if (!result && normalizedName !== metricName) {
+            result = this._findMetricMatchInternal(metricName, systemName, customMetrics);
+        }
+        
+        return result;
+    }
+
+    // Internal method for actual matching logic
+    _findMetricMatchInternal(metricName, systemName = null, customMetrics = []) {
         // First check custom metrics (higher priority for user's own custom metrics)
         if (customMetrics && customMetrics.length > 0) {
             const customMatch = customMetrics.find(cm => 
@@ -92,8 +170,129 @@ class MetricUtils {
         return match;
     }
 
-    // Calculate status based on value and normal range
-    calculateStatus(value, normalRangeMin, normalRangeMax) {
+    // Get potential matches with similarity scores for LLM suggestions
+    getPotentialMatches(metricName, threshold = 0.3) {
+        if (!this.metricsData) return [];
+        
+        const matches = [];
+        const inputLower = metricName.toLowerCase();
+        
+        // Check all metrics for partial matches
+        for (const metric of this.metricsData) {
+            const metricLower = metric.metric.toLowerCase();
+            
+            // Calculate simple similarity score
+            const similarity = this.calculateSimilarity(inputLower, metricLower);
+            
+            if (similarity >= threshold) {
+                matches.push({
+                    metric: metric.metric,
+                    system: metric.system,
+                    units: metric.units,
+                    similarity: similarity,
+                    normalRangeMin: metric.normalRangeMin,
+                    normalRangeMax: metric.normalRangeMax
+                });
+            }
+        }
+        
+        // Also check synonyms for potential matches
+        if (this.synonymsData) {
+            for (const [canonicalName, synonyms] of Object.entries(this.synonymsData.synonyms)) {
+                for (const synonym of synonyms) {
+                    const similarity = this.calculateSimilarity(inputLower, synonym.toLowerCase());
+                    if (similarity >= threshold) {
+                        // Find the metric data for this canonical name
+                        const metricData = this.metricsData.find(m => 
+                            m.metric.toLowerCase() === canonicalName.toLowerCase()
+                        );
+                        if (metricData) {
+                            matches.push({
+                                metric: canonicalName,
+                                system: metricData.system,
+                                units: metricData.units,
+                                similarity: similarity,
+                                normalRangeMin: metricData.normalRangeMin,
+                                normalRangeMax: metricData.normalRangeMax,
+                                matchedSynonym: synonym
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Sort by similarity score (descending) and remove duplicates
+        return matches
+            .sort((a, b) => b.similarity - a.similarity)
+            .filter((match, index, self) => 
+                index === self.findIndex(m => m.metric === match.metric)
+            )
+            .slice(0, 5); // Return top 5 matches
+    }
+
+    // Simple string similarity calculation (Jaccard similarity)
+    calculateSimilarity(str1, str2) {
+        const set1 = new Set(str1.split(''));
+        const set2 = new Set(str2.split(''));
+        
+        const intersection = new Set([...set1].filter(x => set2.has(x)));
+        const union = new Set([...set1, ...set2]);
+        
+        return intersection.size / union.size;
+    }
+
+    // Calculate status based on value and normal range (with custom range support)
+    async calculateStatus(metricName, value, normalRangeMin, normalRangeMax, testDate = null) {
+        if (value === null || value === undefined || value === '') {
+            return 'No data';
+        }
+        
+        const numValue = parseFloat(value);
+        if (isNaN(numValue)) {
+            return 'Invalid';
+        }
+        
+        // Try to get custom reference range for this metric
+        let rangeMin = normalRangeMin;
+        let rangeMax = normalRangeMax;
+        let rangeSource = 'standard';
+        
+        try {
+            const customRange = await this.getCustomReferenceRange(metricName, testDate);
+            if (customRange) {
+                rangeMin = parseFloat(customRange.min_value);
+                rangeMax = parseFloat(customRange.max_value);
+                rangeSource = 'custom';
+            }
+        } catch (error) {
+            console.warn('Failed to get custom reference range:', error);
+            // Fall back to standard range
+        }
+        
+        if (rangeMin === null || rangeMax === null || isNaN(rangeMin) || isNaN(rangeMax)) {
+            return 'No reference';
+        }
+        
+        let status;
+        if (numValue < rangeMin) {
+            status = 'Low';
+        } else if (numValue > rangeMax) {
+            status = 'High';
+        } else {
+            status = 'Normal';
+        }
+        
+        return {
+            status: status,
+            rangeSource: rangeSource,
+            rangeMin: rangeMin,
+            rangeMax: rangeMax
+        };
+    }
+
+    // Legacy method for backward compatibility
+    calculateStatusSync(value, normalRangeMin, normalRangeMax) {
         if (value === null || value === undefined || value === '') {
             return 'No data';
         }
@@ -109,6 +308,27 @@ class MetricUtils {
             return 'High';
         } else {
             return 'Normal';
+        }
+    }
+
+    // Get custom reference range for a specific metric and date
+    async getCustomReferenceRange(metricName, testDate = null) {
+        try {
+            const effectiveDate = testDate || new Date().toISOString().split('T')[0];
+            
+            // This would need to call the API when used in frontend context
+            if (typeof window !== 'undefined' && window.healthDashboard) {
+                const response = await window.healthDashboard.apiCall(
+                    `/custom-reference-ranges/metric/${encodeURIComponent(metricName)}?testDate=${effectiveDate}`, 
+                    'GET'
+                );
+                return response.custom_range;
+            }
+            
+            return null;
+        } catch (error) {
+            console.warn('Failed to fetch custom reference range:', error);
+            return null;
         }
     }
 

@@ -9,17 +9,16 @@ class OpenAIService {
   // General completion method for ingestion pipeline
   async generateCompletion(prompt, base64Data = null, fileName = null) {
     try {
+      const isPdf = fileName && fileName.toLowerCase().endsWith('.pdf');
       const messages = [
         {
           role: 'user',
-          content: base64Data ? [
+          content: (base64Data && !isPdf) ? [
             { type: 'text', text: prompt },
             {
               type: 'image_url',
               image_url: {
-                url: fileName && fileName.toLowerCase().endsWith('.pdf') 
-                  ? `data:application/pdf;base64,${base64Data}`
-                  : `data:image/jpeg;base64,${base64Data}`,
+                url: `data:image/jpeg;base64,${base64Data}`,
                 detail: 'high'
               }
             }

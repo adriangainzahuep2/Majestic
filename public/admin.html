@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Console</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body style="background:#1C1C1E;color:#fff;padding:20px;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+  <h2 style="display:flex;justify-content:space-between;align-items:center;margin:0 0 12px 0;">
+    <span>Admin</span>
+    <button id="logoutBtn" class="btn btn-secondary" style="display:none">Logout</button>
+  </h2>
+  <div id="authSection">
+    <div id="googleButton"></div>
+  </div>
+
+  <div id="adminSection" style="display:none;margin-top:20px;">
+    <div style="display:flex;gap:10px;margin-bottom:20px;">
+      <button id="downloadTemplateBtn" class="btn btn-primary">Download Master (XLSX)</button>
+      <label class="btn btn-secondary" style="cursor:pointer;">
+        Upload Master (XLSX)
+        <input type="file" id="uploadFile" accept=".xlsx" style="display:none" />
+      </label>
+    </div>
+    <div id="validationResult" style="display:none;background:#2C2C2E;padding:12px;border-radius:8px;margin-bottom:12px;"></div>
+    <div id="versions" style="background:#2C2C2E;padding:12px;border-radius:8px;"></div>
+  </div>
+
+  <script>
+    const tokenKey = 'majestic_token';
+    async function api(path, method='GET', body, isForm=false) {
+      const headers = { 'Authorization': 'Bearer ' + (localStorage.getItem(tokenKey)||'') };
+      if (!isForm) headers['Content-Type'] = 'application/json';
+      const res = await fetch(path, { method, headers, body: isForm ? body : body ? JSON.stringify(body) : undefined });
+      if (!res.ok) throw new Error(await res.text());
+      return res.headers.get('content-type')?.includes('application/json') ? res.json() : res.blob();
+    }
+
+    window.onGoogleCredential = async (resp) => {
+      try {
+        const r = await fetch('/api/auth/google', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token: resp.credential }) });
+        if (!r.ok) throw new Error('Google auth failed');
+        const data = await r.json();
+        localStorage.setItem(tokenKey, data.token);
+        document.getElementById('authSection').style.display = 'none';
+        document.getElementById('adminSection').style.display = 'block';
+        initAdmin();
+      } catch (e) { alert('Login failed'); }
+    };
+
+    async function initAdmin() {
+      const token = localStorage.getItem(tokenKey) || '';
+      if (token) {
+        document.getElementById('authSection').style.display = 'none';
+        document.getElementById('adminSection').style.display = 'block';
+        const lb = document.getElementById('logoutBtn'); if (lb) lb.style.display = 'inline-block';
+        try {
+          await loadVersions();
+        } catch (e) {
+          // If unauthorized, clear token and show login UI
+          localStorage.removeItem(tokenKey);
+          document.getElementById('adminSection').style.display = 'none';
+          document.getElementById('authSection').style.display = 'block';
+          const lb2 = document.getElementById('logoutBtn'); if (lb2) lb2.style.display = 'none';
+          await renderGoogleButton();
+        }
+      } else {
+        document.getElementById('authSection').style.display = 'block';
+        document.getElementById('adminSection').style.display = 'none';
+        const lb = document.getElementById('logoutBtn'); if (lb) lb.style.display = 'none';
+        await renderGoogleButton();
+      }
+    }
+
+    async function renderGoogleButton() {
+      try {
+        const cfg = await api('/api/auth/config');
+        await ensureGoogleLoaded();
+        if (cfg.googleClientId && window.google && google.accounts && google.accounts.id) {
+          google.accounts.id.initialize({
+            client_id: cfg.googleClientId,
+            callback: onGoogleCredential,
+            ux_mode: 'popup',
+            auto_select: false,
+            use_fedcm_for_prompt: false
+          });
+          google.accounts.id.renderButton(document.getElementById('googleButton'), { theme: 'outline', size: 'large' });
+        }
+      } catch {}
+    }
+
+    // Admin logout handler
+    document.getElementById('logoutBtn').onclick = async () => {
+      try { await fetch('/api/auth/logout', { method: 'POST' }); } catch(e) {}
+      localStorage.removeItem(tokenKey);
+      document.getElementById('adminSection').style.display = 'none';
+      document.getElementById('authSection').style.display = 'block';
+      const lb = document.getElementById('logoutBtn'); if (lb) lb.style.display = 'none';
+      await renderGoogleButton();
+    };
+
+    function ensureGoogleLoaded() {
+      return new Promise((resolve) => {
+        if (window.google && google.accounts && google.accounts.id) return resolve();
+        const i = setInterval(() => {
+          if (window.google && google.accounts && google.accounts.id) { clearInterval(i); resolve(); }
+        }, 50);
+        setTimeout(() => { clearInterval(i); resolve(); }, 3000);
+      });
+    }
+
+    document.getElementById('downloadTemplateBtn').onclick = async () => {
+      try {
+        const blob = await api('/api/admin/template');
+        if (blob instanceof Blob) {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = 'master_template.xlsx'; a.click(); URL.revokeObjectURL(url);
+        } else {
+          alert('Template JSON delivered (no XLSX template found).');
+        }
+      } catch (e) { alert('Template download failed'); }
+    };
+
+    document.getElementById('uploadFile').onchange = async (e) => {
+      const file = e.target.files[0]; if (!file) return;
+      const form = new FormData(); form.append('file', file);
+      try {
+        const result = await fetch('/api/admin/validate', { method:'POST', headers:{ 'Authorization': 'Bearer ' + (localStorage.getItem(tokenKey)||'') }, body: form });
+        const json = await result.json();
+        const panel = document.getElementById('validationResult');
+        panel.style.display = 'block';
+        panel.innerHTML = json.success ?
+          `<div>Dry-run OK. Added: ${json.diff.added}, Changed: ${json.diff.changed}, Removed: ${json.diff.removed}</div>
+           <div style="margin-top:8px;display:flex;gap:8px;">
+             <input id="changeSummary" placeholder="Short change summary" style="flex:1;padding:6px;border-radius:6px;border:1px solid #444;background:#1C1C1E;color:#fff"/>
+             <button id="commitBtn" class="btn btn-success">Confirm & Commit</button>
+           </div>`
+          : `<div style="color:#ff6961;">Validation errors:<br>${(json.errors||[]).join('<br>')}</div>`;
+        if (json.success) {
+          document.getElementById('commitBtn').onclick = async () => {
+            const form2 = new FormData(); form2.append('file', file); form2.append('change_summary', document.getElementById('changeSummary').value || 'update');
+            const r = await fetch('/api/admin/commit', { method:'POST', headers:{ 'Authorization': 'Bearer ' + (localStorage.getItem(tokenKey)||'') }, body: form2 });
+            const jj = await r.json();
+            if (jj.success) { alert('Committed version ' + jj.version_id); loadVersions(); }
+            else alert('Commit failed: ' + (jj.message||'') );
+          };
+        }
+      } catch (e) { alert('Validate failed'); }
+    };
+
+    async function loadVersions() {
+      try {
+        const { versions } = await api('/api/admin/versions');
+        const div = document.getElementById('versions');
+        if (!versions || versions.length === 0) { div.innerHTML = '<i>No versions yet</i>'; return; }
+        div.innerHTML = versions.map(v => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid #3A3A3C;">
+            <div>
+              <div><strong>Version ${v.version_id}</strong> — ${new Date(v.created_at).toLocaleString()}</div>
+              <div style="color:#ccc">Added ${v.added_count}, Changed ${v.changed_count}, Removed ${v.removed_count}</div>
+              <div style="color:#aaa">${v.change_summary || ''}</div>
+            </div>
+            <button class="btn btn-danger" onclick="rollback(${v.version_id})">Rollback</button>
+          </div>
+        `).join('');
+      } catch (e) { document.getElementById('versions').innerText = 'Failed to load versions'; }
+    }
+
+    window.rollback = async (versionId) => {
+      if (!confirm('Rollback to version ' + versionId + '?')) return;
+      try {
+        const r = await api('/api/admin/rollback/' + versionId, 'POST');
+        if (r.success) { alert('Rollback complete'); loadVersions(); }
+      } catch (e) { alert('Rollback failed'); }
+    };
+
+    // Auto-initialize on page load to render Google button and attempt versions load
+    document.addEventListener('DOMContentLoaded', initAdmin);
+  </script>
+</body>
+</html>
+
+

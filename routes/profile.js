@@ -504,95 +504,50 @@ router.put('/', authMiddleware, async (req, res) => {
             duration_ms: Date.now() - userDbStart
         });
         
-        // Delete existing chronic conditions and allergies
-        const deleteConditionsStart = Date.now();
-        info('PROFILE_DB_UPDATE_START', {
-            correlation_id: correlationId,
-            user_id: userId,
-            query: 'chronic_conditions_delete'
-        });
-        
-        const deletedConditions = await req.db.query('DELETE FROM user_chronic_conditions WHERE user_id = $1', [userId]);
-        
-        info('PROFILE_DB_UPDATE_END', {
-            correlation_id: correlationId,
-            user_id: userId,
-            query: 'chronic_conditions_delete',
-            row_count: deletedConditions.rowCount || 0,
-            duration_ms: Date.now() - deleteConditionsStart
-        });
-        
-        const deleteAllergiesStart = Date.now();
-        info('PROFILE_DB_UPDATE_START', {
-            correlation_id: correlationId,
-            user_id: userId,
-            query: 'allergies_delete'
-        });
-        
-        const deletedAllergies = await req.db.query('DELETE FROM user_allergies WHERE user_id = $1', [userId]);
-        
-        info('PROFILE_DB_UPDATE_END', {
-            correlation_id: correlationId,
-            user_id: userId,
-            query: 'allergies_delete',
-            row_count: deletedAllergies.rowCount || 0,
-            duration_ms: Date.now() - deleteAllergiesStart
-        });
-        
-        // Insert new chronic conditions
-        if (chronicConditions.length > 0) {
-            const insertConditionsStart = Date.now();
-            info('PROFILE_DB_UPDATE_START', {
-                correlation_id: correlationId,
-                user_id: userId,
-                query: 'chronic_conditions_insert',
-                record_count: chronicConditions.length
-            });
-            
-            const conditionValues = chronicConditions.map(condition => 
-                `(${userId}, '${condition.conditionName.replace(/'/g, "''")}', '${condition.status}', NOW())`
-            ).join(', ');
-            
-            const insertedConditions = await req.db.query(`
-                INSERT INTO user_chronic_conditions (user_id, condition_name, status, created_at)
-                VALUES ${conditionValues}
-            `);
-            
-            info('PROFILE_DB_UPDATE_END', {
-                correlation_id: correlationId,
-                user_id: userId,
-                query: 'chronic_conditions_insert',
-                row_count: insertedConditions.rowCount || 0,
-                duration_ms: Date.now() - insertConditionsStart
-            });
-        }
-        
-        // Insert new allergies
-        if (allergies.length > 0) {
-            const insertAllergiesStart = Date.now();
-            info('PROFILE_DB_UPDATE_START', {
-                correlation_id: correlationId,
-                user_id: userId,
-                query: 'allergies_insert',
-                record_count: allergies.length
-            });
-            
-            const allergyValues = allergies.map(allergy => 
-                `(${userId}, '${allergy.allergyType}', '${allergy.allergenName.replace(/'/g, "''")}', NOW())`
-            ).join(', ');
-            
-            const insertedAllergies = await req.db.query(`
-                INSERT INTO user_allergies (user_id, allergy_type, allergen_name, created_at)
-                VALUES ${allergyValues}
-            `);
-            
-            info('PROFILE_DB_UPDATE_END', {
-                correlation_id: correlationId,
-                user_id: userId,
-                query: 'allergies_insert',
-                row_count: insertedAllergies.rowCount || 0,
-                duration_ms: Date.now() - insertAllergiesStart
-            });
+        // Use transaction for consistent update of conditions/allergies
+        const client = await req.db.connect();
+        try {
+            await client.query('BEGIN');
+
+            // Delete existing chronic conditions and allergies
+            const deleteConditionsStart = Date.now();
+            info('PROFILE_DB_UPDATE_START', { correlation_id: correlationId, user_id: userId, query: 'chronic_conditions_delete' });
+            const deletedConditions = await client.query('DELETE FROM user_chronic_conditions WHERE user_id = $1', [userId]);
+            info('PROFILE_DB_UPDATE_END', { correlation_id: correlationId, user_id: userId, query: 'chronic_conditions_delete', row_count: deletedConditions.rowCount || 0, duration_ms: Date.now() - deleteConditionsStart });
+
+            const deleteAllergiesStart = Date.now();
+            info('PROFILE_DB_UPDATE_START', { correlation_id: correlationId, user_id: userId, query: 'allergies_delete' });
+            const deletedAllergies = await client.query('DELETE FROM user_allergies WHERE user_id = $1', [userId]);
+            info('PROFILE_DB_UPDATE_END', { correlation_id: correlationId, user_id: userId, query: 'allergies_delete', row_count: deletedAllergies.rowCount || 0, duration_ms: Date.now() - deleteAllergiesStart });
+
+            // Insert new chronic conditions with parameterized query
+            if (chronicConditions.length > 0) {
+                const insertConditionsStart = Date.now();
+                info('PROFILE_DB_UPDATE_START', { correlation_id: correlationId, user_id: userId, query: 'chronic_conditions_insert', record_count: chronicConditions.length });
+                const text = 'INSERT INTO user_chronic_conditions (user_id, condition_name, status, created_at) VALUES ($1, $2, $3, NOW())';
+                for (const condition of chronicConditions) {
+                    await client.query(text, [userId, condition.conditionName || null, condition.status || null]);
+                }
+                info('PROFILE_DB_UPDATE_END', { correlation_id: correlationId, user_id: userId, query: 'chronic_conditions_insert', row_count: chronicConditions.length, duration_ms: Date.now() - insertConditionsStart });
+            }
+
+            // Insert new allergies with parameterized query
+            if (allergies.length > 0) {
+                const insertAllergiesStart = Date.now();
+                info('PROFILE_DB_UPDATE_START', { correlation_id: correlationId, user_id: userId, query: 'allergies_insert', record_count: allergies.length });
+                const text = 'INSERT INTO user_allergies (user_id, allergy_type, allergen_name, created_at) VALUES ($1, $2, $3, NOW())';
+                for (const allergy of allergies) {
+                    await client.query(text, [userId, allergy.allergyType || null, allergy.allergenName || null]);
+                }
+                info('PROFILE_DB_UPDATE_END', { correlation_id: correlationId, user_id: userId, query: 'allergies_insert', row_count: allergies.length, duration_ms: Date.now() - insertAllergiesStart });
+            }
+
+            await client.query('COMMIT');
+        } catch (txErr) {
+            await client.query('ROLLBACK');
+            throw txErr;
+        } finally {
+            client.release();
         }
         
         // Return flat updated profile object with snake_case keys
