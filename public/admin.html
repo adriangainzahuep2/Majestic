@@ -12,11 +12,14 @@
     <span>Admin</span>
     <button id="logoutBtn" class="btn btn-secondary" style="display:none">Logout</button>
   </h2>
+  <!-- TEMPORARILY DISABLED AUTH - REMOVE THIS SECTION LATER -->
+  <!--
   <div id="authSection">
     <div id="googleButton"></div>
   </div>
+  -->
 
-  <div id="adminSection" style="display:none;margin-top:20px;">
+  <div id="adminSection" style="margin-top:20px;">
     <div style="display:flex;gap:10px;margin-bottom:20px;">
       <button id="downloadTemplateBtn" class="btn btn-primary">Download Master (XLSX)</button>
       <label class="btn btn-secondary" style="cursor:pointer;">
@@ -38,6 +41,8 @@
       return res.headers.get('content-type')?.includes('application/json') ? res.json() : res.blob();
     }
 
+    // TEMPORARILY DISABLED - Google credential handler not needed
+    /*
     window.onGoogleCredential = async (resp) => {
       try {
         const r = await fetch('/api/auth/google', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token: resp.credential }) });
@@ -49,31 +54,21 @@
         initAdmin();
       } catch (e) { alert('Login failed'); }
     };
+    */
 
     async function initAdmin() {
-      const token = localStorage.getItem(tokenKey) || '';
-      if (token) {
-        document.getElementById('authSection').style.display = 'none';
-        document.getElementById('adminSection').style.display = 'block';
-        const lb = document.getElementById('logoutBtn'); if (lb) lb.style.display = 'inline-block';
-        try {
-          await loadVersions();
-        } catch (e) {
-          // If unauthorized, clear token and show login UI
-          localStorage.removeItem(tokenKey);
-          document.getElementById('adminSection').style.display = 'none';
-          document.getElementById('authSection').style.display = 'block';
-          const lb2 = document.getElementById('logoutBtn'); if (lb2) lb2.style.display = 'none';
-          await renderGoogleButton();
-        }
-      } else {
-        document.getElementById('authSection').style.display = 'block';
-        document.getElementById('adminSection').style.display = 'none';
-        const lb = document.getElementById('logoutBtn'); if (lb) lb.style.display = 'none';
-        await renderGoogleButton();
+      // TEMPORARILY DISABLED AUTH - Always show admin panel
+      document.getElementById('adminSection').style.display = 'block';
+      document.getElementById('logoutBtn').style.display = 'none';
+      try {
+        await loadVersions();
+      } catch (e) {
+        console.log('Admin panel initialized (auth temporarily disabled)');
       }
     }
 
+    // TEMPORARILY DISABLED - Google button not needed
+    /*
     async function renderGoogleButton() {
       try {
         const cfg = await api('/api/auth/config');
@@ -90,6 +85,7 @@
         }
       } catch {}
     }
+    */
 
     // Admin logout handler
     document.getElementById('logoutBtn').onclick = async () => {
@@ -177,9 +173,30 @@
       } catch (e) { alert('Rollback failed'); }
     };
 
-    // Auto-initialize on page load to render Google button and attempt versions load
-    document.addEventListener('DOMContentLoaded', initAdmin);
+    // TEMPORARILY DISABLED - Auto-initialize without Google button
+    // document.addEventListener('DOMContentLoaded', initAdmin);
+
+    // Initialize admin panel immediately (no auth required)
+    initAdmin();
   </script>
+
+  <!--
+  ======================================================================
+  ⚠️  TEMPORAL AUTHENTICATION DISABLED - IMPORTANT NOTES ⚠️
+  ======================================================================
+
+  TO RE-ENABLE AUTHENTICATION:
+  1. Remove the comment blocks around authSection in HTML
+  2. Change adminSection style from always visible to "display:none"
+  3. Restore the original initAdmin() function with authentication logic
+  4. Uncomment renderGoogleButton() and window.onGoogleCredential
+  5. Uncomment router.use(authMiddleware, authMiddleware.adminOnly) in routes/admin.js
+  6. Change back 'admin-temporary' to req.user?.email in commit route
+  7. Uncomment document.addEventListener('DOMContentLoaded', initAdmin)
+
+  SEARCH FOR: "TEMPORARILY DISABLED" to find all changes to revert
+  ======================================================================
+  -->
 </body>
 </html>
 

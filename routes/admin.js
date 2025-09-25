@@ -9,8 +9,9 @@ const authMiddleware = require('../middleware/auth');
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-// All routes protected: auth + admin allowlist
-router.use(authMiddleware, authMiddleware.adminOnly);
+// TEMPORARILY DISABLED AUTH - All routes unprotected
+// router.use(authMiddleware, authMiddleware.adminOnly);
+// ⚠️ TO RE-ENABLE: Uncomment the line above
 
 // Download blank template
 router.get('/template', async (req, res) => {
@@ -67,7 +68,7 @@ router.post('/commit', upload.single('file'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'file_required' });
     const changeSummary = req.body.change_summary || '';
     if (!changeSummary || changeSummary.length < 4) return res.status(400).json({ error: 'summary_required' });
-    const result = await adminMasterService.commit(req.file.buffer, changeSummary, req.user?.email);
+    const result = await adminMasterService.commit(req.file.buffer, changeSummary, 'admin-temporary');
     res.json(result);
   } catch (e) {
     console.error('[ADMIN] commit error', e);

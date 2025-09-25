@@ -210,6 +210,16 @@ class AdminMasterService {
       }
 
       await client.query('COMMIT');
+
+      // Auto-sync to JSON files after successful commit
+      try {
+        await this.syncToJSONFiles(versionId);
+        console.log('[ADMIN] Successfully synced to JSON files');
+      } catch (syncError) {
+        console.warn('[ADMIN] Commit successful but JSON sync failed:', syncError.message);
+        // Don't fail the commit if JSON sync fails
+      }
+
       return { success: true, version_id: versionId, added, changed, removed };
     } catch (e) {
       await client.query('ROLLBACK');
@@ -305,6 +315,115 @@ class AdminMasterService {
     } finally {
       client.release();
     }
+  }
+
+  /**
+   * Sync current DB state to JSON files after successful commit
+   */
+  async syncToJSONFiles(versionId) {
+    const fs = require('fs');
+    const path = require('path');
+
+    // Get current master data from DB
+    const [metricsRes, synonymsRes, convRes] = await Promise.all([
+      pool.query('SELECT * FROM master_metrics ORDER BY metric_id'),
+      pool.query('SELECT * FROM master_metric_synonyms ORDER BY metric_id, synonym_name'),
+      pool.query('SELECT * FROM master_conversion_groups ORDER BY canonical_unit, alt_unit')
+    ]);
+
+    const metrics = metricsRes.rows;
+    const synonyms = synonymsRes.rows;
+    const conversions = convRes.rows;
+
+    // Create metrics catalog structure
+    const metricsCatalog = {
+      generated_at: new Date().toISOString(),
+      metrics: [],
+      units_synonyms: {}
+    };
+
+    // System name mapping
+    const systemNames = {
+      1: 'Cardiovascular',
+      2: 'Nervous/Brain',
+      3: 'Respiratory',
+      4: 'Digestive',
+      5: 'Endocrine/Hormonal',
+      6: 'Urinary/Renal',
+      7: 'Reproductive',
+      8: 'Integumentary (Skin)',
+      9: 'Immune/Inflammatory',
+      10: 'Sensory (Vision)',
+      11: 'Sensory (Hearing)',
+      12: 'Biological Age/Epigenetics'
+    };
+
+    // Group metrics by their properties
+    for (const metric of metrics) {
+      const metricEntry = {
+        metric: metric.metric_name,
+        system: systemNames[metric.system_id] || 'Unknown',
+        units: metric.canonical_unit,
+        normalRangeMin: metric.normal_min,
+        normalRangeMax: metric.normal_max,
+        synonyms: []
+      };
+
+      // Add synonyms for this metric
+      const metricSynonyms = synonyms.filter(s => s.metric_id === metric.metric_id);
+      for (const syn of metricSynonyms) {
+        metricEntry.synonyms.push(syn.synonym_name);
+      }
+
+      // Only add if has synonyms or is a key metric
+      if (metricEntry.synonyms.length > 0 || metric.is_key_metric) {
+        metricsCatalog.metrics.push(metricEntry);
+      }
+    }
+
+    // Create units synonyms from conversions
+    const unitsMap = new Map();
+    for (const conv of conversions) {
+      if (!unitsMap.has(conv.canonical_unit)) {
+        unitsMap.set(conv.canonical_unit, new Set());
+      }
+      if (conv.alt_unit && conv.alt_unit !== conv.canonical_unit) {
+        unitsMap.get(conv.canonical_unit).add(conv.alt_unit);
+      }
+    }
+
+    for (const [unit, alts] of unitsMap) {
+      if (alts.size > 0) {
+        metricsCatalog.units_synonyms[unit] = Array.from(alts);
+      }
+    }
+
+    // Write updated JSON files
+    const publicDataDir = path.join(__dirname, '../public/data');
+    if (!fs.existsSync(publicDataDir)) {
+      fs.mkdirSync(publicDataDir, { recursive: true });
+    }
+
+    // Update metrics.catalog.json
+    const catalogPath = path.join(publicDataDir, 'metrics.catalog.json');
+    fs.writeFileSync(catalogPath, JSON.stringify(metricsCatalog, null, 2));
+
+    // Also update metrics.json for backward compatibility
+    const metricsSimple = metrics.map(m => ({
+      id: m.metric_id,
+      name: m.metric_name,
+      system: systemNames[m.system_id] || 'Unknown',
+      unit: m.canonical_unit,
+      normalMin: m.normal_min,
+      normalMax: m.normal_max,
+      isKey: m.is_key_metric
+    }));
+
+    const metricsPath = path.join(publicDataDir, 'metrics.json');
+    fs.writeFileSync(metricsPath, JSON.stringify(metricsSimple, null, 2));
+
+    console.log(`[ADMIN] Updated ${metricsCatalog.metrics.length} metrics in JSON files`);
+    console.log(`[ADMIN] Added ${Object.keys(metricsCatalog.units_synonyms).length} unit synonyms`);
   }
 }
 

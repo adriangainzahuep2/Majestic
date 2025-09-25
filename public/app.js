@@ -1,7 +1,8 @@
 // AI Health Dashboard Frontend Application
 class HealthDashboard {
     constructor() {
-        this.apiBase = '/api'; 
+        // Dynamic API base URL based on current location
+        this.apiBase = `${window.location.protocol}//${window.location.host}/api`;
         this.jwtToken = null;
         this.token = null; // legacy compatibility
         this.userProfile = null;
@@ -9,8 +10,43 @@ class HealthDashboard {
 
         this.systemsData = new Map();
         this.currentProfile = null; // holds last loaded normalized profile
-        
+    }
+
+    getApiBaseUrl() {
+        // For local development
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            return `http://localhost:5000/api`;
+        }
+        // For Replit deployment
+        if (window.location.hostname.includes('replit.dev')) {
+            return `${window.location.protocol}//${window.location.host}/api`;
+        }
+        // Default fallback
+        return `${window.location.protocol}//${window.location.host}/api`;
+    }
         this.initializeApp();
+    }
+
+    toYMD(input) {
+        if (!input) return '';
+        const dt = new Date(input);
+        if (isNaN(dt)) return '';
+        const y = dt.getFullYear();
+        const m = String(dt.getMonth() + 1).padStart(2, '0');
+        const d = String(dt.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    // Minimal user header renderer to avoid runtime error if not defined elsewhere
+    updateUserUI(profile) {
+        try {
+            const nameEl = document.getElementById('userName');
+            const emailEl = document.getElementById('userEmail');
+            const avatarEl = document.getElementById('userAvatar');
+            if (nameEl && profile?.name) nameEl.textContent = profile.name;
+            if (emailEl && profile?.email) emailEl.textContent = profile.email;
+            if (avatarEl && profile?.avatar_url) avatarEl.src = profile.avatar_url;
+        } catch (_) { /* no-op */ }
     }
 
     async initializeApp() {
@@ -349,7 +385,9 @@ class HealthDashboard {
         try {
             const profile = await this.apiCall('/auth/me');
             this.userProfile = profile;
-            this.updateUserUI(profile);
+            if (typeof this.updateUserUI === 'function') {
+                this.updateUserUI(profile);
+            }
         } catch (error) {
             console.error('Failed to load user profile:', error);
             this.showToast('error', 'Profile Load Failed', error.message);
@@ -922,7 +960,7 @@ class HealthDashboard {
                     </div>
                     <div class="col-md-2">
                         <label class="form-label" style="color: #FFFFFF; font-size: 12px;">Date</label>
-                        <input type="date" class="form-control" id="edit-date-${metric.id}" value="${metric.test_date || ''}">
+                        <input type="date" class="form-control" id="edit-date-${metric.id}" value="${(metric.test_date && String(metric.test_date).length>10 ? String(metric.test_date).slice(0,10) : (metric.test_date || ''))}">
                     </div>
                     <div class="col-md-2">
                         <label class="form-label" style="color: #FFFFFF; font-size: 12px;">&nbsp;</label>
@@ -1539,7 +1577,7 @@ class HealthDashboard {
             
             try {
                 // Check if new insights are available
-                const response = await this.apiCall('/api/dashboard');
+                const response = await this.apiCall('/dashboard');
                 if (response.success && response.data) {
                     // Update system insights if they're different
                     this.hideInsightsRefreshing();
@@ -1622,49 +1660,91 @@ class HealthDashboard {
         // Update the data attributes for future edits
         metricRow.dataset.testDate = updatedMetric.test_date;
 
-        // Update the range indicator using existing metric utilities
+        // Update the range indicator preferring metric.reference_range
         const rangeCell = metricRow.querySelector('.range-indicator');
-        
-        // Get custom metrics for range analysis
-        const systemData = this.currentSystemData || {};
-        const customMetrics = systemData.customMetrics || [];
-        const metricMatch = window.metricUtils ? 
-            window.metricUtils.findMetricMatch(updatedMetric.metric_name, systemData.system?.name || systemData.name, customMetrics) : null;
-            
-        if (rangeCell && window.metricUtils && metricMatch) {
-            if (updatedMetric.metric_value) {
+        let rangeRendered = false;
+
+        if (rangeCell && updatedMetric.reference_range) {
+            const m = String(updatedMetric.reference_range).match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*(.+)?/);
+            if (m) {
+                const minV = parseFloat(m[1]);
+                const maxV = parseFloat(m[2]);
+                const units = (m[3] || updatedMetric.metric_unit || '').trim();
+
+                const systemData = this.currentSystemData || {};
+                const customMetrics = systemData.customMetrics || [];
+                const baseline = window.metricUtils ?
+                    window.metricUtils.findMetricMatch(updatedMetric.metric_name, systemData.system?.name || systemData.name, customMetrics) : null;
+
+                let isAdjusted = true;
+                if (baseline && typeof baseline.normalRangeMin === 'number' && typeof baseline.normalRangeMax === 'number') {
+                    const bMin = baseline.normalRangeMin;
+                    const bMax = baseline.normalRangeMax;
+                    const bUnits = baseline.units || '';
+                    isAdjusted = (bMin !== minV) || (bMax !== maxV) || ((bUnits || '') !== units);
+                }
+
+                const statusText = window.metricUtils ?
+                    window.metricUtils.calculateStatusSync(updatedMetric.metric_value, minV, maxV) :
+                    (updatedMetric.metric_value >= minV && updatedMetric.metric_value <= maxV ? 'Normal' : 'Out of Range');
+                const statusClass = statusText.toLowerCase().replace(' ', '-');
+                const rangeBar = window.metricUtils ? window.metricUtils.generateMicroRangeBar(updatedMetric.metric_value, minV, maxV) : '';
+
+                rangeCell.innerHTML = `
+                    <div class="metric-range-block">
+                        <div class="metric-status-chip ${statusClass}">${statusText}</div>
+                        ${rangeBar}
+                        <div class="normal-range-caption">
+                            Normal range: ${minV}–${maxV} ${units}
+                            ${isAdjusted ? '<span class="badge bg-warning text-dark ms-2">Adjusted range</span>' : '<span class="badge bg-secondary ms-2">Baseline</span>'}
+                            <span class="info-icon" data-metric="${updatedMetric.metric_name}" data-bs-toggle="tooltip" title="Custom reference range">i</span>
+                        </div>
+                    </div>
+                `;
+                rangeRendered = true;
+            }
+        }
+
+        if (!rangeRendered) {
+            // Fallback to baseline
+            const systemData = this.currentSystemData || {};
+            const customMetrics = systemData.customMetrics || [];
+            const metricMatch = window.metricUtils ?
+                window.metricUtils.findMetricMatch(updatedMetric.metric_name, systemData.system?.name || systemData.name, customMetrics) : null;
+
+            if (rangeCell && window.metricUtils && metricMatch && updatedMetric.metric_value) {
                 const statusText = window.metricUtils.calculateStatusSync(
-                    updatedMetric.metric_value, 
-                    metricMatch.normalRangeMin, 
+                    updatedMetric.metric_value,
+                    metricMatch.normalRangeMin,
                     metricMatch.normalRangeMax
                 );
                 const statusClass = statusText.toLowerCase().replace(' ', '-');
                 const rangeBar = window.metricUtils.generateMicroRangeBar(
-                    updatedMetric.metric_value, 
-                    metricMatch.normalRangeMin, 
+                    updatedMetric.metric_value,
+                    metricMatch.normalRangeMin,
                     metricMatch.normalRangeMax
                 );
-                
+
                 rangeCell.innerHTML = `
                     <div class="metric-range-block">
                         <div class="metric-status-chip ${statusClass}">${statusText}</div>
                         ${rangeBar}
                         <div class="normal-range-caption">
                             Normal range: ${metricMatch.normalRangeMin}–${metricMatch.normalRangeMax}${metricMatch.units ? ` ${metricMatch.units}` : ''}
+                            <span class="badge bg-secondary ms-2">Baseline</span>
                             <span class="info-icon" data-metric="${updatedMetric.metric_name}" data-bs-toggle="tooltip" 
                                   title="${this.generateTooltipTitle(metricMatch, updatedMetric.metric_name)}">i</span>
                         </div>
                     </div>
                 `;
+            } else if (rangeCell) {
+                rangeCell.innerHTML = `
+                    <div class="metric-range-block">
+                        <div class="metric-status-chip no-data">No data</div>
+                        <div style="color: #8E8E93; font-size: 11px; margin-top: 4px;">Reference range not available</div>
+                    </div>
+                `;
             }
-        } else if (rangeCell) {
-            // No range data available
-            rangeCell.innerHTML = `
-                <div class="metric-range-block">
-                    <div class="metric-status-chip no-data">No data</div>
-                    <div style="color: #8E8E93; font-size: 11px; margin-top: 4px;">Reference range not available</div>
-                </div>
-            `;
         }
 
         // Badge for extreme values excluded from analysis
@@ -1674,10 +1754,14 @@ class HealthDashboard {
             let shouldBadge = !!updatedMetric.exclude_from_analysis;
 
             // Fallback auto-detect if not flagged by backend
-            if (!shouldBadge && window.metricUtils && metricMatch && updatedMetric.metric_value != null) {
+            if (!shouldBadge && window.metricUtils && updatedMetric.metric_value != null) {
+                const systemData2 = this.currentSystemData || {};
+                const customMetrics2 = systemData2.customMetrics || [];
+                const metricMatch = window.metricUtils ?
+                    window.metricUtils.findMetricMatch(updatedMetric.metric_name, systemData2.system?.name || systemData2.name, customMetrics2) : null;
                 const v = parseFloat(updatedMetric.metric_value);
-                const bMin = typeof metricMatch.normalRangeMin === 'number' ? metricMatch.normalRangeMin : null;
-                const bMax = typeof metricMatch.normalRangeMax === 'number' ? metricMatch.normalRangeMax : null;
+                const bMin = metricMatch && typeof metricMatch.normalRangeMin === 'number' ? metricMatch.normalRangeMin : null;
+                const bMax = metricMatch && typeof metricMatch.normalRangeMax === 'number' ? metricMatch.normalRangeMax : null;
                 if (bMax && v > bMax * 50) shouldBadge = true;
                 if (bMin && bMin > 0 && v < bMin / 50) shouldBadge = true;
 
@@ -2155,8 +2239,8 @@ class HealthDashboard {
                     document.getElementById(`inline-condition-details-${metricId}`).value = r.condition_details || '';
                 }
                 document.getElementById(`inline-notes-${metricId}`).value = r.notes || '';
-                if (r.valid_from) document.getElementById(`inline-valid-from-${metricId}`).value = r.valid_from;
-                if (r.valid_until) document.getElementById(`inline-valid-until-${metricId}`).value = r.valid_until;
+                if (r.valid_from) document.getElementById(`inline-valid-from-${metricId}`).value = this.toYMD(r.valid_from);
+                if (r.valid_until) document.getElementById(`inline-valid-until-${metricId}`).value = this.toYMD(r.valid_until);
             } else {
                 // Default prefill from catalog if available
                 const match = window.metricUtils ? window.metricUtils.findMetricMatch(metricName) : null;
@@ -2165,7 +2249,7 @@ class HealthDashboard {
                     if (match.normalRangeMin != null) document.getElementById(`inline-min-${metricId}`).value = match.normalRangeMin;
                     if (match.normalRangeMax != null) document.getElementById(`inline-max-${metricId}`).value = match.normalRangeMax;
                 }
-                const defDate = testDate || new Date().toISOString().split('T')[0];
+                const defDate = this.toYMD(testDate || new Date());
                 document.getElementById(`inline-valid-from-${metricId}`).value = defDate;
                 document.getElementById(`inline-valid-until-${metricId}`).value = defDate;
             }
@@ -3043,7 +3127,7 @@ class HealthDashboard {
         // Convert ISO date to YYYY-MM-DD format for date input
         if (profile.dateOfBirth) {
             const dobDate = new Date(profile.dateOfBirth);
-            document.getElementById('dateOfBirth').value = dobDate.toISOString().split('T')[0];
+            document.getElementById('dateOfBirth').value = this.toYMD(dobDate);
         } else {
             document.getElementById('dateOfBirth').value = '';
         }
@@ -3092,7 +3176,7 @@ class HealthDashboard {
             if (profile.pregnant && profile.pregnancyStartDate) {
                 // Convert ISO date to YYYY-MM-DD format for date input
                 const pregnancyDate = new Date(profile.pregnancyStartDate);
-                document.getElementById('pregnancyStartDate').value = pregnancyDate.toISOString().split('T')[0];
+                document.getElementById('pregnancyStartDate').value = this.toYMD(pregnancyDate);
                 document.getElementById('pregnancyDateContainer').classList.remove('d-none');
             }
         } else {
@@ -3318,8 +3402,7 @@ class HealthDashboard {
             preferredUnitSystem: unitSystem,
             sex: document.getElementById('sex').value || null,
             dateOfBirth: document.getElementById('dateOfBirth').value 
-            ? new 
-            Date(document.getElementById('dateOfBirth').value).toISOString().split('T')[0] 
+            ? this.toYMD(new Date(document.getElementById('dateOfBirth').value))
             : null,
             heightIn: heightIn,
             weightLb: weightLb,
@@ -4190,7 +4273,7 @@ class HealthDashboard {
         document.getElementById('standardRangeInfo').style.display = 'none';
         
         // Set default valid from date to today
-        document.getElementById('validFrom').value = new Date().toISOString().split('T')[0];
+        document.getElementById('validFrom').value = this.toYMD(new Date());
     }
 
     async saveCustomRange() {

@@ -327,6 +327,31 @@ router.put('/:id', async (req, res) => {
 
     const systemId = checkResult.rows[0].system_id;
 
+    // Auto-flag extreme values: if metric_value is wildly out of range, exclude from analysis
+    try {
+      const EXTREME_FACTOR = parseFloat(process.env.EXTREME_FACTOR || '50');
+      const value = updates.metric_value != null ? parseFloat(updates.metric_value) : null;
+      if (!Number.isNaN(value) && value != null) {
+        // Determine comparison range
+        let minV = null, maxV = null, unitsV = null;
+        if (typeof updates.reference_range === 'string') {
+          const m = updates.reference_range.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+          if (m) { minV = parseFloat(m[1]); maxV = parseFloat(m[2]); }
+        }
+        // If no explicit range in update, use catalog baseline for the (new or existing) name
+        if (minV == null || maxV == null) {
+          const catalog = require('../shared/metricsCatalog');
+          const nameForBaseline = updates.metric_name || null;
+          const baseline = nameForBaseline ? catalog.findMetricByName(nameForBaseline) : null;
+          if (baseline) { minV = baseline.normalRangeMin; maxV = baseline.normalRangeMax; unitsV = baseline.units || null; }
+        }
+        if (typeof maxV === 'number' && ((value > maxV * EXTREME_FACTOR) || (typeof minV === 'number' && minV > 0 && value < minV / EXTREME_FACTOR))) {
+          updates.exclude_from_analysis = true;
+          if (!updates.review_reason) updates.review_reason = 'Auto-flagged extreme value';
+        }
+      }
+    } catch (_) { /* safe ignore */ }
+
     // ENHANCED VALIDATION: If metric_name is being updated, validate it
     if (updates.metric_name) {
       const isValidMetricName = await validateMetricName(updates.metric_name, systemId, userId, req.db);
