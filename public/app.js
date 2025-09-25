@@ -1,8 +1,8 @@
 // AI Health Dashboard Frontend Application
 class HealthDashboard {
     constructor() {
-        // Dynamic API base URL based on current location
-        this.apiBase = `${window.location.protocol}//${window.location.host}/api`;
+        // Resolve API base via helper for each environment
+        this.apiBase = this.getApiBaseUrl();
         this.jwtToken = null;
         this.token = null; // legacy compatibility
         this.userProfile = null;
@@ -10,6 +10,9 @@ class HealthDashboard {
 
         this.systemsData = new Map();
         this.currentProfile = null; // holds last loaded normalized profile
+
+        // Initialize app after base members are set
+        this.initializeApp();
     }
 
     getApiBaseUrl() {
@@ -23,8 +26,6 @@ class HealthDashboard {
         }
         // Default fallback
         return `${window.location.protocol}//${window.location.host}/api`;
-    }
-        this.initializeApp();
     }
 
     toYMD(input) {

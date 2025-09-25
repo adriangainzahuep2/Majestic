@@ -125,11 +125,37 @@ router.post('/demo', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Demo login error:', error);
-    res.status(500).json({ 
-      error: 'Demo login failed',
-      message: error.message 
-    });
+    console.error('Demo login error (DB unavailable), falling back to token-only demo:', error.message);
+    // Fallback: allow demo login even without DB connection
+    const demoEmailEnv = process.env.DEMO_EMAIL;
+    const fallbackEmail = 'demo@example.com';
+    const displayName = 'Demo User';
+    const defaultAvatar = 'https://i.pravatar.cc/150?u=demo@example.com';
+
+    try {
+      const authToken = authService.generateToken({
+        id: 'DEMO',
+        email: demoEmailEnv || fallbackEmail,
+        name: displayName,
+        is_demo: true,
+      });
+
+      return res.json({
+        success: true,
+        token: authToken,
+        user: {
+          id: 'DEMO',
+          email: demoEmailEnv || fallbackEmail,
+          name: displayName,
+          avatar_url: defaultAvatar,
+        }
+      });
+    } catch (e) {
+      return res.status(500).json({ 
+        error: 'Demo login failed',
+        message: e.message 
+      });
+    }
   }
 });
 
@@ -142,10 +168,28 @@ router.get('/me', authMiddleware, async (req, res) => {
 
     // Always load from DB so demo users get real DB-backed data
     const user = await authService.getUserById(req.user.userId);
-    res.json({ user });
+    if (!user && req.user.is_demo) {
+      // Fallback synthetic profile for demo if DB has no row
+      return res.json({ user: {
+        id: 'DEMO',
+        email: process.env.DEMO_EMAIL || 'demo@example.com',
+        name: 'Demo User',
+        avatar_url: 'https://i.pravatar.cc/150?u=demo@example.com'
+      }});
+    }
+    return res.json({ user });
   } catch (error) {
     console.error('Get user profile error:', error);
-    res.status(404).json({ error: 'User not found' });
+    // Fallback synthetic profile for demo when DB is unavailable
+    if (req.user?.is_demo) {
+      return res.json({ user: {
+        id: 'DEMO',
+        email: process.env.DEMO_EMAIL || 'demo@example.com',
+        name: 'Demo User',
+        avatar_url: 'https://i.pravatar.cc/150?u=demo@example.com'
+      }});
+    }
+    return res.status(404).json({ error: 'User not found' });
   }
 });
 
