@@ -363,7 +363,7 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    const allowedUpdates = ['metric_name', 'metric_value', 'metric_unit', 'reference_range', 'test_date', 'exclude_from_analysis', 'review_reason'];
+    const allowedUpdates = ['metric_name', 'metric_value', 'metric_unit', 'reference_range', 'test_date', 'exclude_from_analysis', 'review_reason', 'is_adjusted'];
     const setClause = [];
     const values = [];
     let paramCount = 1;

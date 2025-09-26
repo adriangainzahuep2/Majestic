@@ -129,7 +129,18 @@
         const panel = document.getElementById('validationResult');
         panel.style.display = 'block';
         panel.innerHTML = json.success ?
-          `<div>Dry-run OK. Added: ${json.diff.added}, Changed: ${json.diff.changed}, Removed: ${json.diff.removed}</div>
+          `<div>Dry-run OK.</div>
+           <div>Totals → Added: ${json.diff.added}, Changed(rows): ${json.diff.changed}, Removed: ${json.diff.removed}</div>
+           ${json.detailed ? `
+             <div style="margin-top:8px;">
+               <strong>Per sheet changes</strong>
+               <ul>
+                 <li>metrics → rows +${json.detailed.sheets.metrics.added_rows} ~${json.detailed.sheets.metrics.changed_rows} -${json.detailed.sheets.metrics.removed_rows}, cells Δ ${json.detailed.sheets.metrics.changed_cells}</li>
+                 <li>synonyms → rows +${json.detailed.sheets.synonyms.added_rows} ~${json.detailed.sheets.synonyms.changed_rows} -${json.detailed.sheets.synonyms.removed_rows}, cells Δ ${json.detailed.sheets.synonyms.changed_cells}</li>
+                 <li>conversion_groups → rows +${json.detailed.sheets.conversion_groups.added_rows} ~${json.detailed.sheets.conversion_groups.changed_rows} -${json.detailed.sheets.conversion_groups.removed_rows}, cells Δ ${json.detailed.sheets.conversion_groups.changed_cells}</li>
+               </ul>
+             </div>
+           ` : ''}
            <div style="margin-top:8px;display:flex;gap:8px;">
              <input id="changeSummary" placeholder="Short change summary" style="flex:1;padding:6px;border-radius:6px;border:1px solid #444;background:#1C1C1E;color:#fff"/>
              <button id="commitBtn" class="btn btn-success">Confirm & Commit</button>
@@ -159,7 +170,10 @@
               <div style="color:#ccc">Added ${v.added_count}, Changed ${v.changed_count}, Removed ${v.removed_count}</div>
               <div style="color:#aaa">${v.change_summary || ''}</div>
             </div>
-            <button class="btn btn-danger" onclick="rollback(${v.version_id})">Rollback</button>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-outline-light" onclick="downloadVersion(${v.version_id})">Download</button>
+              <button class="btn btn-danger" onclick="rollback(${v.version_id})">Rollback</button>
+            </div>
           </div>
         `).join('');
       } catch (e) { document.getElementById('versions').innerText = 'Failed to load versions'; }
@@ -172,6 +186,27 @@
         if (r.success) { alert('Rollback complete'); loadVersions(); }
       } catch (e) { alert('Rollback failed'); }
     };
+
+    async function downloadVersion(versionId) {
+      try {
+        const res = await fetch('/api/admin/version/' + versionId + '/download');
+        if (!res.ok) {
+          const errText = await res.text().catch(() => 'Download failed');
+          return alert('Download failed: ' + errText);
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'master_version_' + versionId + '.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        alert('Download failed: ' + (e?.message || 'Unknown error'));
+      }
+    }
 
     // TEMPORARILY DISABLED - Auto-initialize without Google button
     // document.addEventListener('DOMContentLoaded', initAdmin);

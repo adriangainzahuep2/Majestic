@@ -167,9 +167,13 @@ class HealthDashboard {
         document.getElementById('backToApp').addEventListener('click', () => this.showApp());
         document.getElementById('cancelProfile').addEventListener('click', () => this.showApp());
         
-        // Custom reference ranges
-        document.getElementById('addCustomRangeBtn').addEventListener('click', () => this.showAddCustomRangeModal());
-        document.getElementById('saveCustomRangeBtn').addEventListener('click', () => this.saveCustomRange());
+        // Custom reference ranges (hidden by default for future use)
+        try {
+            const addBtn = document.getElementById('addCustomRangeBtn');
+            if (addBtn) addBtn.style.display = 'none';
+            const list = document.getElementById('customRangesList');
+            if (list) list.style.display = 'none';
+        } catch(_) {}
         
         // Tab navigation
         document.getElementById('dashboard-tab').addEventListener('click', () => this.loadDashboard());
@@ -862,39 +866,44 @@ class HealthDashboard {
             const rangeMatch = metric.reference_range.match(/(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\s*(.+)?/);
             if (rangeMatch) {
                 const [, minVal, maxVal, units] = rangeMatch;
-                const normalRangeMin = parseFloat(minVal);
-                const normalRangeMax = parseFloat(maxVal);
-                const rangeUnits = units?.trim() || metric.metric_unit || '';
-                // Determine if this stored range differs from baseline (catalog)
-                let isAdjusted = false;
+                const customMin = parseFloat(minVal);
+                const customMax = parseFloat(maxVal);
+                const customUnits = (units?.trim() || metric.metric_unit || '');
+                // Use only backend flag for persistence
+                const isAdjusted = !!metric.is_adjusted;
+                
+                // Determine baseline (catalog) range to display
+                let displayMin = customMin;
+                let displayMax = customMax;
+                let displayUnits = customUnits;
                 try {
-                    const baseline = window.metricUtils ? window.metricUtils.findMetricMatch(metric.metric_name, systemData.system?.name || systemData.name, systemData.customMetrics || []) : null;
-                    if (baseline) {
-                        const bMin = baseline.normalRangeMin;
-                        const bMax = baseline.normalRangeMax;
-                        const bUnits = baseline.units || '';
-                        if ((typeof bMin === 'number' && typeof bMax === 'number') && (bMin !== normalRangeMin || bMax !== normalRangeMax || (bUnits || '') !== rangeUnits)) {
-                            isAdjusted = true;
-                        }
+                    const systemName = (systemData && (systemData.system?.name || systemData.name)) || '';
+                    const customMetrics = (this.currentSystemData?.customMetrics) || systemData.customMetrics || [];
+                    const baseline = window.metricUtils ? window.metricUtils.findMetricMatch(metric.metric_name, systemName, customMetrics) : null;
+                    if (baseline && typeof baseline.normalRangeMin === 'number' && typeof baseline.normalRangeMax === 'number') {
+                        displayMin = baseline.normalRangeMin;
+                        displayMax = baseline.normalRangeMax;
+                        displayUnits = baseline.units || displayUnits;
                     }
-                } catch (_) {}
+                } catch(_) {}
                 
                 const statusText = window.metricUtils ? 
-                    window.metricUtils.calculateStatusSync(metric.metric_value, normalRangeMin, normalRangeMax) : 
-                    (metric.metric_value >= normalRangeMin && metric.metric_value <= normalRangeMax ? 'Normal' : 'Out of Range');
+                    window.metricUtils.calculateStatusSync(metric.metric_value, displayMin, displayMax) : 
+                    (metric.metric_value >= displayMin && metric.metric_value <= displayMax ? 'Normal' : 'Out of Range');
                 const statusClass = statusText.toLowerCase().replace(' ', '-');
                 const rangeBar = window.metricUtils ? 
-                    window.metricUtils.generateMicroRangeBar(metric.metric_value, normalRangeMin, normalRangeMax) : '';
+                    window.metricUtils.generateMicroRangeBar(metric.metric_value, displayMin, displayMax) : '';
                 
                 rangeBlock = `
                     <div class="metric-range-block">
                         <div class="metric-status-chip ${statusClass}">${statusText}</div>
                         ${rangeBar}
-                        <div class="normal-range-caption">
-                            Normal range: ${normalRangeMin}–${normalRangeMax} ${rangeUnits}
-                            ${isAdjusted ? '<span class="badge bg-warning text-dark ms-2">Adjusted range</span>' : '<span class="badge bg-secondary ms-2">Baseline</span>'}
-                            <span class="info-icon" data-metric="${metric.metric_name}" data-bs-toggle="tooltip" 
-                                  title="Custom reference range">i</span>
+                        <div class="normal-range-caption" style="text-align: center; display: flex; flex-direction: column; align-items: center;">
+                            <div>
+                                Normal Range: ${displayMin}–${displayMax} ${displayUnits}
+                                ${isAdjusted ? `<span class="info-icon" data-metric="${metric.metric_name}" data-bs-toggle="tooltip" title="Custom Range: ${customMin}–${customMax} ${customUnits}">i</span>` : ''}
+                            </div>
+                            ${isAdjusted ? '<div><span class="badge bg-warning text-dark mt-1">Adjusted Range</span></div>' : ''}
                         </div>
                     </div>
                 `;
@@ -916,11 +925,10 @@ class HealthDashboard {
                     <div class="metric-range-block">
                         <div class="metric-status-chip ${statusClass}">${statusText}</div>
                         ${rangeBar}
-                        <div class="normal-range-caption">
-                            Normal range: ${metricMatch.normalRangeMin}–${metricMatch.normalRangeMax}${metricMatch.units ? ` ${metricMatch.units}` : ''}
-                            <span class="badge bg-secondary ms-2">Baseline</span>
-                            <span class="info-icon" data-metric="${metric.metric_name}" data-bs-toggle="tooltip" 
-                                  title="${this.generateTooltipTitle(metricMatch, metric.metric_name)}">i</span>
+                        <div class="normal-range-caption" style="text-align: center; display: flex; flex-direction: column; align-items: center;">
+                            <div>
+                                Normal Range: ${metricMatch.normalRangeMin}–${metricMatch.normalRangeMax}${metricMatch.units ? ` ${metricMatch.units}` : ''}
+                            </div>
                         </div>
                     </div>
                 `;
@@ -981,7 +989,7 @@ class HealthDashboard {
                             <div class="form-check form-switch d-flex align-items-center">
                                 <input class="form-check-input" type="checkbox" id="inline-range-enable-${metric.id}">
                                 <label class="form-check-label ms-2" for="inline-range-enable-${metric.id}" style="color:#EBEBF5;">Edit Reference Range</label>
-                                <span id="custom-range-status-${metric.id}" class="badge bg-info text-dark ms-3 d-none">Custom</span>
+                                
                                 <span id="current-range-text-${metric.id}" class="text-muted small ms-2"></span>
                             </div>
                             <div id="inline-range-fields-${metric.id}" class="row mt-2 d-none">
@@ -1060,15 +1068,12 @@ class HealthDashboard {
             </div>
         `;
 
-        const customTag = (metric.reference_range || (metric.source && String(metric.source).toLowerCase().includes('user edited'))) 
-            ? '<span class="badge bg-info text-dark ms-2">Custom</span>' 
-            : '';
         const reviewTag = metric.exclude_from_analysis ? '<span class="badge bg-warning text-dark ms-2 badge-review">Review Value</span>' : '';
 
         return `
             <tr id="metric-row-${metric.id}" data-metric-id="${metric.id}" data-test-date="${metric.test_date}">
                 <td style="color: #FFFFFF; font-weight: 600;">
-                    <span class="metric-name">${metric.metric_name}</span>${customTag}${reviewTag}
+                    <span class="metric-name">${metric.metric_name}</span>${reviewTag}
                     ${needsReview ? '<span class="needs-review-indicator">NEEDS REVIEW</span>' : ''}
                 </td>
                 <td style="color: #FFFFFF;" class="metric-value">${metric.metric_value || '-'}${metric.metric_unit ? ` ${metric.metric_unit}` : ''}</td>
@@ -1124,7 +1129,6 @@ class HealthDashboard {
                             <th style="color: #FFFFFF; background-color: #2C2C2E;">Value</th>
                             <th style="color: #FFFFFF; background-color: #2C2C2E;">Unit</th>
                             <th style="color: #FFFFFF; background-color: #2C2C2E;">Date</th>
-                            <th style="color: #FFFFFF; background-color: #2C2C2E;">Status</th>
                             <th style="color: #FFFFFF; background-color: #2C2C2E;">Actions</th>
                         </tr>
                     </thead>
@@ -1137,8 +1141,6 @@ class HealthDashboard {
     }
 
     renderCustomMetricRow(metric, systemData) {
-        const isInRange = this.isCustomMetricInRange(metric);
-        const statusBadge = this.getCustomMetricStatusBadge(metric, isInRange);
         const sourceIcon = metric.source_type === 'official' ? 
             '<i class="fas fa-globe text-success" title="Global metric"></i>' : 
             '<i class="fas fa-user text-info" title="Personal metric"></i>';
@@ -1151,7 +1153,6 @@ class HealthDashboard {
                 <td style="color: #FFFFFF;">${metric.value}</td>
                 <td style="color: #EBEBF5;">${metric.units}</td>
                 <td style="color: #EBEBF5;">${new Date(metric.created_at).toLocaleDateString()}</td>
-                <td>${statusBadge}</td>
                 <td>
                     <div class="btn-group btn-group-sm">
                         <button class="btn btn-outline-primary btn-sm" onclick="app.editCustomMetric(${metric.id})" title="Edit">
@@ -1166,31 +1167,7 @@ class HealthDashboard {
         `;
     }
 
-    isCustomMetricInRange(metric) {
-        if (!metric.normal_range_min || !metric.normal_range_max) return null;
-        
-        const value = parseFloat(metric.value);
-        if (isNaN(value)) return null;
-        
-        return value >= metric.normal_range_min && value <= metric.normal_range_max;
-    }
-
-    getCustomMetricStatusBadge(metric, isInRange) {
-        if (isInRange === null) {
-            return '<span class="badge bg-secondary">-</span>';
-        }
-        
-        if (isInRange) {
-            return '<span class="badge bg-success">Normal</span>';
-        } else {
-            const value = parseFloat(metric.value);
-            if (value < metric.normal_range_min) {
-                return '<span class="badge bg-warning">Low</span>';
-            } else {
-                return '<span class="badge bg-danger">High</span>';
-            }
-        }
-    }
+    
 
     generateTooltipTitle(metricData, metricName) {
         let tooltip = metricName;
@@ -1677,8 +1654,9 @@ class HealthDashboard {
                 const baseline = window.metricUtils ?
                     window.metricUtils.findMetricMatch(updatedMetric.metric_name, systemData.system?.name || systemData.name, customMetrics) : null;
 
-                let isAdjusted = true;
-                if (baseline && typeof baseline.normalRangeMin === 'number' && typeof baseline.normalRangeMax === 'number') {
+                // Prefer backend flag when present on updatedMetric
+                let isAdjusted = !!updatedMetric.is_adjusted;
+                if (!isAdjusted && baseline && typeof baseline.normalRangeMin === 'number' && typeof baseline.normalRangeMax === 'number') {
                     const bMin = baseline.normalRangeMin;
                     const bMax = baseline.normalRangeMax;
                     const bUnits = baseline.units || '';
@@ -1695,10 +1673,12 @@ class HealthDashboard {
                     <div class="metric-range-block">
                         <div class="metric-status-chip ${statusClass}">${statusText}</div>
                         ${rangeBar}
-                        <div class="normal-range-caption">
-                            Normal range: ${minV}–${maxV} ${units}
-                            ${isAdjusted ? '<span class="badge bg-warning text-dark ms-2">Adjusted range</span>' : '<span class="badge bg-secondary ms-2">Baseline</span>'}
+                        <div class="normal-range-caption" style="text-align: center; display: flex; flex-direction: column; align-items: center;">
+                            <div>
+                                Normal Range: ${minV}–${maxV} ${units}
                             <span class="info-icon" data-metric="${updatedMetric.metric_name}" data-bs-toggle="tooltip" title="Custom reference range">i</span>
+                            </div>
+                            ${isAdjusted ? '<div><span class="badge bg-warning text-dark mt-1">Adjusted Range</span></div>' : ''}
                         </div>
                     </div>
                 `;
@@ -1730,11 +1710,12 @@ class HealthDashboard {
                     <div class="metric-range-block">
                         <div class="metric-status-chip ${statusClass}">${statusText}</div>
                         ${rangeBar}
-                        <div class="normal-range-caption">
-                            Normal range: ${metricMatch.normalRangeMin}–${metricMatch.normalRangeMax}${metricMatch.units ? ` ${metricMatch.units}` : ''}
-                            <span class="badge bg-secondary ms-2">Baseline</span>
+                        <div class="normal-range-caption" style="text-align: center; display: flex; flex-direction: column; align-items: center;">
+                            <div>
+                                Normal Range: ${metricMatch.normalRangeMin}–${metricMatch.normalRangeMax}${metricMatch.units ? ` ${metricMatch.units}` : ''}
                             <span class="info-icon" data-metric="${updatedMetric.metric_name}" data-bs-toggle="tooltip" 
                                   title="${this.generateTooltipTitle(metricMatch, updatedMetric.metric_name)}">i</span>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -2261,9 +2242,7 @@ class HealthDashboard {
         try {
             const res = await this.apiCall(`/custom-reference-ranges/metric/${encodeURIComponent(metricName)}${testDate ? `?testDate=${encodeURIComponent(testDate)}` : ''}`, 'GET');
             const hasCustom = res && res.custom_range;
-            const tag = document.getElementById(`custom-range-status-${metricId}`);
             const txt = document.getElementById(`current-range-text-${metricId}`);
-            if (tag) tag.classList.toggle('d-none', !hasCustom);
             if (txt) {
                 if (hasCustom) {
                     const r = res.custom_range;
@@ -2329,6 +2308,7 @@ class HealthDashboard {
                 const units = document.getElementById(`inline-units-${metricId}`).value;
                 if (min && max && units) {
                     updates.reference_range = `${min}-${max} ${units}`;
+                    updates.is_adjusted = true;
                 }
             }
 
@@ -2370,6 +2350,12 @@ class HealthDashboard {
             console.log('[SAVE_METRIC_EDIT] Response', response);
 
             if (response.success) {
+                // Ensure immediate UI reflects adjusted state when range was applied
+                try {
+                    if (applyRange && response.metric) {
+                        response.metric.is_adjusted = true;
+                    }
+                } catch(_) {}
                 // If range editing is enabled, persist custom range
                 if (applyRange) {
                     const rangeId = document.getElementById(`inline-range-id-${metricId}`).value;
@@ -3087,8 +3073,8 @@ class HealthDashboard {
             this.populateProfileForm(normalizedProfile, profileData.allergies || []);
             this.expandProfileSections(normalizedProfile);
             
-            // Load custom reference ranges
-            this.loadCustomReferenceRanges();
+            // Load custom reference ranges (disabled for now)
+            // this.loadCustomReferenceRanges();
             
         } catch (error) {
             const duration = performance.now() - startTime;

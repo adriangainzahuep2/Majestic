@@ -108,6 +108,7 @@ async function initializeDatabase() {
       ALTER TABLE metrics
         ADD COLUMN IF NOT EXISTS metric_unit VARCHAR(50),
         ADD COLUMN IF NOT EXISTS system_id INTEGER REFERENCES health_systems(id),
+        ADD COLUMN IF NOT EXISTS is_adjusted BOOLEAN DEFAULT false,
         ADD COLUMN IF NOT EXISTS exclude_from_analysis BOOLEAN DEFAULT false,
         ADD COLUMN IF NOT EXISTS review_reason TEXT;
     `);

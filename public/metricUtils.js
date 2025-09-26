@@ -11,9 +11,9 @@ class MetricUtils {
         try {
             // Try different possible paths for the metrics data
             const possiblePaths = [
-                '/data/metrics.json', // Static file in public/data/
+                '/api/metrics/reference', // Prefer backend endpoint (normalized shape)
+                '/data/metrics.json',      // Fallback: static file in public/data/ (may need normalization)
                 './data/metrics.json',
-                '/api/metrics/reference', // Backend endpoint if available
                 'data/metrics.json'
             ];
             
@@ -35,8 +35,27 @@ class MetricUtils {
             }
             
             if (response && response.ok) {
-                this.metricsData = await response.json();
-                console.log(`Loaded ${this.metricsData.length} metric references`);
+                const raw = await response.json();
+                // Normalize shape to { metric, system, units, normalRangeMin, normalRangeMax }
+                this.metricsData = Array.isArray(raw) ? raw.map((item) => {
+                    const metric = item.metric ?? item.name ?? item.metric_name ?? '';
+                    const system = item.system ?? item.system_name ?? '';
+                    const units = item.units ?? item.unit ?? '';
+                    // Prefer normalRange*; else fall back to normalMin/Max (strings in public file)
+                    const nMin = item.normalRangeMin ?? item.normalMin ?? null;
+                    const nMax = item.normalRangeMax ?? item.normalMax ?? null;
+                    const normalRangeMin = (nMin !== null && nMin !== undefined) ? parseFloat(nMin) : null;
+                    const normalRangeMax = (nMax !== null && nMax !== undefined) ? parseFloat(nMax) : null;
+                    return {
+                        ...item,
+                        metric,
+                        system,
+                        units,
+                        normalRangeMin,
+                        normalRangeMax
+                    };
+                }) : [];
+                console.log(`Loaded ${this.metricsData.length} metric references (normalized)`);
             } else {
                 throw new Error('Could not load metrics data from any path');
             }
@@ -65,6 +84,7 @@ class MetricUtils {
     // Normalize metric name using synonyms lookup
     normalizeMetricName(inputName) {
         if (!this.synonymsData) return inputName;
+        if (!inputName || typeof inputName !== 'string') return inputName;
         
         const inputLower = inputName.toLowerCase().trim();
         
@@ -108,6 +128,7 @@ class MetricUtils {
 
     // Enhanced find matching metric with synonym support
     findMetricMatch(metricName, systemName = null, customMetrics = []) {
+        if (!metricName || typeof metricName !== 'string') return null;
         // First normalize the metric name using synonyms
         const normalizedName = this.normalizeMetricName(metricName);
         
@@ -124,11 +145,15 @@ class MetricUtils {
 
     // Internal method for actual matching logic
     _findMetricMatchInternal(metricName, systemName = null, customMetrics = []) {
+        if (!metricName || typeof metricName !== 'string') return null;
+        const nameLower = String(metricName).toLowerCase();
+        const systemLower = String(systemName || '').toLowerCase();
         // First check custom metrics (higher priority for user's own custom metrics)
         if (customMetrics && customMetrics.length > 0) {
-            const customMatch = customMetrics.find(cm => 
-                cm.metric_name && cm.metric_name.toLowerCase() === metricName.toLowerCase()
-            );
+            const customMatch = customMetrics.find(cm => {
+                const cmName = cm && cm.metric_name ? String(cm.metric_name).toLowerCase() : '';
+                return cmName && cmName === nameLower;
+            });
             if (customMatch && customMatch.normal_range_min !== null && customMatch.normal_range_max !== null) {
                 return {
                     metric: customMatch.metric_name,
@@ -145,24 +170,27 @@ class MetricUtils {
         if (!this.metricsData) return null;
 
         // Then try official metrics - exact match
-        let match = this.metricsData.find(m => 
-            m.metric.toLowerCase() === metricName.toLowerCase() &&
-            (!systemName || m.system.toLowerCase().includes(systemName.toLowerCase()))
-        );
+        let match = this.metricsData.find(m => {
+            const metricLower = String(m && m.metric ? m.metric : '').toLowerCase();
+            const mSystemLower = String(m && m.system ? m.system : '').toLowerCase();
+            if (systemLower) {
+                return metricLower === nameLower && mSystemLower.includes(systemLower);
+            }
+            return metricLower === nameLower;
+        });
 
         if (match) return match;
 
         // Try partial matching for official metrics
         match = this.metricsData.find(m => {
-            const metricLower = m.metric.toLowerCase();
-            const nameLower = metricName.toLowerCase();
-            
+            const metricLower = String(m && m.metric ? m.metric : '').toLowerCase();
             // Check if either contains the other
             const nameContainsMetric = nameLower.includes(metricLower);
             const metricContainsName = metricLower.includes(nameLower);
             
             // Also check system match if provided
-            const systemMatch = !systemName || m.system.toLowerCase().includes(systemName.toLowerCase());
+            const mSystemLower = String(m && m.system ? m.system : '').toLowerCase();
+            const systemMatch = !systemLower || mSystemLower.includes(systemLower);
             
             return (nameContainsMetric || metricContainsName) && systemMatch;
         });
@@ -172,10 +200,10 @@ class MetricUtils {
 
     // Get potential matches with similarity scores for LLM suggestions
     getPotentialMatches(metricName, threshold = 0.3) {
-        if (!this.metricsData) return [];
+        if (!this.metricsData || !metricName) return [];
         
         const matches = [];
-        const inputLower = metricName.toLowerCase();
+        const inputLower = String(metricName).toLowerCase();
         
         // Check all metrics for partial matches
         for (const metric of this.metricsData) {
