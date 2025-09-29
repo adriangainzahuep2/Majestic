@@ -509,7 +509,9 @@ class AdminMasterService {
           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
         `, [
           String(row.metric_id), row.metric_name, row.system_id, row.canonical_unit, row.conversion_group_id,
-          row.normal_min, row.normal_max, String(row.is_key_metric).toUpperCase() === 'Y', row.source, row.explanation
+          AdminMasterService.parseDecimalSafe(row.normal_min),
+          AdminMasterService.parseDecimalSafe(row.normal_max),
+          String(row.is_key_metric).toUpperCase() === 'Y', row.source, row.explanation
         ]);
       }
       for (const row of synonyms_json || []) {
@@ -593,10 +595,9 @@ class AdminMasterService {
         metricEntry.synonyms.push(syn.synonym_name);
       }
 
-      // Only add if has synonyms or is a key metric
-      if (metricEntry.synonyms.length > 0 || metric.is_key_metric) {
-        metricsCatalog.metrics.push(metricEntry);
-      }
+      // Include all metrics in the catalog (not just key metrics or those with synonyms)
+      // This ensures all metrics are available for range lookups during ingestion
+      metricsCatalog.metrics.push(metricEntry);
     }
 
     // Create units synonyms from conversions

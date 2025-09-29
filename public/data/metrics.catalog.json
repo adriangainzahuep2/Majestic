@@ -1,6 +1,150 @@
 {
-  "generated_at": "2025-09-29T01:19:18.288Z",
+  "generated_at": "2025-09-29T11:13:18.283Z",
   "metrics": [
+    {
+      "metric": "DNA Methylation Age (Epigenetic Age)",
+      "system": "Biological Age/Epigenetics",
+      "units": "years",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "0.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Telomere Length (Leukocyte)",
+      "system": "Biological Age/Epigenetics",
+      "units": "kilobases",
+      "normalRangeMin": "7.000",
+      "normalRangeMax": "10.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Frailty Index",
+      "system": "Biological Age/Epigenetics",
+      "units": "(proportion)",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "0.200",
+      "synonyms": []
+    },
+    {
+      "metric": "Grip Strength",
+      "system": "Biological Age/Epigenetics",
+      "units": "kg",
+      "normalRangeMin": "20.000",
+      "normalRangeMax": "0.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Gait Speed (4-m walk)",
+      "system": "Biological Age/Epigenetics",
+      "units": "m/s",
+      "normalRangeMin": "1.000",
+      "normalRangeMax": "0.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Bone Density (T-score)",
+      "system": "Biological Age/Epigenetics",
+      "units": "– (SD score)",
+      "normalRangeMin": "-1.000",
+      "normalRangeMax": "0.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Advanced Glycation (AGEs)",
+      "system": "Biological Age/Epigenetics",
+      "units": "AU (arbitrary)",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "14.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Resting Heart Rate",
+      "system": "Cardiovascular",
+      "units": "beats/min (bpm)",
+      "normalRangeMin": "66.000",
+      "normalRangeMax": "100.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Lipoprotein (a)",
+      "system": "Cardiovascular",
+      "units": "mg/dL",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "30.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Apolipoprotein B (ApoB)",
+      "system": "Cardiovascular",
+      "units": "mg/dL",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "100.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Homocysteine",
+      "system": "Cardiovascular",
+      "units": "μmol/L",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "15.000",
+      "synonyms": []
+    },
+    {
+      "metric": "High-sensitivity CRP (hs-CRP)",
+      "system": "Cardiovascular",
+      "units": "mg/L",
+      "normalRangeMin": "1.000",
+      "normalRangeMax": "3.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Fibrinogen",
+      "system": "Cardiovascular",
+      "units": "mg/dL",
+      "normalRangeMin": "200.000",
+      "normalRangeMax": "400.000",
+      "synonyms": []
+    },
+    {
+      "metric": "D-dimer",
+      "system": "Cardiovascular",
+      "units": "μg/mL FEU",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "0.500",
+      "synonyms": []
+    },
+    {
+      "metric": "Cardiac Troponin (cTnI or cTnT)",
+      "system": "Cardiovascular",
+      "units": "ng/L (hs assays)",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "15.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Creatine Kinase (CK), total",
+      "system": "Cardiovascular",
+      "units": "U/L",
+      "normalRangeMin": "30.000",
+      "normalRangeMax": "220.000",
+      "synonyms": []
+    },
+    {
+      "metric": "B-type Natriuretic Peptide (BNP)",
+      "system": "Cardiovascular",
+      "units": "pg/mL",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "100.000",
+      "synonyms": []
+    },
+    {
+      "metric": "NT-proBNP",
+      "system": "Cardiovascular",
+      "units": "pg/mL",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "125.000",
+      "synonyms": []
+    },
     {
       "metric": "Blood Pressure (Systolic)",
       "system": "Cardiovascular",
@@ -14,6 +158,30 @@
         "Systolic BPpp",
         "Systolic Pressure"
       ]
+    },
+    {
+      "metric": "Myeloperoxidase (MPO)",
+      "system": "Cardiovascular",
+      "units": "pmol/L",
+      "normalRangeMin": "470.000",
+      "normalRangeMax": "539.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Trimethylamine N-oxide (TMAO)",
+      "system": "Cardiovascular",
+      "units": "μM",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "6.200",
+      "synonyms": []
+    },
+    {
+      "metric": "Hemoglobin (Blood)",
+      "system": "Cardiovascular",
+      "units": "g/dL",
+      "normalRangeMin": "12.000",
+      "normalRangeMax": "18.000",
+      "synonyms": []
     },
     {
       "metric": "Hematocrit",
@@ -42,6 +210,46 @@
         "RBC",
         "Red Blood Cells"
       ]
+    },
+    {
+      "metric": "Red Cell Distribution Width (RDW)",
+      "system": "Cardiovascular",
+      "units": "%",
+      "normalRangeMin": "12.000",
+      "normalRangeMax": "12.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Mean Corpuscular Volume (MCV)",
+      "system": "Cardiovascular",
+      "units": "fL",
+      "normalRangeMin": "80.000",
+      "normalRangeMax": "100.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Mean Corpuscular Hemoglobin (MCH)",
+      "system": "Cardiovascular",
+      "units": "pg/cell",
+      "normalRangeMin": "27.000",
+      "normalRangeMax": "31.000",
+      "synonyms": []
+    },
+    {
+      "metric": "MCH Concentration (MCHC)",
+      "system": "Cardiovascular",
+      "units": "g/dL",
+      "normalRangeMin": "32.000",
+      "normalRangeMax": "36.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Ankle-Brachial Index (ABI)",
+      "system": "Cardiovascular",
+      "units": "ratio (unitless)",
+      "normalRangeMin": "1.000",
+      "normalRangeMax": "1.400",
+      "synonyms": []
     },
     {
       "metric": "Blood Pressure (Diastolic)",
@@ -167,6 +375,22 @@
       ]
     },
     {
+      "metric": "Left Ventricular Ejection Fraction (LVEF)",
+      "system": "Cardiovascular",
+      "units": "%",
+      "normalRangeMin": "50.000",
+      "normalRangeMax": "70.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Cardiac Output (Resting)",
+      "system": "Cardiovascular",
+      "units": "L/min",
+      "normalRangeMin": "5.000",
+      "normalRangeMax": "6.000",
+      "synonyms": []
+    },
+    {
       "metric": "Total Cholesterol",
       "system": "Cardiovascular",
       "units": "mg/dL",
@@ -227,6 +451,14 @@
       ]
     },
     {
+      "metric": "Ferritin",
+      "system": "Digestive",
+      "units": "ng/mL",
+      "normalRangeMin": "15.000",
+      "normalRangeMax": "250.000",
+      "synonyms": []
+    },
+    {
       "metric": "Aspartate Aminotransferase (AST)",
       "system": "Digestive",
       "units": "U/L",
@@ -239,6 +471,22 @@
         "GOT",
         "SGOT"
       ]
+    },
+    {
+      "metric": "Alkaline Phosphatase (ALP)",
+      "system": "Digestive",
+      "units": "U/L",
+      "normalRangeMin": "44.000",
+      "normalRangeMax": "147.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Gamma-Glutamyl Transferase (GGT)",
+      "system": "Digestive",
+      "units": "U/L",
+      "normalRangeMin": "9.000",
+      "normalRangeMax": "48.000",
+      "synonyms": []
     },
     {
       "metric": "Total Bilirubin",
@@ -254,6 +502,38 @@
       ]
     },
     {
+      "metric": "Amylase (Pancreatic)",
+      "system": "Digestive",
+      "units": "U/L",
+      "normalRangeMin": "30.000",
+      "normalRangeMax": "110.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Lipase (Pancreatic)",
+      "system": "Digestive",
+      "units": "U/L",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "160.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Serum Albumin",
+      "system": "Digestive",
+      "units": "g/dL",
+      "normalRangeMin": "3.500",
+      "normalRangeMax": "5.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Serum Iron",
+      "system": "Digestive",
+      "units": "μg/dL",
+      "normalRangeMin": "60.000",
+      "normalRangeMax": "170.000",
+      "synonyms": []
+    },
+    {
       "metric": "Thyroid Stimulating Hormone (TSH)",
       "system": "Endocrine/Hormonal",
       "units": "mIU/L",
@@ -265,6 +545,70 @@
         "Thyroid Stimulating Hormone",
         "Thyrotropin"
       ]
+    },
+    {
+      "metric": "Calcium (Total Serum)",
+      "system": "Endocrine/Hormonal",
+      "units": "mg/dL",
+      "normalRangeMin": "8.500",
+      "normalRangeMax": "10.500",
+      "synonyms": []
+    },
+    {
+      "metric": "Parathyroid Hormone (PTH)",
+      "system": "Endocrine/Hormonal",
+      "units": "pg/mL",
+      "normalRangeMin": "10.000",
+      "normalRangeMax": "65.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Estradiol (Female)",
+      "system": "Endocrine/Hormonal",
+      "units": "pg/mL",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "350.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Testosterone (Total)",
+      "system": "Endocrine/Hormonal",
+      "units": "ng/dL",
+      "normalRangeMin": "15.000",
+      "normalRangeMax": "1000.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Free T4 (Thyroxine)",
+      "system": "Endocrine/Hormonal",
+      "units": "ng/dL",
+      "normalRangeMin": "0.800",
+      "normalRangeMax": "2.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Free T3 (Triiodothyronine)",
+      "system": "Endocrine/Hormonal",
+      "units": "pg/mL",
+      "normalRangeMin": "2.300",
+      "normalRangeMax": "4.200",
+      "synonyms": []
+    },
+    {
+      "metric": "Morning Cortisol (8 AM)",
+      "system": "Endocrine/Hormonal",
+      "units": "μg/dL",
+      "normalRangeMin": "10.000",
+      "normalRangeMax": "20.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Afternoon Cortisol (4 PM)",
+      "system": "Endocrine/Hormonal",
+      "units": "μg/dL",
+      "normalRangeMin": "3.000",
+      "normalRangeMax": "10.000",
+      "synonyms": []
     },
     {
       "metric": "Fasting Glucose",
@@ -300,6 +644,14 @@
       ]
     },
     {
+      "metric": "Fasting Insulin",
+      "system": "Endocrine/Hormonal",
+      "units": "μIU/mL",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "25.000",
+      "synonyms": []
+    },
+    {
       "metric": "Vitamin D, 25-OH",
       "system": "Endocrine/Hormonal",
       "units": "ng/mL",
@@ -316,6 +668,54 @@
       ]
     },
     {
+      "metric": "White Blood Cell Count (WBC)",
+      "system": "Immune/Inflammatory",
+      "units": "per μL",
+      "normalRangeMin": "4500.000",
+      "normalRangeMax": "11000.000",
+      "synonyms": []
+    },
+    {
+      "metric": "IgM (Immunoglobulin M)",
+      "system": "Immune/Inflammatory",
+      "units": "mg/dL",
+      "normalRangeMin": "40.000",
+      "normalRangeMax": "230.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Complement C3",
+      "system": "Immune/Inflammatory",
+      "units": "mg/dL",
+      "normalRangeMin": "90.000",
+      "normalRangeMax": "180.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Complement C4",
+      "system": "Immune/Inflammatory",
+      "units": "mg/dL",
+      "normalRangeMin": "10.000",
+      "normalRangeMax": "40.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Neutrophils (Absolute)",
+      "system": "Immune/Inflammatory",
+      "units": "per μL",
+      "normalRangeMin": "1500.000",
+      "normalRangeMax": "8000.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Lymphocytes (Absolute)",
+      "system": "Immune/Inflammatory",
+      "units": "per μL",
+      "normalRangeMin": "1000.000",
+      "normalRangeMax": "4000.000",
+      "synonyms": []
+    },
+    {
       "metric": "Platelet Count",
       "system": "Immune/Inflammatory",
       "units": "per μL",
@@ -328,6 +728,14 @@
         "Thrombocytes",
         "Trombocitos"
       ]
+    },
+    {
+      "metric": "Erythrocyte Sedimentation Rate (ESR)",
+      "system": "Immune/Inflammatory",
+      "units": "mm/hour",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "30.000",
+      "synonyms": []
     },
     {
       "metric": "C-Reactive Protein (CRP)",
@@ -344,6 +752,358 @@
       ]
     },
     {
+      "metric": "Rheumatoid Factor (RF)",
+      "system": "Immune/Inflammatory",
+      "units": "IU/mL",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "20.000",
+      "synonyms": []
+    },
+    {
+      "metric": "IgG (Immunoglobulin G)",
+      "system": "Immune/Inflammatory",
+      "units": "mg/dL",
+      "normalRangeMin": "700.000",
+      "normalRangeMax": "1600.000",
+      "synonyms": []
+    },
+    {
+      "metric": "IgA (Immunoglobulin A)",
+      "system": "Immune/Inflammatory",
+      "units": "mg/dL",
+      "normalRangeMin": "70.000",
+      "normalRangeMax": "400.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Body Temperature (oral)",
+      "system": "Integumentary (Skin)",
+      "units": "°F",
+      "normalRangeMin": "97.800",
+      "normalRangeMax": "99.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Skin pH (surface)",
+      "system": "Integumentary (Skin)",
+      "units": "pH units",
+      "normalRangeMin": "4.700",
+      "normalRangeMax": "5.900",
+      "synonyms": []
+    },
+    {
+      "metric": "Vitamin C (Plasma)",
+      "system": "Integumentary (Skin)",
+      "units": "mg/dL",
+      "normalRangeMin": "0.600",
+      "normalRangeMax": "2.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Zinc (Serum)",
+      "system": "Integumentary (Skin)",
+      "units": "μg/dL",
+      "normalRangeMin": "60.000",
+      "normalRangeMax": "130.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Copper (Serum)",
+      "system": "Integumentary (Skin)",
+      "units": "μg/dL",
+      "normalRangeMin": "70.000",
+      "normalRangeMax": "155.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Vitamin A (Retinol)",
+      "system": "Integumentary (Skin)",
+      "units": "μg/dL",
+      "normalRangeMin": "20.000",
+      "normalRangeMax": "60.000",
+      "synonyms": []
+    },
+    {
+      "metric": "CSF Opening Pressure",
+      "system": "Nervous/Brain",
+      "units": "mm H2O",
+      "normalRangeMin": "70.000",
+      "normalRangeMax": "180.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Intracranial Pressure (ICP)",
+      "system": "Nervous/Brain",
+      "units": "mmHg",
+      "normalRangeMin": "7.000",
+      "normalRangeMax": "15.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Glasgow Coma Scale (GCS)",
+      "system": "Nervous/Brain",
+      "units": "score (3–15)",
+      "normalRangeMin": "15.000",
+      "normalRangeMax": "15.000",
+      "synonyms": []
+    },
+    {
+      "metric": "CSF Total Protein",
+      "system": "Nervous/Brain",
+      "units": "mg/dL",
+      "normalRangeMin": "15.000",
+      "normalRangeMax": "60.000",
+      "synonyms": []
+    },
+    {
+      "metric": "CSF Glucose",
+      "system": "Nervous/Brain",
+      "units": "mg/dL",
+      "normalRangeMin": "50.000",
+      "normalRangeMax": "80.000",
+      "synonyms": []
+    },
+    {
+      "metric": "CSF White Blood Cells",
+      "system": "Nervous/Brain",
+      "units": "cells/μL",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "5.000",
+      "synonyms": []
+    },
+    {
+      "metric": "CSF Red Blood Cells",
+      "system": "Nervous/Brain",
+      "units": "cells/μL",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "0.000",
+      "synonyms": []
+    },
+    {
+      "metric": "CSF Chloride",
+      "system": "Nervous/Brain",
+      "units": "mEq/L",
+      "normalRangeMin": "110.000",
+      "normalRangeMax": "125.000",
+      "synonyms": []
+    },
+    {
+      "metric": "CSF Gamma Globulin",
+      "system": "Nervous/Brain",
+      "units": "%",
+      "normalRangeMin": "3.000",
+      "normalRangeMax": "3.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Serum Vitamin B12",
+      "system": "Nervous/Brain",
+      "units": "pg/mL",
+      "normalRangeMin": "200.000",
+      "normalRangeMax": "900.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Serum Folate (Vitamin B9)",
+      "system": "Nervous/Brain",
+      "units": "ng/mL",
+      "normalRangeMin": "2.700",
+      "normalRangeMax": "17.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Follicle-Stim. Hormone (FSH)",
+      "system": "Reproductive",
+      "units": "mIU/mL",
+      "normalRangeMin": "1.500",
+      "normalRangeMax": "13.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Luteinizing Hormone (LH)",
+      "system": "Reproductive",
+      "units": "mIU/mL",
+      "normalRangeMin": "1.800",
+      "normalRangeMax": "15.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Estradiol (E2, Female)",
+      "system": "Reproductive",
+      "units": "pg/mL",
+      "normalRangeMin": "50.000",
+      "normalRangeMax": "250.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Progesterone (Female)",
+      "system": "Reproductive",
+      "units": "ng/mL",
+      "normalRangeMin": "5.000",
+      "normalRangeMax": "20.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Total Testosterone",
+      "system": "Reproductive",
+      "units": "ng/dL",
+      "normalRangeMin": "15.000",
+      "normalRangeMax": "1000.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Prostate-Specific Antigen (PSA)",
+      "system": "Reproductive",
+      "units": "ng/mL",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "4.000",
+      "synonyms": []
+    },
+    {
+      "metric": "hCG (Pregnancy Test)",
+      "system": "Reproductive",
+      "units": "mIU/mL",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "5.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Anti-Müllerian Hormone (AMH)",
+      "system": "Reproductive",
+      "units": "ng/mL",
+      "normalRangeMin": "1.000",
+      "normalRangeMax": "4.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Semen Sperm Count",
+      "system": "Reproductive",
+      "units": "per mL",
+      "normalRangeMin": "9999999.999",
+      "normalRangeMax": "0.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Arterial Blood pH",
+      "system": "Respiratory",
+      "units": "pH units",
+      "normalRangeMin": "7.350",
+      "normalRangeMax": "7.450",
+      "synonyms": []
+    },
+    {
+      "metric": "Peak Expiratory Flow (PEF)",
+      "system": "Respiratory",
+      "units": "L/min",
+      "normalRangeMin": "400.000",
+      "normalRangeMax": "600.000",
+      "synonyms": []
+    },
+    {
+      "metric": "PaO2 (Arterial O₂)",
+      "system": "Respiratory",
+      "units": "mmHg",
+      "normalRangeMin": "80.000",
+      "normalRangeMax": "100.000",
+      "synonyms": []
+    },
+    {
+      "metric": "PaCO2 (Arterial CO₂)",
+      "system": "Respiratory",
+      "units": "mmHg",
+      "normalRangeMin": "35.000",
+      "normalRangeMax": "45.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Bicarbonate (HCO₃⁻)",
+      "system": "Respiratory",
+      "units": "mEq/L",
+      "normalRangeMin": "22.000",
+      "normalRangeMax": "26.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Oxygen Saturation (SpO₂)",
+      "system": "Respiratory",
+      "units": "% (on room air)",
+      "normalRangeMin": "95.000",
+      "normalRangeMax": "100.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Respiratory Rate",
+      "system": "Respiratory",
+      "units": "breaths/min",
+      "normalRangeMin": "12.000",
+      "normalRangeMax": "18.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Tidal Volume",
+      "system": "Respiratory",
+      "units": "mL (at rest)",
+      "normalRangeMin": "500.000",
+      "normalRangeMax": "500.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Vital Capacity (FVC)",
+      "system": "Respiratory",
+      "units": "liters",
+      "normalRangeMin": "3.000",
+      "normalRangeMax": "5.000",
+      "synonyms": []
+    },
+    {
+      "metric": "FEV₁/FVC Ratio",
+      "system": "Respiratory",
+      "units": "ratio (no units)",
+      "normalRangeMin": "0.750",
+      "normalRangeMax": "80.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Hearing Level (Audiometry)",
+      "system": "Sensory (Hearing)",
+      "units": "dB HL",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "25.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Tympanic Membrane Mobility",
+      "system": "Sensory (Hearing)",
+      "units": "– (qualitative)",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "0.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Visual Acuity (Snellen)",
+      "system": "Sensory (Vision)",
+      "units": "%",
+      "normalRangeMin": "20.000",
+      "normalRangeMax": "20.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Intraocular Pressure (IOP)",
+      "system": "Sensory (Vision)",
+      "units": "mmHg",
+      "normalRangeMin": "10.000",
+      "normalRangeMax": "21.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Color Vision (Ishihara)",
+      "system": "Sensory (Vision)",
+      "units": "unitless",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "0.000",
+      "synonyms": []
+    },
+    {
       "metric": "Blood Urea Nitrogen (BUN)",
       "system": "Urinary/Renal",
       "units": "mg/dL",
@@ -356,6 +1116,46 @@
         "UN",
         "Urea Nitrogen"
       ]
+    },
+    {
+      "metric": "Urine pH",
+      "system": "Urinary/Renal",
+      "units": "pH units",
+      "normalRangeMin": "4.500",
+      "normalRangeMax": "8.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Urine Protein",
+      "system": "Urinary/Renal",
+      "units": "mg/day",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "150.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Urine Albumin-Creatinine Ratio",
+      "system": "Urinary/Renal",
+      "units": "mg/g",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "30.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Urine RBCs (microscopic)",
+      "system": "Urinary/Renal",
+      "units": "per HPF",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "2.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Urine WBCs (microscopic)",
+      "system": "Urinary/Renal",
+      "units": "per HPF",
+      "normalRangeMin": "0.000",
+      "normalRangeMax": "5.000",
+      "synonyms": []
     },
     {
       "metric": "Serum Creatinine",
@@ -371,6 +1171,62 @@
         "SCr",
         "Serum Creat"
       ]
+    },
+    {
+      "metric": "eGFR (estimated GFR)",
+      "system": "Urinary/Renal",
+      "units": "mL/min/1.73 m²",
+      "normalRangeMin": "90.000",
+      "normalRangeMax": "0.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Sodium (Serum)",
+      "system": "Urinary/Renal",
+      "units": "mmol/L",
+      "normalRangeMin": "135.000",
+      "normalRangeMax": "145.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Potassium (Serum)",
+      "system": "Urinary/Renal",
+      "units": "mmol/L",
+      "normalRangeMin": "3.500",
+      "normalRangeMax": "5.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Chloride (Serum)",
+      "system": "Urinary/Renal",
+      "units": "mmol/L",
+      "normalRangeMin": "98.000",
+      "normalRangeMax": "107.000",
+      "synonyms": []
+    },
+    {
+      "metric": "Serum Phosphate",
+      "system": "Urinary/Renal",
+      "units": "mg/dL",
+      "normalRangeMin": "2.500",
+      "normalRangeMax": "4.500",
+      "synonyms": []
+    },
+    {
+      "metric": "Serum Magnesium",
+      "system": "Urinary/Renal",
+      "units": "mg/dL",
+      "normalRangeMin": "1.800",
+      "normalRangeMax": "2.400",
+      "synonyms": []
+    },
+    {
+      "metric": "Urine Specific Gravity",
+      "system": "Urinary/Renal",
+      "units": "(ratio)",
+      "normalRangeMin": "1.005",
+      "normalRangeMax": "1.030",
+      "synonyms": []
     }
   ],
   "units_synonyms": {
