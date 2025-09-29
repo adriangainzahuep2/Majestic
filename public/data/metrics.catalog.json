@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-09-26T10:02:09.918Z",
+  "generated_at": "2025-09-29T01:19:18.288Z",
   "metrics": [
     {
       "metric": "Blood Pressure (Systolic)",
@@ -11,7 +11,7 @@
         "Blood Pressure Systolic",
         "Presión Sistólica",
         "SBP",
-        "Systolic BP",
+        "Systolic BPpp",
         "Systolic Pressure"
       ]
     },
@@ -99,8 +99,8 @@
       "metric": "LDL Particle Number (LDL-P)",
       "system": "Cardiovascular",
       "units": "nmol/L",
-      "normalRangeMin": "0.000",
-      "normalRangeMax": "100.000",
+      "normalRangeMin": null,
+      "normalRangeMax": null,
       "synonyms": [
         "LDL PARTICLES, TOTAL",
         "LDL Particle Number",
@@ -111,8 +111,8 @@
       "metric": "Small LDL-P",
       "system": "Cardiovascular",
       "units": "nmol/L",
-      "normalRangeMin": "0.000",
-      "normalRangeMax": "100.000",
+      "normalRangeMin": null,
+      "normalRangeMax": null,
       "synonyms": [
         "LDL, SMALL",
         "Small LDL",
@@ -123,8 +123,8 @@
       "metric": "Medium LDL-P",
       "system": "Cardiovascular",
       "units": "nmol/L",
-      "normalRangeMin": "0.000",
-      "normalRangeMax": "100.000",
+      "normalRangeMin": null,
+      "normalRangeMax": null,
       "synonyms": [
         "LDL, MEDIUM",
         "Medium LDL",
@@ -135,8 +135,8 @@
       "metric": "HDL Large",
       "system": "Cardiovascular",
       "units": "nmol/L",
-      "normalRangeMin": "0.000",
-      "normalRangeMax": "100.000",
+      "normalRangeMin": null,
+      "normalRangeMax": null,
       "synonyms": [
         "HDL, LARGE",
         "Large HDL"
@@ -146,8 +146,8 @@
       "metric": "LDL Particle Size",
       "system": "Cardiovascular",
       "units": "Angstrom",
-      "normalRangeMin": "0.000",
-      "normalRangeMax": "100.000",
+      "normalRangeMin": null,
+      "normalRangeMax": null,
       "synonyms": [
         "LDL Particle Size (Å)",
         "LDL SIZE",
@@ -158,8 +158,8 @@
       "metric": "Lp-PLA2 Activity",
       "system": "Cardiovascular",
       "units": "nmol/min/mL",
-      "normalRangeMin": "0.000",
-      "normalRangeMax": "100.000",
+      "normalRangeMin": null,
+      "normalRangeMax": null,
       "synonyms": [
         "LA PLA2 ACTIVITY",
         "Lp-PLA2",
@@ -195,7 +195,7 @@
       "system": "Cardiovascular",
       "units": "mg/dL",
       "normalRangeMin": "40.000",
-      "normalRangeMax": "0.000",
+      "normalRangeMax": "100.000",
       "synonyms": []
     },
     {
@@ -378,22 +378,27 @@
       "μkat/L"
     ],
     "g/L": [
+      "g/dL",
+      "mg/dL",
       "mmol/L"
     ],
     "g/dL": [
+      "g/L",
       "mg/dL"
     ],
     "mg/L": [
       "μmol/L"
     ],
     "mg/dL": [
-      "g/L"
+      "g/L",
+      "mmol/L"
     ],
     "mmHg": [
       "kPa"
     ],
     "mmol/L": [
-      "g/L"
+      "g/L",
+      "mg/dL"
     ],
     "ng/mL": [
       "nmol/L"

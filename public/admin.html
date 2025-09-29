@@ -109,14 +109,12 @@
 
     document.getElementById('downloadTemplateBtn').onclick = async () => {
       try {
-        const blob = await api('/api/admin/template');
-        if (blob instanceof Blob) {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url; a.download = 'master_template.xlsx'; a.click(); URL.revokeObjectURL(url);
-        } else {
-          alert('Template JSON delivered (no XLSX template found).');
-        }
+        const res = await fetch('/api/admin/template');
+        if (!res.ok) throw new Error('Download failed');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'master_template.xlsx'; a.click(); URL.revokeObjectURL(url);
       } catch (e) { alert('Template download failed'); }
     };
 
@@ -128,26 +126,34 @@
         const json = await result.json();
         const panel = document.getElementById('validationResult');
         panel.style.display = 'block';
+        const totals = json?.detailed?.totals;
+        const noChanges = totals ? (totals.added_rows === 0 && totals.changed_rows === 0 && totals.removed_rows === 0)
+                                 : (json?.diff && (json.diff.added === 0 && json.diff.changed === 0 && json.diff.removed === 0));
         panel.innerHTML = json.success ?
           `<div>Dry-run OK.</div>
-           <div>Totals → Added: ${json.diff.added}, Changed(rows): ${json.diff.changed}, Removed: ${json.diff.removed}</div>
+           <div style="color:#aaa">File: ${file.name || 'uploaded.xlsx'}</div>
+           <div>Totals → Added: ${totals ? totals.added_rows : (json.diff?.added||0)}, Changed(rows): ${totals ? totals.changed_rows : (json.diff?.changed||0)}, Removed: ${totals ? totals.removed_rows : (json.diff?.removed||0)}</div>
+           ${noChanges ? '<div style="color:#7ed957;margin-top:6px;">No changes (idempotent)</div>' : ''}
            ${json.detailed ? `
              <div style="margin-top:8px;">
                <strong>Per sheet changes</strong>
                <ul>
-                 <li>metrics → rows +${json.detailed.sheets.metrics.added_rows} ~${json.detailed.sheets.metrics.changed_rows} -${json.detailed.sheets.metrics.removed_rows}, cells Δ ${json.detailed.sheets.metrics.changed_cells}</li>
-                 <li>synonyms → rows +${json.detailed.sheets.synonyms.added_rows} ~${json.detailed.sheets.synonyms.changed_rows} -${json.detailed.sheets.synonyms.removed_rows}, cells Δ ${json.detailed.sheets.synonyms.changed_cells}</li>
-                 <li>conversion_groups → rows +${json.detailed.sheets.conversion_groups.added_rows} ~${json.detailed.sheets.conversion_groups.changed_rows} -${json.detailed.sheets.conversion_groups.removed_rows}, cells Δ ${json.detailed.sheets.conversion_groups.changed_cells}</li>
+                 <li>metrics → Added rows: ${json.detailed.sheets.metrics.added_rows}, Changed rows: ${json.detailed.sheets.metrics.changed_rows}, Removed rows: ${json.detailed.sheets.metrics.removed_rows}, Changed cells: ${json.detailed.sheets.metrics.changed_cells}</li>
+                 <li>synonyms → Added rows: ${json.detailed.sheets.synonyms.added_rows}, Changed rows: ${json.detailed.sheets.synonyms.changed_rows}, Removed rows: ${json.detailed.sheets.synonyms.removed_rows}, Changed cells: ${json.detailed.sheets.synonyms.changed_cells}</li>
+                 <li>conversion_groups → Added rows: ${json.detailed.sheets.conversion_groups.added_rows}, Changed rows: ${json.detailed.sheets.conversion_groups.changed_rows}, Removed rows: ${json.detailed.sheets.conversion_groups.removed_rows}, Changed cells: ${json.detailed.sheets.conversion_groups.changed_cells}
+                   ${json.detailed.sheets.conversion_groups.added_rows > 0 ? `<div style='color:#aaa;margin-top:4px;'>Added keys: ${json.detailed.sheets.conversion_groups.added_keys.join(', ')}</div>` : ''}
+                 </li>
                </ul>
              </div>
            ` : ''}
            <div style="margin-top:8px;display:flex;gap:8px;">
              <input id="changeSummary" placeholder="Short change summary" style="flex:1;padding:6px;border-radius:6px;border:1px solid #444;background:#1C1C1E;color:#fff"/>
-             <button id="commitBtn" class="btn btn-success">Confirm & Commit</button>
+             <button id="commitBtn" class="btn btn-success" ${noChanges ? 'disabled title="No changes to commit"' : ''}>${noChanges ? 'No changes' : 'Confirm & Commit'}</button>
            </div>`
           : `<div style="color:#ff6961;">Validation errors:<br>${(json.errors||[]).join('<br>')}</div>`;
         if (json.success) {
           document.getElementById('commitBtn').onclick = async () => {
+            if (noChanges) return;
             const form2 = new FormData(); form2.append('file', file); form2.append('change_summary', document.getElementById('changeSummary').value || 'update');
             const r = await fetch('/api/admin/commit', { method:'POST', headers:{ 'Authorization': 'Bearer ' + (localStorage.getItem(tokenKey)||'') }, body: form2 });
             const jj = await r.json();
@@ -163,19 +169,33 @@
         const { versions } = await api('/api/admin/versions');
         const div = document.getElementById('versions');
         if (!versions || versions.length === 0) { div.innerHTML = '<i>No versions yet</i>'; return; }
-        div.innerHTML = versions.map(v => `
+        const current = versions[0];
+        const currentFile = (current.xlsx_path || '').split(/[/\\]/).pop() || 'master_template.xlsx';
+        window.__currentTemplateFileName = currentFile;
+        const currentHtml = `
+          <div style="padding:10px;border:1px solid #3A3A3C;border-radius:8px;margin-bottom:12px;background:#1C1C1E;">
+            <div style="font-weight:600;">Current Template: Version ${current.version_id} — ${new Date(current.created_at).toLocaleString()}</div>
+            <div style="color:#ccc">Added ${current.added_count}, Changed ${current.changed_count}, Removed ${current.removed_count}</div>
+            <div style="color:#aaa">File: ${currentFile}</div>
+            <div style="margin-top:8px;"><button class="btn btn-primary" onclick="downloadCurrent()">Download Current (XLSX)</button></div>
+          </div>`;
+        const listHtml = versions.map(v => {
+          const vf = (v.xlsx_path || '').split(/[/\\]/).pop() || 'master_template.xlsx';
+          return `
           <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid #3A3A3C;">
             <div>
               <div><strong>Version ${v.version_id}</strong> — ${new Date(v.created_at).toLocaleString()}</div>
               <div style="color:#ccc">Added ${v.added_count}, Changed ${v.changed_count}, Removed ${v.removed_count}</div>
               <div style="color:#aaa">${v.change_summary || ''}</div>
+              <div style="color:#777">File: ${vf}</div>
             </div>
             <div style="display:flex;gap:8px;">
               <button class="btn btn-outline-light" onclick="downloadVersion(${v.version_id})">Download</button>
               <button class="btn btn-danger" onclick="rollback(${v.version_id})">Rollback</button>
             </div>
           </div>
-        `).join('');
+        `}).join('');
+        div.innerHTML = currentHtml + listHtml;
       } catch (e) { document.getElementById('versions').innerText = 'Failed to load versions'; }
     }
 
@@ -207,6 +227,17 @@
         alert('Download failed: ' + (e?.message || 'Unknown error'));
       }
     }
+
+    window.downloadCurrent = async () => {
+      try {
+        const res = await fetch('/api/admin/template');
+        if (!res.ok) return alert('Download failed');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = (window.__currentTemplateFileName || 'master_template.xlsx'); a.click(); URL.revokeObjectURL(url);
+      } catch (e) { alert('Download failed'); }
+    };
 
     // TEMPORARILY DISABLED - Auto-initialize without Google button
     // document.addEventListener('DOMContentLoaded', initAdmin);

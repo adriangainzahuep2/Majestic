@@ -285,16 +285,26 @@ async function initializeDatabase() {
       );
     `);
 
+    // Force recreation of master_conversion_groups to fix composite key
+    console.log('🔧 Checking master_conversion_groups table structure...');
+    try {
+      await client.query('DROP TABLE IF EXISTS master_conversion_groups CASCADE');
+      console.log('✅ Dropped master_conversion_groups for recreation');
+    } catch (e) {
+      console.log('ℹ️  master_conversion_groups did not exist, creating new');
+    }
+
     await client.query(`
       CREATE TABLE IF NOT EXISTS master_conversion_groups (
-        conversion_group_id VARCHAR(100) PRIMARY KEY,
+        conversion_group_id VARCHAR(100) NOT NULL,
         canonical_unit VARCHAR(50),
-        alt_unit VARCHAR(50),
+        alt_unit VARCHAR(50) NOT NULL,
         to_canonical_formula VARCHAR(255),
         from_canonical_formula VARCHAR(255),
         notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (conversion_group_id, alt_unit)
       );
     `);
 

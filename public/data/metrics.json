@@ -67,7 +67,7 @@
     "name": "Resting Heart Rate",
     "system": "Cardiovascular",
     "unit": "beats/min (bpm)",
-    "normalMin": "60.000",
+    "normalMin": "66.000",
     "normalMax": "100.000",
     "isKey": false
   },
@@ -204,7 +204,7 @@
     "unit": "% (fraction)",
     "normalMin": "36.000",
     "normalMax": "55.000",
-    "isKey": false
+    "isKey": true
   },
   {
     "id": "cardiovascular_24",
@@ -301,8 +301,8 @@
     "name": "LDL Particle Number (LDL-P)",
     "system": "Cardiovascular",
     "unit": "nmol/L",
-    "normalMin": "0.000",
-    "normalMax": "100.000",
+    "normalMin": null,
+    "normalMax": null,
     "isKey": false
   },
   {
@@ -310,8 +310,8 @@
     "name": "Small LDL-P",
     "system": "Cardiovascular",
     "unit": "nmol/L",
-    "normalMin": "0.000",
-    "normalMax": "100.000",
+    "normalMin": null,
+    "normalMax": null,
     "isKey": false
   },
   {
@@ -319,8 +319,8 @@
     "name": "Medium LDL-P",
     "system": "Cardiovascular",
     "unit": "nmol/L",
-    "normalMin": "0.000",
-    "normalMax": "100.000",
+    "normalMin": null,
+    "normalMax": null,
     "isKey": false
   },
   {
@@ -328,8 +328,8 @@
     "name": "HDL Large",
     "system": "Cardiovascular",
     "unit": "nmol/L",
-    "normalMin": "0.000",
-    "normalMax": "100.000",
+    "normalMin": null,
+    "normalMax": null,
     "isKey": false
   },
   {
@@ -337,8 +337,8 @@
     "name": "LDL Particle Size",
     "system": "Cardiovascular",
     "unit": "Angstrom",
-    "normalMin": "0.000",
-    "normalMax": "100.000",
+    "normalMin": null,
+    "normalMax": null,
     "isKey": false
   },
   {
@@ -346,8 +346,8 @@
     "name": "Lp-PLA2 Activity",
     "system": "Cardiovascular",
     "unit": "nmol/min/mL",
-    "normalMin": "0.000",
-    "normalMax": "100.000",
+    "normalMin": null,
+    "normalMax": null,
     "isKey": false
   },
   {
@@ -392,7 +392,7 @@
     "system": "Cardiovascular",
     "unit": "mg/dL",
     "normalMin": "40.000",
-    "normalMax": "0.000",
+    "normalMax": "100.000",
     "isKey": true
   },
   {

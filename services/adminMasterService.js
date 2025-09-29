@@ -199,13 +199,54 @@ class AdminMasterService {
         client.query('SELECT * FROM master_conversion_groups'),
       ]);
 
-      const idxMetrics = new Map(dbM.rows.map(r => [String(r.metric_id), r]));
-      const idxSyn = new Map(dbS.rows.map(r => [`${r.synonym_id}::${r.metric_id}`, r]));
-      const idxConv = new Map(dbC.rows.map(r => [`${r.conversion_group_id}::${r.alt_unit}`, r]));
+      const normKey = {
+        metrics: (r) => String(r.metric_id).trim(),
+        synonyms: (r) => `${String(r.synonym_id||'').trim()}::${String(r.metric_id||'').trim()}`,
+        // For diff purposes, treat both conversion_group_id and alt_unit case-insensitively
+        conv: (r) => `${String(r.conversion_group_id||'').trim().toLowerCase()}::${String(r.alt_unit||'').trim().toLowerCase()}`
+      };
+
+      const idxMetrics = new Map(dbM.rows.map(r => [normKey.metrics(r), r]));
+      const idxSyn = new Map(dbS.rows.map(r => [normKey.synonyms(r), r]));
+      const idxConv = new Map(dbC.rows.map(r => [normKey.conv(r), r]));
+
+      const normalizeField = (field, value) => {
+        if (value === null || value === undefined) return null;
+        let s_val = String(value).trim();
+        if (s_val === '') return null;
+
+        switch (field) {
+          case 'system_id': {
+            const n = parseInt(s_val, 10);
+            return Number.isFinite(n) && n >= 1 && n <= 13 ? n : null;
+          }
+          case 'normal_min':
+          case 'normal_max': {
+            const parsed = AdminMasterService.parseDecimalSafe(value);
+            return parsed;
+          }
+          case 'is_key_metric': {
+            const v = s_val.toUpperCase();
+            return (v === 'Y' || v === 'TRUE');
+          }
+          case 'canonical_unit':
+          case 'alt_unit':
+          case 'conversion_group_id':
+            return s_val.toLowerCase();
+          case 'to_canonical_formula':
+          case 'from_canonical_formula':
+            return s_val.trim();
+          default:
+            return s_val;
+        }
+      };
 
       const resSheet = (parsedRows, keyFn, fields, idx) => {
         let added_rows = 0, removed_rows = 0, changed_rows = 0, changed_cells = 0;
         const seen = new Set();
+        const added_keys = [];
+        const removed_keys = [];
+        const changed_keys = [];
 
         for (const row of parsedRows || []) {
           const key = keyFn(row);
@@ -213,24 +254,30 @@ class AdminMasterService {
           const existing = idx.get(key);
           if (!existing) {
             added_rows++;
+            added_keys.push(key);
           } else {
             let rowChanged = false;
             for (const f of fields) {
-              const a = row[f];
-              const b = existing[f];
-              const same = (a == null && b == null) || String(a ?? '').trim() === String(b ?? '').trim();
-              if (!same) {
+              const a = normalizeField(f, row[f]);
+              const b = normalizeField(f, existing[f]);
+              if (a !== b) {
                 changed_cells++;
                 rowChanged = true;
               }
             }
-            if (rowChanged) changed_rows++;
+            if (rowChanged) {
+              changed_rows++;
+              changed_keys.push(key);
+            }
           }
         }
         for (const key of idx.keys()) {
-          if (!seen.has(key)) removed_rows++;
+          if (!seen.has(key)) {
+            removed_rows++;
+            removed_keys.push(key);
+          }
         }
-        return { added_rows, removed_rows, changed_rows, changed_cells };
+        return { added_rows, removed_rows, changed_rows, changed_cells, added_keys, removed_keys, changed_keys };
       };
 
       const metricsFields = ['metric_name','system_id','canonical_unit','conversion_group_id','normal_min','normal_max','is_key_metric','source','explanation'];
@@ -238,9 +285,9 @@ class AdminMasterService {
       const convFields = ['canonical_unit','alt_unit','to_canonical_formula','from_canonical_formula','notes'];
 
       const sheets = {
-        metrics: resSheet(parsed.metricsSheet, r => String(r.metric_id), metricsFields, idxMetrics),
-        synonyms: resSheet(parsed.synonymsSheet || [], r => `${r.synonym_id}::${r.metric_id}`, synonymsFields, idxSyn),
-        conversion_groups: resSheet(parsed.convSheet || [], r => `${r.conversion_group_id}::${r.alt_unit}`, convFields, idxConv),
+        metrics: resSheet(parsed.metricsSheet, (r) => normKey.metrics({ metric_id: r.metric_id }), metricsFields, idxMetrics),
+        synonyms: resSheet(parsed.synonymsSheet || [], (r) => normKey.synonyms({ synonym_id: r.synonym_id, metric_id: r.metric_id }), synonymsFields, idxSyn),
+        conversion_groups: resSheet(parsed.convSheet || [], (r) => normKey.conv({ conversion_group_id: r.conversion_group_id, alt_unit: r.alt_unit }), convFields, idxConv),
       };
 
       const totals = Object.values(sheets).reduce((acc, s) => ({
@@ -276,7 +323,10 @@ class AdminMasterService {
         return { success: true, version_id: existingVersion.rows[0].version_id, idempotent: true };
       }
 
-      const { added, changed, removed } = await this.diff(parsed);
+      // Use detailed diff (normalized) for consistent totals
+      const detailed = await this.diffDetailed(parsed);
+      const { added_rows, changed_rows, removed_rows } = detailed.totals;
+      const added = added_rows, changed = changed_rows, removed = removed_rows;
 
       // Write version row
       const ver = await client.query(`
@@ -357,9 +407,8 @@ class AdminMasterService {
           INSERT INTO master_conversion_groups (
             conversion_group_id, canonical_unit, alt_unit, to_canonical_formula, from_canonical_formula, notes
           ) VALUES ($1,$2,$3,$4,$5,$6)
-          ON CONFLICT (conversion_group_id) DO UPDATE SET
+          ON CONFLICT (conversion_group_id, alt_unit) DO UPDATE SET
             canonical_unit = EXCLUDED.canonical_unit,
-            alt_unit = EXCLUDED.alt_unit,
             to_canonical_formula = EXCLUDED.to_canonical_formula,
             from_canonical_formula = EXCLUDED.from_canonical_formula,
             notes = EXCLUDED.notes
@@ -377,7 +426,12 @@ class AdminMasterService {
 
       // Auto-sync to JSON files after successful commit
       try {
-        await this.syncToJSONFiles(versionId);
+        await this.syncToJSONFiles(versionId, { added, changed, removed });
+        console.log('[ADMIN] Commit diff → metrics: +%s ~%s -%s | synonyms: +%s ~%s -%s | conv: +%s ~%s -%s',
+          detailed.sheets.metrics.added_rows, detailed.sheets.metrics.changed_rows, detailed.sheets.metrics.removed_rows,
+          detailed.sheets.synonyms.added_rows, detailed.sheets.synonyms.changed_rows, detailed.sheets.synonyms.removed_rows,
+          detailed.sheets.conversion_groups.added_rows, detailed.sheets.conversion_groups.changed_rows, detailed.sheets.conversion_groups.removed_rows
+        );
         console.log('[ADMIN] Successfully synced to JSON files');
       } catch (syncError) {
         console.warn('[ADMIN] Commit successful but JSON sync failed:', syncError.message);
@@ -484,7 +538,7 @@ class AdminMasterService {
   /**
    * Sync current DB state to JSON files after successful commit
    */
-  async syncToJSONFiles(versionId) {
+  async syncToJSONFiles(versionId, totals) {
     const fs = require('fs');
     const path = require('path');
 
@@ -586,8 +640,8 @@ class AdminMasterService {
     const metricsPath = path.join(publicDataDir, 'metrics.json');
     fs.writeFileSync(metricsPath, JSON.stringify(metricsSimple, null, 2));
 
-    console.log(`[ADMIN] Updated ${metricsCatalog.metrics.length} metrics in JSON files`);
-    console.log(`[ADMIN] Added ${Object.keys(metricsCatalog.units_synonyms).length} unit synonyms`);
+    console.log(`[ADMIN] JSON regenerated: total metrics ${metricsCatalog.metrics.length}${totals ? ` | diff +${totals.added} ~${totals.changed} -${totals.removed}` : ''}`);
+    console.log(`[ADMIN] Unit synonyms groups: ${Object.keys(metricsCatalog.units_synonyms).length}`);
   }
 }
 
