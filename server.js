@@ -99,6 +99,22 @@ app.use((req, res, next) => {
 
 // 1. API routes first (before any static serving)
 app.use('/api/auth', authRoutes);
+
+// Public route for reference metrics data (no auth required)
+app.get('/api/metrics/reference', (req, res) => {
+  try {
+    const catalog = require('./shared/metricsCatalog');
+    const all = catalog.getAllMetrics();
+    res.json(all);
+  } catch (error) {
+    console.error('Get reference metrics error:', error);
+    res.status(500).json({
+      error: 'Failed to load reference metrics',
+      message: error.message
+    });
+  }
+});
+
 app.use('/api/uploads', authMiddleware, uploadRoutes);
 app.use('/api/metrics/custom', authMiddleware, require('./routes/customMetrics'));
 app.use('/api/metrics', authMiddleware, metricsRoutes);
@@ -181,21 +197,6 @@ app.get('/api/__diag/ai_outputs_log_columns', async (req, res) => {
     res.status(500).json({ 
       error: 'Diagnostic query failed',
       message: error.message 
-    });
-  }
-});
-
-// Public route for reference metrics data (no auth required)
-app.get('/api/metrics/reference', (req, res) => {
-  try {
-    const catalog = require('./shared/metricsCatalog');
-    const all = catalog.getAllMetrics();
-    res.json(all);
-  } catch (error) {
-    console.error('Get reference metrics error:', error);
-    res.status(500).json({
-      error: 'Failed to load reference metrics',
-      message: error.message
     });
   }
 });

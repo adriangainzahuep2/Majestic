@@ -65,6 +65,85 @@ router.post('/google', async (req, res) => {
   }
 });
 
+// Google OAuth code exchange
+router.post('/google-code', async (req, res) => {
+  console.log('[AUTH] Google OAuth code exchange request');
+  
+  try {
+    const { code } = req.body;
+    
+    if (!code) {
+      return res.status(400).json({ error: 'Authorization code required' });
+    }
+    
+    // Exchange code for tokens
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        code: code,
+        grant_type: 'authorization_code',
+        redirect_uri: `${req.protocol}://${req.get('host')}/api/auth/google/callback`
+      })
+    });
+    
+    const tokenData = await tokenResponse.json();
+    
+    if (!tokenResponse.ok) {
+      console.error('Token exchange failed:', tokenData);
+      return res.status(400).json({ error: 'Token exchange failed', details: tokenData });
+    }
+    
+    // Get user info from Google
+    const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: {
+        'Authorization': `Bearer ${tokenData.access_token}`
+      }
+    });
+    
+    const googleUser = await userResponse.json();
+    
+    if (!userResponse.ok) {
+      console.error('User info fetch failed:', googleUser);
+      return res.status(400).json({ error: 'Failed to get user info' });
+    }
+    
+    // Find or create user in database
+    const user = await authService.findOrCreateUser({
+      id: googleUser.id,
+      email: googleUser.email,
+      name: googleUser.name,
+      avatar_url: googleUser.picture
+    });
+    
+    // Generate JWT token
+    const authToken = authService.generateToken(user);
+    
+    console.log(`[AUTH] OAuth successful for user: ${user.email}`);
+    
+    res.json({
+      token: authToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatar_url: user.avatar_url
+      }
+    });
+
+  } catch (error) {
+    console.error('Google OAuth code exchange error:', error);
+    res.status(401).json({ 
+      error: 'Authentication failed',
+      message: error.message 
+    });
+  }
+});
+
 // Demo login (for testing without Google OAuth)
 router.post('/demo', async (req, res) => {
   try {
@@ -258,6 +337,35 @@ router.get('/fedcm-test', (req, res) => {
 // Logout (client-side token removal)
 router.post('/logout', (req, res) => {
   res.json({ success: true, message: 'Logged out successfully' });
+});
+
+router.get('/google/callback', async (req, res) => {
+  const { code, state } = req.query;
+  // Serve a tiny HTML that forwards the code to our API and redirects to root
+  res.setHeader('Content-Type', 'text/html');
+  res.send(`<!doctype html><html><head><meta charset="utf-8"><title>Signing in…</title></head><body>
+<script>
+  (async function(){
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      const state = params.get('state');
+      if(!code){ window.location.replace('/'); return; }
+      const resp = await fetch('/api/auth/google-code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:code,state:state})});
+      const data = await resp.json();
+      if(resp.ok && data.token){
+        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        window.location.replace('/');
+      } else {
+        console.error('OAuth error', data);
+        window.location.replace('/');
+      }
+    } catch(e){ console.error(e); window.location.replace('/'); }
+  })();
+</script>
+Signing in…
+</body></html>`);
 });
 
 module.exports = router;

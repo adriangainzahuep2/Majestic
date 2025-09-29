@@ -51,20 +51,43 @@ class HealthDashboard {
     }
 
     async initializeApp() {
+        // Check for OAuth redirect first
+        await this.checkForOAuthCallback();
+        
         // Always fetch server config first
         try {
             const config = await this.apiCall('/auth/config');
             if (config && config.hasGoogleAuth) {
                 this.googleClientId = config.googleClientId;
+                console.log('[DEBUG] Google OAuth configured, client ID:', config.googleClientId.substring(0, 20) + '...');
                 this.initializeGoogleSignIn(config);
+                // Keep the button visible and functional
+                const googleLoginBtn = document.getElementById('googleLoginBtn');
+                if (googleLoginBtn) {
+                    googleLoginBtn.style.display = 'block';
+                    // DO NOT override onclick - let the event listener handle it
+                }
             } else {
-                console.log('Google Auth not configured on server.');
-                document.getElementById('google-signin-button').style.display = 'none';
+                console.log('Google Auth not configured on server, but keeping button visible.');
+                const googleLoginBtn = document.getElementById('googleLoginBtn');
+                if (googleLoginBtn) {
+                    googleLoginBtn.style.display = 'block';
+                    // Add a click handler to show a message
+                    googleLoginBtn.onclick = () => {
+                        this.showToast('info', 'Google Auth', 'Google authentication is not configured. Please use "Try Demo" instead.');
+                    };
+                }
             }
         } catch (error) {
             console.error('Failed to fetch auth config:', error);
             this.showToast('error', 'Config Error', 'Could not load authentication configuration.');
-            document.getElementById('google-signin-button').style.display = 'none';
+            const googleLoginBtn = document.getElementById('googleLoginBtn');
+            if (googleLoginBtn) {
+                googleLoginBtn.style.display = 'block';
+                googleLoginBtn.onclick = () => {
+                    this.showToast('info', 'Google Auth', 'Google authentication is not configured. Please use "Try Demo" instead.');
+                };
+            }
         }
 
         // Now initialize the rest of the app
@@ -132,7 +155,9 @@ class HealthDashboard {
         this.setupEventListeners();
 
         // Check for token in localStorage on init
-        this.jwtToken = localStorage.getItem('jwtToken') || localStorage.getItem('authToken') || null;
+        const storedAuthToken = localStorage.getItem('authToken');
+        const storedJwtToken = localStorage.getItem('jwtToken');
+        this.jwtToken = storedAuthToken || storedJwtToken || null;
         this.token = this.jwtToken; // keep in sync for legacy calls
 
         if (this.jwtToken) {
@@ -221,8 +246,10 @@ class HealthDashboard {
             
             this.jwtToken = response.token;
             this.token = response.token; // sync legacy
-            localStorage.setItem('jwtToken', this.jwtToken);
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('jwtToken');
             localStorage.setItem('authToken', this.jwtToken);
+            localStorage.setItem('jwtToken', this.jwtToken);
             
             if (response.success) {
                 this.user = response.user;
@@ -242,26 +269,36 @@ class HealthDashboard {
     }
 
     async googleLogin() {
+        console.log('[DEBUG] googleLogin() called');
+        console.log('[DEBUG] googleClientId:', this.googleClientId ? 'SET' : 'NOT SET');
+        
         if (!this.googleClientId) {
+            console.log('[DEBUG] No Google Client ID, showing error');
             this.showToast('error', 'Configuration Error', 'Google OAuth not configured. Please contact support.');
             return;
         }
 
         try {
+            console.log('[DEBUG] Checking if Google library is loaded...');
             // Ensure GSI library is loaded
             if (typeof window.google === 'undefined' || typeof window.google.accounts === 'undefined') {
+                console.log('[DEBUG] Google library not loaded, waiting...');
                 await new Promise(resolve => {
                     const interval = setInterval(() => {
                         if (typeof window.google !== 'undefined' && typeof window.google.accounts !== 'undefined') {
+                            console.log('[DEBUG] Google library loaded');
                             clearInterval(interval);
                             resolve();
                         }
                     }, 100);
                 });
+            } else {
+                console.log('[DEBUG] Google library already loaded');
             }
 
-            // Trigger popup sign-in
-            this.showGoogleSignInPopup(this.googleClientId);
+            console.log('[DEBUG] Triggering Google Sign-In popup...');
+            // Use simple OAuth2 flow instead of GSI
+            this.openGoogleOAuth(this.googleClientId);
         } catch (error) {
             console.error('Google Sign-In prompt error:', error);
             this.showToast('error', 'Google Auth Error', 'Google Sign-In prompt blocked. Please allow popups for this site.');
@@ -270,7 +307,8 @@ class HealthDashboard {
 
     async initializeGoogleSignIn(config) {
         if (!config || !config.hasGoogleAuth) {
-            document.getElementById('google-signin-button').style.display = 'none';
+            const googleLoginBtn = document.getElementById('googleLoginBtn');
+            if (googleLoginBtn) googleLoginBtn.style.display = 'none';
             return;
         }
 
@@ -331,16 +369,92 @@ class HealthDashboard {
             this.showToast('error', 'Google OAuth Error', `Popup failed: ${error.message}`);
         }
     }
+    
+    openGoogleOAuth(clientId) {
+        console.log('[DEBUG] openGoogleOAuth called');
+        
+        // Create OAuth2 authorization URL (correct endpoint)
+        const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+        authUrl.searchParams.set('client_id', clientId);
+        authUrl.searchParams.set('redirect_uri', `${window.location.origin}/api/auth/google/callback`);
+        authUrl.searchParams.set('response_type', 'code');
+        authUrl.searchParams.set('scope', 'openid email profile');
+        authUrl.searchParams.set('access_type', 'online');
+        authUrl.searchParams.set('prompt', 'select_account');
+        authUrl.searchParams.set('state', 'google_oauth');
+        
+        console.log('[DEBUG] Redirecting to:', authUrl.toString());
+        
+        // Redirect to Google OAuth
+        window.location.href = authUrl.toString();
+    }
+    
+    async checkForOAuthCallback() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const state = urlParams.get('state');
+        
+        if (code && state === 'google_oauth') {
+            console.log('[DEBUG] Found OAuth callback, processing code...');
+            
+            try {
+                this.showLoading(true);
+                
+                const response = await fetch(`${this.apiBase}/auth/google-code`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ code: code })
+                });
+                
+                const data = await response.json();
+                console.log('[DEBUG] OAuth backend response:', data);
+                
+                if (response.ok && data.token) {
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('jwtToken');
+                    localStorage.setItem('authToken', data.token);
+                    localStorage.setItem('jwtToken', data.token);
+                    this.isAuthenticated = true;
+                    this.currentUser = data.user;
+                    
+                    // Clean up URL
+                    const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                    window.history.replaceState({}, '', newUrl);
+                    
+                    this.showToast('success', 'Welcome!', `Hello ${data.user.email}!`);
+                    return; // Exit early, will show app after config load
+                } else {
+                    throw new Error(data.error || 'Authentication failed');
+                }
+            } catch (error) {
+                console.error('OAuth callback error:', error);
+                this.showToast('error', 'Authentication Error', error.message);
+                
+                // Clean up URL even on error
+                const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.replaceState({}, '', newUrl);
+            } finally {
+                this.showLoading(false);
+            }
+        }
+    }
 
     async handleGoogleSignIn(response) {
         try {
+            console.log('[DEBUG] handleGoogleSignIn called with:', response);
             this.showLoading(true);
             
             if (!response.credential) {
+                console.error('[DEBUG] No credential in response:', response);
                 throw new Error('No credential received from Google');
             }
             
+            console.log('[DEBUG] Credential received, length:', response.credential.length);
+            
             // Send the Google ID token to our backend
+            console.log('[DEBUG] Sending token to backend:', `${this.apiBase}/auth/google`);
             const authResponse = await fetch(`${this.apiBase}/auth/google`, {
                 method: 'POST',
                 headers: {
@@ -351,12 +465,17 @@ class HealthDashboard {
                 })
             });
 
+            console.log('[DEBUG] Backend response status:', authResponse.status);
             const data = await authResponse.json();
+            console.log('[DEBUG] Backend response data:', data);
             
             if (data.success) {
                 this.token = data.token;
                 this.user = data.user;
-                localStorage.setItem('authToken', this.token);
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('jwtToken');
+                localStorage.setItem('authToken', this.jwtToken);
+                localStorage.setItem('jwtToken', this.jwtToken);
                 this.showApp();
                 this.showToast('success', 'Google OAuth Success!', `Authenticated as ${this.user.name}`);
             } else {
@@ -381,6 +500,7 @@ class HealthDashboard {
         this.dashboard = null;
         this.systemsData.clear();
         localStorage.removeItem('authToken');
+        localStorage.removeItem('jwtToken');
         this.showLogin();
         this.showToast('info', 'Logged Out', 'You have been logged out successfully');
     }
