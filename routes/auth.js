@@ -20,6 +20,11 @@ router.post('/google', async (req, res) => {
       return res.status(400).json({ error: 'Token is required' });
     }
 
+    // Debug logging
+    console.log('[AUTH] Google OAuth attempt from origin:', req.headers.origin);
+    console.log('[AUTH] Google Client ID configured:', !!process.env.GOOGLE_CLIENT_ID);
+    console.log('[AUTH] Token length:', token.length);
+
     // Verify Google token
     const ticket = await client.verifyIdToken({
       idToken: token,
@@ -227,6 +232,26 @@ router.get('/config', (req, res) => {
   res.json({
     googleClientId: process.env.GOOGLE_CLIENT_ID || null,
     hasGoogleAuth: !!process.env.GOOGLE_CLIENT_ID
+  });
+});
+
+// Auth status endpoint for debugging
+router.get('/check', (req, res) => {
+  res.json({
+    status: 'ok',
+    googleClientId: process.env.GOOGLE_CLIENT_ID ? 'configured' : 'not configured',
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// FedCM test endpoint
+router.get('/fedcm-test', (req, res) => {
+  res.json({
+    status: 'fedcm_test',
+    message: 'FedCM test endpoint',
+    googleClientId: process.env.GOOGLE_CLIENT_ID,
+    timestamp: new Date().toISOString()
   });
 });
 

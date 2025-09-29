@@ -44,11 +44,48 @@ const corsOptions = {
     // Allow your production domain if you have one
     if (origin.includes('majesticapp.replit.dev')) return callback(null, true);
 
+    // Allow Google OAuth domains for FedCM
+    if (origin.includes('google.com') ||
+        origin.includes('accounts.google.com') ||
+        origin.includes('googlesyndication.com') ||
+        origin.includes('gstatic.com')) {
+      return callback(null, true);
+    }
+
     // Block other origins
     return callback(new Error('Not allowed by CORS'));
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Access-Control-Request-Method',
+    'Access-Control-Request-Headers'
+  ],
+  exposedHeaders: [
+    'Content-Length',
+    'X-Requested-With',
+    'Access-Control-Allow-Origin',
+    'Access-Control-Allow-Credentials'
+  ]
 };
+
+// Custom middleware for FedCM requirements and logging
+app.use((req, res, next) => {
+  const origin = req.get('Origin') || req.headers.origin;
+  console.log(`[Request Logger] Path: ${req.path}, Method: ${req.method}, Origin: ${origin}`);
+
+  // Set COOP/COEP headers for all responses, as required by FedCM for cross-origin isolation.
+  // These headers are essential for creating a secure context for the credential manager.
+  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  
+  next();
+});
 
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
@@ -82,6 +119,25 @@ app.use('/api/admin', require('./routes/admin'));
 
 // Debug routes (no auth for debugging)
 app.use('/api/debug', require('./routes/debug'));
+
+// 2. Explicit root route for health checks (must be before static files)
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Simple health check for Cloud Run (faster response) - MUST be before static files
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
+// 3. Static assets (CSS, JS, images) - AFTER API routes
+app.use(express.static('public'));
+app.use('/uploads', express.static('uploads'));
+
+// 4. SPA fallback for client-side routing (must be last)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // Database viewer HTML page
 app.get('/database-viewer', (req, res) => {
@@ -228,23 +284,9 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// 2. Explicit root route for health checks (must be before static files)
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Simple health check for Cloud Run (faster response) - MUST be before static files
-app.get('/health', (req, res) => {
-  res.status(200).send('OK');
-});
-
-// 3. Static assets (CSS, JS, images)
-app.use(express.static('public'));
-app.use('/uploads', express.static('uploads'));
-
-// 4. SPA fallback for client-side routing (must be last)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// Database viewer HTML page
+app.get('/database-viewer', (req, res) => {
+  res.sendFile(path.join(__dirname, 'database_viewer.html'));
 });
 
 // Error handling middleware
