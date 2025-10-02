@@ -341,31 +341,14 @@ router.post('/logout', (req, res) => {
 
 router.get('/google/callback', async (req, res) => {
   const { code, state } = req.query;
-  // Serve a tiny HTML that forwards the code to our API and redirects to root
-  res.setHeader('Content-Type', 'text/html');
-  res.send(`<!doctype html><html><head><meta charset="utf-8"><title>Signing in…</title></head><body>
-<script>
-  (async function(){
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get('code');
-      const state = params.get('state');
-      if(!code){ window.location.replace('/'); return; }
-      const resp = await fetch('/api/auth/google-code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:code,state:state})});
-      const data = await resp.json();
-      if(resp.ok && data.token){
-        localStorage.setItem('authToken', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        window.location.replace('/');
-      } else {
-        console.error('OAuth error', data);
-        window.location.replace('/');
-      }
-    } catch(e){ console.error(e); window.location.replace('/'); }
-  })();
-</script>
-Signing in…
-</body></html>`);
+  
+  // Redirect back to frontend with code so the frontend can handle it
+  if (!code) {
+    return res.redirect('/?error=no_code');
+  }
+  
+  // Redirect to root with code parameter for frontend processing
+  res.redirect(`/?code=${encodeURIComponent(code)}&state=${state || 'google_oauth'}`);
 });
 
 module.exports = router;
