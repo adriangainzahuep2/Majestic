@@ -171,10 +171,10 @@ class HealthDashboard {
                 localStorage.removeItem('authToken');
                 this.jwtToken = null;
                 this.token = null;
-                this.showLoginView();
+                this.showLogin();
             }
         } else {
-            this.showLoginView();
+            this.showLogin();
         }
     }
 
