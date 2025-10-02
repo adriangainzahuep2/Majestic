@@ -416,6 +416,8 @@ class HealthDashboard {
                     localStorage.removeItem('jwtToken');
                     localStorage.setItem('authToken', data.token);
                     localStorage.setItem('jwtToken', data.token);
+                    this.jwtToken = data.token;
+                    this.token = data.token;
                     this.isAuthenticated = true;
                     this.currentUser = data.user;
                     
@@ -424,7 +426,12 @@ class HealthDashboard {
                     window.history.replaceState({}, '', newUrl);
                     
                     this.showToast('success', 'Welcome!', `Hello ${data.user.email}!`);
-                    return; // Exit early, will show app after config load
+                    
+                    // Load user profile and show app immediately
+                    await this.loadUserProfile();
+                    await this.showApp();
+                    
+                    return; // Exit early
                 } else {
                     throw new Error(data.error || 'Authentication failed');
                 }
