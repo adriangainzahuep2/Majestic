@@ -76,6 +76,14 @@ router.post('/google-code', async (req, res) => {
       return res.status(400).json({ error: 'Authorization code required' });
     }
     
+    // Construct redirect_uri to match what frontend uses
+    // Use x-forwarded-proto and x-forwarded-host if behind proxy (Replit case)
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const host = req.headers['x-forwarded-host'] || req.get('host');
+    const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
+    
+    console.log('[AUTH] Using redirect_uri:', redirectUri);
+    
     // Exchange code for tokens
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
@@ -87,7 +95,7 @@ router.post('/google-code', async (req, res) => {
         client_secret: process.env.GOOGLE_CLIENT_SECRET,
         code: code,
         grant_type: 'authorization_code',
-        redirect_uri: `${req.protocol}://${req.get('host')}/api/auth/google/callback`
+        redirect_uri: redirectUri
       })
     });
     
