@@ -373,8 +373,8 @@ class HealthDashboard {
     openGoogleOAuth(clientId) {
         console.log('[DEBUG] openGoogleOAuth called');
         
-        // Normalize origin (remove port for Replit compatibility)
-        const origin = window.location.origin.replace(/:5000$/, '');
+        // Use the current origin (with port if present)
+        const origin = window.location.origin;
         const redirectUri = `${origin}/api/auth/google/callback`;
         
         console.log('[DEBUG] Using redirect_uri:', redirectUri);
