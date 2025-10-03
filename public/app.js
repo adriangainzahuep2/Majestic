@@ -535,6 +535,9 @@ class HealthDashboard {
 
     // UI State Management
     showLogin() {
+        const initialLoader = document.getElementById('initialLoader');
+        if (initialLoader) initialLoader.classList.add('d-none');
+        
         document.getElementById('loginSection').classList.remove('d-none');
         document.getElementById('appSection').classList.add('d-none');
         document.getElementById('userSection').classList.add('d-none');
@@ -542,6 +545,9 @@ class HealthDashboard {
     }
 
     showApp() {
+        const initialLoader = document.getElementById('initialLoader');
+        if (initialLoader) initialLoader.classList.add('d-none');
+        
         document.getElementById('loginSection').classList.add('d-none');
         document.getElementById('appSection').classList.remove('d-none');
         document.getElementById('profileSection').classList.add('d-none');

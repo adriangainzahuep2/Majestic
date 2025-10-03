@@ -44,9 +44,19 @@
         </div>
     </nav>
 
+    <!-- Initial Loading Screen -->
+    <div id="initialLoader" class="d-flex align-items-center justify-content-center" style="height: 80vh;">
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3 text-muted">Loading Majestic...</p>
+        </div>
+    </div>
+
     <div class="container-fluid mt-4">
         <!-- Login Section -->
-        <div id="loginSection" class="login-section">
+        <div id="loginSection" class="login-section d-none">
             <div class="login-card">
                 <div class="login-icon">
                     <div class="rising-sun-icon-large"></div>
