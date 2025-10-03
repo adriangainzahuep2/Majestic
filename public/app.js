@@ -388,7 +388,7 @@ class HealthDashboard {
         authUrl.searchParams.set('scope', 'openid email profile');
         authUrl.searchParams.set('access_type', 'online');
         authUrl.searchParams.set('prompt', 'select_account');
-        authUrl.searchParams.set('state', 'google_oauth');
+        authUrl.searchParams.set('state', `google_oauth|${btoa(redirectUri)}`);
         
         console.log('[DEBUG] Redirecting to:', authUrl.toString());
         

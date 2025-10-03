@@ -351,6 +351,7 @@ router.get('/google/callback', async (req, res) => {
   const { code, state } = req.query;
   
   console.log('[AUTH] Google callback received with code:', code ? 'YES' : 'NO');
+  console.log('[AUTH] State parameter:', state);
   
   if (!code) {
     console.error('[AUTH] No code received in callback');
@@ -358,15 +359,25 @@ router.get('/google/callback', async (req, res) => {
   }
   
   try {
-    // Construct redirect_uri based on the actual request URL
-    // This ensures it matches exactly what Google used to redirect here
-    const protocol = req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
-    const host = req.get('host'); // includes port if present
-    const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
+    // Extract redirect_uri from state parameter (passed from frontend)
+    let redirectUri;
+    if (state && state.includes('|')) {
+      const [, encodedUri] = state.split('|');
+      try {
+        redirectUri = Buffer.from(encodedUri, 'base64').toString('utf-8');
+        console.log('[AUTH] Using redirect_uri from state:', redirectUri);
+      } catch (e) {
+        console.error('[AUTH] Failed to decode redirect_uri from state:', e);
+      }
+    }
     
-    console.log('[AUTH] Request protocol:', req.protocol);
-    console.log('[AUTH] Request host:', req.get('host'));
-    console.log('[AUTH] Constructed redirect_uri:', redirectUri);
+    // Fallback: construct from request
+    if (!redirectUri) {
+      const protocol = req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+      const host = req.get('host');
+      redirectUri = `${protocol}://${host}/api/auth/google/callback`;
+      console.log('[AUTH] Fallback redirect_uri constructed:', redirectUri);
+    }
     
     // Exchange code for tokens
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
