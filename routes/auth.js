@@ -432,13 +432,24 @@ router.get('/google/callback', async (req, res) => {
     
     // Serve HTML that saves token and redirects
     res.setHeader('Content-Type', 'text/html');
-    res.send(`<!doctype html><html><head><meta charset="utf-8"><title>Signing in…</title></head><body>
+    res.send(`<!doctype html><html><head><meta charset="utf-8"><title>Signing in…</title>
+<style>
+  body { margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; }
+  .loader { text-align: center; }
+  .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
+</head><body>
+<div class="loader">
+  <div class="spinner"></div>
+  <p>Signing in...</p>
+</div>
 <script>
   localStorage.setItem('authToken', '${authToken}');
   localStorage.setItem('jwtToken', '${authToken}');
-  window.location.replace('/');
+  // Small delay to ensure token is saved
+  setTimeout(() => window.location.replace('/'), 100);
 </script>
-<p>Signing in, please wait...</p>
 </body></html>`);
     
   } catch (error) {
