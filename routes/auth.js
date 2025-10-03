@@ -350,13 +350,87 @@ router.post('/logout', (req, res) => {
 router.get('/google/callback', async (req, res) => {
   const { code, state } = req.query;
   
-  // Redirect back to frontend with code so the frontend can handle it
+  console.log('[AUTH] Google callback received with code:', code ? 'YES' : 'NO');
+  
   if (!code) {
+    console.error('[AUTH] No code received in callback');
     return res.redirect('/?error=no_code');
   }
   
-  // Redirect to root with code parameter for frontend processing
-  res.redirect(`/?code=${encodeURIComponent(code)}&state=${state || 'google_oauth'}`);
+  try {
+    // Construct redirect_uri to match what frontend uses
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const host = req.headers['x-forwarded-host'] || req.get('host');
+    const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
+    
+    console.log('[AUTH] Exchanging code for tokens with redirect_uri:', redirectUri);
+    
+    // Exchange code for tokens
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        code: code,
+        grant_type: 'authorization_code',
+        redirect_uri: redirectUri
+      })
+    });
+    
+    const tokenData = await tokenResponse.json();
+    
+    if (!tokenResponse.ok) {
+      console.error('[AUTH] Token exchange failed:', tokenData);
+      return res.redirect('/?error=token_exchange_failed');
+    }
+    
+    // Get user info from Google
+    const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: {
+        'Authorization': `Bearer ${tokenData.access_token}`
+      }
+    });
+    
+    const googleUser = await userResponse.json();
+    
+    if (!userResponse.ok) {
+      console.error('[AUTH] Failed to get user info:', googleUser);
+      return res.redirect('/?error=user_info_failed');
+    }
+    
+    // Find or create user
+    const googleUserData = {
+      id: googleUser.id,
+      email: googleUser.email,
+      name: googleUser.name,
+      picture: googleUser.picture
+    };
+    
+    const user = await authService.findOrCreateUser(googleUserData);
+    
+    // Generate JWT token
+    const authToken = authService.generateToken(user);
+    
+    console.log(`[AUTH] OAuth successful for user: ${user.email}`);
+    
+    // Serve HTML that saves token and redirects
+    res.setHeader('Content-Type', 'text/html');
+    res.send(`<!doctype html><html><head><meta charset="utf-8"><title>Signing in…</title></head><body>
+<script>
+  localStorage.setItem('authToken', '${authToken}');
+  localStorage.setItem('jwtToken', '${authToken}');
+  window.location.replace('/');
+</script>
+<p>Signing in, please wait...</p>
+</body></html>`);
+    
+  } catch (error) {
+    console.error('[AUTH] OAuth callback error:', error);
+    return res.redirect('/?error=oauth_failed');
+  }
 });
 
 module.exports = router;
