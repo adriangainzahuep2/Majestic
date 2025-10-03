@@ -358,12 +358,15 @@ router.get('/google/callback', async (req, res) => {
   }
   
   try {
-    // Construct redirect_uri to match what frontend uses
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-    const host = req.headers['x-forwarded-host'] || req.get('host');
+    // Construct redirect_uri based on the actual request URL
+    // This ensures it matches exactly what Google used to redirect here
+    const protocol = req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+    const host = req.get('host'); // includes port if present
     const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
     
-    console.log('[AUTH] Exchanging code for tokens with redirect_uri:', redirectUri);
+    console.log('[AUTH] Request protocol:', req.protocol);
+    console.log('[AUTH] Request host:', req.get('host'));
+    console.log('[AUTH] Constructed redirect_uri:', redirectUri);
     
     // Exchange code for tokens
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
