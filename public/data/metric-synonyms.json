@@ -1,0 +1,203 @@
+{
+  "synonyms": {
+    "Total Cholesterol": [
+      "Cholesterol Total",
+      "TC",
+      "Chol",
+      "Cholesterol, Total",
+      "Total Chol",
+      "Colesterol Total",
+      "Cholesterol (Total)"
+    ],
+    "LDL Cholesterol": [
+      "LDL",
+      "LDL-C",
+      "Low Density Lipoprotein",
+      "Cholesterol LDL",
+      "LDL Chol",
+      "LDL-Cholesterol",
+      "Bad Cholesterol",
+      "Colesterol LDL"
+    ],
+    "HDL Cholesterol": [
+      "HDL",
+      "HDL-C", 
+      "High Density Lipoprotein",
+      "Cholesterol HDL",
+      "HDL Chol",
+      "HDL-Cholesterol",
+      "Good Cholesterol",
+      "Colesterol HDL"
+    ],
+    "Triglycerides": [
+      "TG",
+      "TRIG",
+      "Triglycerids",
+      "Triglyceride",
+      "Trigliceridos"
+    ],
+    "Hemoglobin A1c (HbA1c)": [
+      "HbA1c",
+      "A1C",
+      "Hemoglobin A1C",
+      "Glycated Hemoglobin",
+      "Glycohemoglobin",
+      "HBA1C",
+      "Hemoglobina Glicosilada",
+      "A1c"
+    ],
+    "Fasting Glucose": [
+      "FPG",
+      "Fasting Plasma Glucose",
+      "Glucose, Fasting",
+      "FBS",
+      "Fasting Blood Sugar",
+      "Glucosa en Ayunas",
+      "GLU"
+    ],
+    "Blood Pressure (Systolic)": [
+      "Systolic BP",
+      "SBP",
+      "Systolic Pressure",
+      "Blood Pressure Systolic",
+      "Presión Sistólica"
+    ],
+    "Blood Pressure (Diastolic)": [
+      "Diastolic BP",
+      "DBP", 
+      "Diastolic Pressure",
+      "Blood Pressure Diastolic",
+      "Presión Diastólica"
+    ],
+    "Serum Creatinine": [
+      "Creatinine",
+      "CREA",
+      "Serum Creat",
+      "Creat",
+      "Creatinina",
+      "SCr"
+    ],
+    "Blood Urea Nitrogen (BUN)": [
+      "BUN",
+      "Urea Nitrogen",
+      "Blood Urea",
+      "Nitrógeno Ureico",
+      "UN"
+    ],
+    "Thyroid Stimulating Hormone (TSH)": [
+      "TSH",
+      "Thyrotropin",
+      "Thyroid Stimulating Hormone",
+      "Hormona Estimulante de Tiroides"
+    ],
+    "Free T4": [
+      "FT4",
+      "Free Thyroxine",
+      "T4 Free",
+      "Thyroxine Free",
+      "T4 Libre"
+    ],
+    "Free T3": [
+      "FT3",
+      "Free Triiodothyronine",
+      "T3 Free",
+      "Triiodothyronine Free",
+      "T3 Libre"
+    ],
+    "Vitamin D, 25-OH": [
+      "25-OH Vitamin D",
+      "25(OH)D",
+      "Calcidiol",
+      "25-Hydroxyvitamin D",
+      "Vitamin D3",
+      "VitD",
+      "Vitamina D"
+    ],
+    "C-Reactive Protein (CRP)": [
+      "CRP",
+      "hs-CRP",
+      "High Sensitivity CRP",
+      "C-Reactive Protein",
+      "Proteína C Reactiva"
+    ],
+    "Alanine Aminotransferase (ALT)": [
+      "ALT",
+      "SGPT",
+      "Alanine Transaminase",
+      "GPT",
+      "Alanina Aminotransferasa"
+    ],
+    "Aspartate Aminotransferase (AST)": [
+      "AST",
+      "SGOT",
+      "Aspartate Transaminase",
+      "GOT",
+      "Aspartato Aminotransferasa"
+    ],
+    "Alkaline Phosphatase": [
+      "ALP",
+      "Alk Phos",
+      "ALKP",
+      "Fosfatasa Alcalina"
+    ],
+    "Total Bilirubin": [
+      "TBIL",
+      "Bilirubin Total",
+      "Tot Bili",
+      "Bilirrubina Total"
+    ],
+    "Complete Blood Count": [
+      "CBC",
+      "Hemograma",
+      "Full Blood Count",
+      "FBC"
+    ],
+    "White Blood Cell Count": [
+      "WBC",
+      "White Blood Cells",
+      "Leucocytes",
+      "Glóbulos Blancos",
+      "Leucocitos"
+    ],
+    "Red Blood Cell Count": [
+      "RBC",
+      "Red Blood Cells",
+      "Erythrocytes",
+      "Glóbulos Rojos",
+      "Eritrocitos"
+    ],
+    "Hemoglobin": [
+      "Hgb",
+      "Hb",
+      "Hemoglobina"
+    ],
+    "Hematocrit": [
+      "HCT",
+      "Hct",
+      "Packed Cell Volume",
+      "PCV",
+      "Hematocrito"
+    ],
+    "Platelet Count": [
+      "PLT",
+      "Platelets",
+      "Thrombocytes",
+      "Plaquetas",
+      "Trombocitos"
+    ]
+  },
+  "units_synonyms": {
+    "mg/dL": ["mg/dl", "milligrams per deciliter", "mg per dL", "mg/deciliter"],
+    "mmol/L": ["mmol/l", "millimoles per liter", "mmol per L"],
+    "g/dL": ["g/dl", "grams per deciliter", "g per dL"],
+    "U/L": ["u/l", "units per liter", "IU/L", "iu/l"],
+    "ng/mL": ["ng/ml", "nanograms per milliliter", "ng per mL"],
+    "pg/mL": ["pg/ml", "picograms per milliliter", "pg per mL"],
+    "μIU/mL": ["uIU/mL", "uiu/ml", "microIU/mL", "micro IU/mL"],
+    "mIU/L": ["miu/l", "milliIU/L", "milli IU/L"],
+    "mmHg": ["mm Hg", "millimeters of mercury", "torr"],
+    "beats/min": ["bpm", "beats per minute", "beats/minute"],
+    "%": ["percent", "percentage", "pct"],
+    "cells/μL": ["cells/ul", "cells per microliter", "/μL", "/ul"]
+  }
+}

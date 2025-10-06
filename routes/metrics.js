@@ -96,23 +96,14 @@ router.get('/types', async (req, res) => {
       return res.status(400).json({ error: 'systemId parameter is required' });
     }
 
-    // 1. Get official metric names from reference data
-    const fs = require('fs');
-    const path = require('path');
-    
+    // 1. Get official metric names from unified catalog
+    const catalog = require('../shared/metricsCatalog');
     let officialMetricNames = [];
     try {
-      const metricsPath = path.join(__dirname, '../src/data/metrics.json');
-      if (fs.existsSync(metricsPath)) {
-        const metricsData = JSON.parse(fs.readFileSync(metricsPath, 'utf8'));
-        // Filter by system name
-        const systemResult = await req.db.query('SELECT name FROM health_systems WHERE id = $1', [systemId]);
-        if (systemResult.rows.length > 0) {
-          const systemName = systemResult.rows[0].name;
-          officialMetricNames = metricsData
-            .filter(m => m.system === systemName)
-            .map(m => m.metric);
-        }
+      const systemResult = await req.db.query('SELECT name FROM health_systems WHERE id = $1', [systemId]);
+      if (systemResult.rows.length > 0) {
+        const systemName = systemResult.rows[0].name;
+        officialMetricNames = await catalog.getOfficialNamesBySystem(systemName);
       }
     } catch (error) {
       console.warn('Could not load reference metrics:', error.message);
@@ -352,6 +343,31 @@ router.put('/:id', async (req, res) => {
 
     const systemId = checkResult.rows[0].system_id;
 
+    // Auto-flag extreme values: if metric_value is wildly out of range, exclude from analysis
+    try {
+      const EXTREME_FACTOR = parseFloat(process.env.EXTREME_FACTOR || '50');
+      const value = updates.metric_value != null ? parseFloat(updates.metric_value) : null;
+      if (!Number.isNaN(value) && value != null) {
+        // Determine comparison range
+        let minV = null, maxV = null, unitsV = null;
+        if (typeof updates.reference_range === 'string') {
+          const m = updates.reference_range.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+          if (m) { minV = parseFloat(m[1]); maxV = parseFloat(m[2]); }
+        }
+        // If no explicit range in update, use catalog baseline for the (new or existing) name
+        if (minV == null || maxV == null) {
+          const catalog = require('../shared/metricsCatalog');
+          const nameForBaseline = updates.metric_name || null;
+          const baseline = nameForBaseline ? catalog.findMetricByName(nameForBaseline) : null;
+          if (baseline) { minV = baseline.normalRangeMin; maxV = baseline.normalRangeMax; unitsV = baseline.units || null; }
+        }
+        if (typeof maxV === 'number' && ((value > maxV * EXTREME_FACTOR) || (typeof minV === 'number' && minV > 0 && value < minV / EXTREME_FACTOR))) {
+          updates.exclude_from_analysis = true;
+          if (!updates.review_reason) updates.review_reason = 'Auto-flagged extreme value';
+        }
+      }
+    } catch (_) { /* safe ignore */ }
+
     // ENHANCED VALIDATION: If metric_name is being updated, validate it
     if (updates.metric_name) {
       const isValidMetricName = await validateMetricName(updates.metric_name, systemId, userId, req.db);
@@ -363,7 +379,7 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    const allowedUpdates = ['metric_name', 'metric_value', 'metric_unit', 'reference_range', 'test_date'];
+    const allowedUpdates = ['metric_name', 'metric_value', 'metric_unit', 'reference_range', 'test_date', 'exclude_from_analysis', 'review_reason', 'is_adjusted'];
     const setClause = [];
     const values = [];
     let paramCount = 1;
@@ -374,6 +390,10 @@ router.put('/:id', async (req, res) => {
         if (key === 'test_date' && (value === '' || value === undefined)) {
           setClause.push(`${key} = $${paramCount}`);
           values.push(null);
+        } else if (key === 'exclude_from_analysis') {
+          // Force boolean cast
+          setClause.push(`${key} = $${paramCount}`);
+          values.push(!!value);
         } else {
           setClause.push(`${key} = $${paramCount}`);
           values.push(value);
@@ -394,6 +414,7 @@ router.put('/:id', async (req, res) => {
       RETURNING *
     `;
 
+    console.log('[METRIC_UPDATE] userId=%s metricId=%s set=%o', userId, metricId, updates);
     const result = await req.db.query(query, values);
 
     // Trigger insights refresh for the updated metric
@@ -521,21 +542,9 @@ router.get('/export/:format', async (req, res) => {
 // Get reference metrics data
 router.get('/reference', async (req, res) => {
   try {
-    const fs = require('fs');
-    const path = require('path');
-    
-    const metricsPath = path.join(__dirname, '../src/data/metrics.json');
-    
-    if (!fs.existsSync(metricsPath)) {
-      return res.status(404).json({
-        error: 'Reference metrics data not found',
-        message: 'metrics.json file does not exist'
-      });
-    }
-    
-    const metricsData = JSON.parse(fs.readFileSync(metricsPath, 'utf8'));
-    
-    res.json(metricsData);
+    const catalog = require('../shared/metricsCatalog');
+    const all = catalog.getAllMetrics();
+    res.json(all);
     
   } catch (error) {
     console.error('Get reference metrics error:', error);

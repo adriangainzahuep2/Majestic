@@ -1,1010 +1,1217 @@
 [
   {
+    "id": "biological_age_epigenetics_1",
+    "name": "DNA Methylation Age (Epigenetic Age)",
+    "system": "Biological Age/Epigenetics",
+    "unit": "years",
+    "normalMin": "0.000",
+    "normalMax": "0.000",
+    "isKey": false
+  },
+  {
+    "id": "biological_age_epigenetics_2",
+    "name": "Telomere Length (Leukocyte)",
+    "system": "Biological Age/Epigenetics",
+    "unit": "kilobases",
+    "normalMin": "7.000",
+    "normalMax": "10.000",
+    "isKey": false
+  },
+  {
+    "id": "biological_age_epigenetics_3",
+    "name": "Frailty Index",
+    "system": "Biological Age/Epigenetics",
+    "unit": "(proportion)",
+    "normalMin": "0.000",
+    "normalMax": "0.200",
+    "isKey": false
+  },
+  {
+    "id": "biological_age_epigenetics_4",
+    "name": "Grip Strength",
+    "system": "Biological Age/Epigenetics",
+    "unit": "kg",
+    "normalMin": "20.000",
+    "normalMax": "0.000",
+    "isKey": false
+  },
+  {
+    "id": "biological_age_epigenetics_5",
+    "name": "Gait Speed (4-m walk)",
+    "system": "Biological Age/Epigenetics",
+    "unit": "m/s",
+    "normalMin": "1.000",
+    "normalMax": "0.000",
+    "isKey": false
+  },
+  {
+    "id": "biological_age_epigenetics_6",
+    "name": "Bone Density (T-score)",
+    "system": "Biological Age/Epigenetics",
+    "unit": "– (SD score)",
+    "normalMin": "-1.000",
+    "normalMax": "0.000",
+    "isKey": false
+  },
+  {
+    "id": "biological_age_epigenetics_7",
+    "name": "Advanced Glycation (AGEs)",
+    "system": "Biological Age/Epigenetics",
+    "unit": "AU (arbitrary)",
+    "normalMin": "0.000",
+    "normalMax": "14.000",
+    "isKey": false
+  },
+  {
+    "id": "cardiovascular_1",
+    "name": "Resting Heart Rate",
     "system": "Cardiovascular",
-    "metric": "Resting Heart Rate",
-    "normalRangeMin": 60,
-    "normalRangeMax": 100,
-    "units": "beats/min (bpm)",
-    "source": "Johns Hopkins Medicine"
+    "unit": "beats/min (bpm)",
+    "normalMin": "66.000",
+    "normalMax": "100.000",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_10",
+    "name": "Lipoprotein (a)",
     "system": "Cardiovascular",
-    "metric": "Blood Pressure (Systolic)",
-    "normalRangeMin": 0,
-    "normalRangeMax": 120,
-    "units": "mmHg",
-    "source": "Johns Hopkins Medicine"
+    "unit": "mg/dL",
+    "normalMin": "0.000",
+    "normalMax": "30.000",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_11",
+    "name": "Apolipoprotein B (ApoB)",
     "system": "Cardiovascular",
-    "metric": "Blood Pressure (Diastolic)",
-    "normalRangeMin": 0,
-    "normalRangeMax": 80,
-    "units": "mmHg",
-    "source": "Johns Hopkins Medicine"
+    "unit": "mg/dL",
+    "normalMin": "0.000",
+    "normalMax": "100.000",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_12",
+    "name": "Homocysteine",
     "system": "Cardiovascular",
-    "metric": "Left Ventricular Ejection Fraction (LVEF)",
-    "normalRangeMin": 50,
-    "normalRangeMax": 70,
-    "units": "%",
-    "source": "Cleveland Clinic"
+    "unit": "μmol/L",
+    "normalMin": "0.000",
+    "normalMax": "15.000",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_13",
+    "name": "High-sensitivity CRP (hs-CRP)",
     "system": "Cardiovascular",
-    "metric": "Cardiac Output (Resting)",
-    "normalRangeMin": 5,
-    "normalRangeMax": 6,
-    "units": "L/min",
-    "source": "Cleveland Clinic"
+    "unit": "mg/L",
+    "normalMin": "1.000",
+    "normalMax": "3.000",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_14",
+    "name": "Fibrinogen",
     "system": "Cardiovascular",
-    "metric": "Total Cholesterol",
-    "normalRangeMin": 125,
-    "normalRangeMax": 200,
-    "units": "mg/dL",
-    "source": "Cleveland Clinic"
+    "unit": "mg/dL",
+    "normalMin": "200.000",
+    "normalMax": "400.000",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_15",
+    "name": "D-dimer",
     "system": "Cardiovascular",
-    "metric": "LDL",
-    "normalRangeMin": 0,
-    "normalRangeMax": 100,
-    "units": "mg/dL",
-    "source": "Cleveland Clinic"
+    "unit": "μg/mL FEU",
+    "normalMin": "0.000",
+    "normalMax": "0.500",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_16",
+    "name": "Cardiac Troponin (cTnI or cTnT)",
     "system": "Cardiovascular",
-    "metric": "HDL",
-    "normalRangeMin": 40,
-    "normalRangeMax": 0,
-    "units": "mg/dL",
-    "source": "Cleveland Clinic"
+    "unit": "ng/L (hs assays)",
+    "normalMin": "0.000",
+    "normalMax": "15.000",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_17",
+    "name": "Creatine Kinase (CK), total",
     "system": "Cardiovascular",
-    "metric": "Triglycerides",
-    "normalRangeMin": 0,
-    "normalRangeMax": 150,
-    "units": "mg/dL",
-    "source": "Cleveland Clinic"
+    "unit": "U/L",
+    "normalMin": "30.000",
+    "normalMax": "220.000",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_18",
+    "name": "B-type Natriuretic Peptide (BNP)",
     "system": "Cardiovascular",
-    "metric": "Lipoprotein (a)",
-    "normalRangeMin": 0,
-    "normalRangeMax": 30,
-    "units": "mg/dL",
-    "source": "Cleveland Clinic"
+    "unit": "pg/mL",
+    "normalMin": "0.000",
+    "normalMax": "100.000",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_19",
+    "name": "NT-proBNP",
     "system": "Cardiovascular",
-    "metric": "Apolipoprotein B (ApoB)",
-    "normalRangeMin": 0,
-    "normalRangeMax": 100,
-    "units": "mg/dL",
-    "source": "Cleveland Clinic"
+    "unit": "pg/mL",
+    "normalMin": "0.000",
+    "normalMax": "125.000",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_2",
+    "name": "Blood Pressure (Systolic)",
     "system": "Cardiovascular",
-    "metric": "Homocysteine",
-    "normalRangeMin": 0,
-    "normalRangeMax": 15,
-    "units": "μmol/L",
-    "source": "Cleveland Clinic"
+    "unit": "mmHg",
+    "normalMin": "0.000",
+    "normalMax": "120.000",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_20",
+    "name": "Myeloperoxidase (MPO)",
     "system": "Cardiovascular",
-    "metric": "High-sensitivity CRP (hs-CRP)",
-    "normalRangeMin": 1,
-    "normalRangeMax": 3,
-    "units": "mg/L",
-    "source": "Cleveland Clinic"
+    "unit": "pmol/L",
+    "normalMin": "470.000",
+    "normalMax": "539.000",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_21",
+    "name": "Trimethylamine N-oxide (TMAO)",
     "system": "Cardiovascular",
-    "metric": "Fibrinogen",
-    "normalRangeMin": 200,
-    "normalRangeMax": 400,
-    "units": "mg/dL",
-    "source": "Cleveland Clinic"
+    "unit": "μM",
+    "normalMin": "0.000",
+    "normalMax": "6.200",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_22",
+    "name": "Hemoglobin (Blood)",
     "system": "Cardiovascular",
-    "metric": "D-dimer",
-    "normalRangeMin": 0,
-    "normalRangeMax": 0.5,
-    "units": "μg/mL FEU",
-    "source": "Cleveland Clinic"
+    "unit": "g/dL",
+    "normalMin": "12.000",
+    "normalMax": "18.000",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_23",
+    "name": "Hematocrit",
     "system": "Cardiovascular",
-    "metric": "Cardiac Troponin (cTnI or cTnT)",
-    "normalRangeMin": 0,
-    "normalRangeMax": 15,
-    "units": "ng/L (hs assays)",
-    "source": "Mayo Clinic Laboratories"
+    "unit": "% (fraction)",
+    "normalMin": "36.000",
+    "normalMax": "55.000",
+    "isKey": true
   },
   {
+    "id": "cardiovascular_24",
+    "name": "Red Blood Cell Count",
     "system": "Cardiovascular",
-    "metric": "Creatine Kinase (CK), total",
-    "normalRangeMin": 30,
-    "normalRangeMax": 220,
-    "units": "U/L",
-    "source": "Cleveland Clinic"
+    "unit": "million/μL",
+    "normalMin": "4.200",
+    "normalMax": "6.100",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_25",
+    "name": "Red Cell Distribution Width (RDW)",
     "system": "Cardiovascular",
-    "metric": "B-type Natriuretic Peptide (BNP)",
-    "normalRangeMin": 0,
-    "normalRangeMax": 100,
-    "units": "pg/mL",
-    "source": "Cleveland Clinic"
+    "unit": "%",
+    "normalMin": "12.000",
+    "normalMax": "12.000",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_26",
+    "name": "Mean Corpuscular Volume (MCV)",
     "system": "Cardiovascular",
-    "metric": "NT-proBNP",
-    "normalRangeMin": 0,
-    "normalRangeMax": 125,
-    "units": "pg/mL",
-    "source": "Cleveland Clinic"
+    "unit": "fL",
+    "normalMin": "80.000",
+    "normalMax": "100.000",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_27",
+    "name": "Mean Corpuscular Hemoglobin (MCH)",
     "system": "Cardiovascular",
-    "metric": "Myeloperoxidase (MPO)",
-    "normalRangeMin": 470,
-    "normalRangeMax": 539,
-    "units": "pmol/L",
-    "source": "Cleveland Clinic"
+    "unit": "pg/cell",
+    "normalMin": "27.000",
+    "normalMax": "31.000",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_28",
+    "name": "MCH Concentration (MCHC)",
     "system": "Cardiovascular",
-    "metric": "Trimethylamine N-oxide (TMAO)",
-    "normalRangeMin": 0,
-    "normalRangeMax": 6.2,
-    "units": "μM",
-    "source": "Cleveland Clinic"
+    "unit": "g/dL",
+    "normalMin": "32.000",
+    "normalMax": "36.000",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_29",
+    "name": "Ankle-Brachial Index (ABI)",
     "system": "Cardiovascular",
-    "metric": "Hemoglobin (Blood)",
-    "normalRangeMin": 12,
-    "normalRangeMax": 18,
-    "units": "g/dL",
-    "source": "Johns Hopkins (Complete Blood Count)"
+    "unit": "ratio (unitless)",
+    "normalMin": "1.000",
+    "normalMax": "1.400",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_3",
+    "name": "Blood Pressure (Diastolic)",
     "system": "Cardiovascular",
-    "metric": "Hematocrit",
-    "normalRangeMin": 36,
-    "normalRangeMax": 55,
-    "units": "% (fraction)",
-    "source": "Johns Hopkins (Complete Blood Count)"
+    "unit": "mmHg",
+    "normalMin": "0.000",
+    "normalMax": "80.000",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_30",
+    "name": "Non-HDL Cholesterol",
     "system": "Cardiovascular",
-    "metric": "Red Blood Cell Count",
-    "normalRangeMin": 4.2,
-    "normalRangeMax": 6.1,
-    "units": "million/μL",
-    "source": "NIH MedlinePlus"
+    "unit": "mg/dL",
+    "normalMin": "0.000",
+    "normalMax": "130.000",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_31",
+    "name": "Cholesterol/HDL Ratio",
     "system": "Cardiovascular",
-    "metric": "Red Cell Distribution Width (RDW)",
-    "normalRangeMin": 12,
-    "normalRangeMax": 12,
-    "units": "%",
-    "source": "Cleveland Clinic"
+    "unit": "ratio (unitless)",
+    "normalMin": "0.000",
+    "normalMax": "5.000",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_32",
+    "name": "VLDL Cholesterol",
     "system": "Cardiovascular",
-    "metric": "Mean Corpuscular Volume (MCV)",
-    "normalRangeMin": 80,
-    "normalRangeMax": 100,
-    "units": "fL",
-    "source": "NIH MedlinePlus"
+    "unit": "mg/dL",
+    "normalMin": "5.000",
+    "normalMax": "30.000",
+    "isKey": false
   },
   {
+    "id": "cardiovascular_33",
+    "name": "LDL Particle Number (LDL-P)",
     "system": "Cardiovascular",
-    "metric": "Mean Corpuscular Hemoglobin (MCH)",
-    "normalRangeMin": 27,
-    "normalRangeMax": 31,
-    "units": "pg/cell",
-    "source": "NIH MedlinePlus"
+    "unit": "nmol/L",
+    "normalMin": null,
+    "normalMax": null,
+    "isKey": false
   },
   {
+    "id": "cardiovascular_34",
+    "name": "Small LDL-P",
     "system": "Cardiovascular",
-    "metric": "MCH Concentration (MCHC)",
-    "normalRangeMin": 32,
-    "normalRangeMax": 36,
-    "units": "g/dL",
-    "source": "NIH MedlinePlus"
+    "unit": "nmol/L",
+    "normalMin": null,
+    "normalMax": null,
+    "isKey": false
   },
   {
+    "id": "cardiovascular_35",
+    "name": "Medium LDL-P",
     "system": "Cardiovascular",
-    "metric": "Ankle-Brachial Index (ABI)",
-    "normalRangeMin": 1,
-    "normalRangeMax": 1.4,
-    "units": "ratio (unitless)",
-    "source": "Mayo Clinic"
+    "unit": "nmol/L",
+    "normalMin": null,
+    "normalMax": null,
+    "isKey": false
   },
   {
-    "system": "Nervous/Brain",
-    "metric": "CSF Opening Pressure",
-    "normalRangeMin": 70,
-    "normalRangeMax": 180,
-    "units": "mm H2O",
-    "source": "NIH MedlinePlus"
+    "id": "cardiovascular_36",
+    "name": "HDL Large",
+    "system": "Cardiovascular",
+    "unit": "nmol/L",
+    "normalMin": null,
+    "normalMax": null,
+    "isKey": false
   },
   {
-    "system": "Nervous/Brain",
-    "metric": "CSF Total Protein",
-    "normalRangeMin": 15,
-    "normalRangeMax": 60,
-    "units": "mg/dL",
-    "source": "NIH MedlinePlus"
+    "id": "cardiovascular_37",
+    "name": "LDL Particle Size",
+    "system": "Cardiovascular",
+    "unit": "Angstrom",
+    "normalMin": null,
+    "normalMax": null,
+    "isKey": false
   },
   {
-    "system": "Nervous/Brain",
-    "metric": "CSF Glucose",
-    "normalRangeMin": 50,
-    "normalRangeMax": 80,
-    "units": "mg/dL",
-    "source": "NIH MedlinePlus"
+    "id": "cardiovascular_38",
+    "name": "Lp-PLA2 Activity",
+    "system": "Cardiovascular",
+    "unit": "nmol/min/mL",
+    "normalMin": null,
+    "normalMax": null,
+    "isKey": false
   },
   {
-    "system": "Nervous/Brain",
-    "metric": "CSF White Blood Cells",
-    "normalRangeMin": 0,
-    "normalRangeMax": 5,
-    "units": "cells/μL",
-    "source": "NIH MedlinePlus"
+    "id": "cardiovascular_4",
+    "name": "Left Ventricular Ejection Fraction (LVEF)",
+    "system": "Cardiovascular",
+    "unit": "%",
+    "normalMin": "50.000",
+    "normalMax": "70.000",
+    "isKey": false
   },
   {
-    "system": "Nervous/Brain",
-    "metric": "CSF Red Blood Cells",
-    "normalRangeMin": 0,
-    "normalRangeMax": 0,
-    "units": "cells/μL",
-    "source": "NIH MedlinePlus"
+    "id": "cardiovascular_5",
+    "name": "Cardiac Output (Resting)",
+    "system": "Cardiovascular",
+    "unit": "L/min",
+    "normalMin": "5.000",
+    "normalMax": "6.000",
+    "isKey": false
   },
   {
-    "system": "Nervous/Brain",
-    "metric": "CSF Chloride",
-    "normalRangeMin": 110,
-    "normalRangeMax": 125,
-    "units": "mEq/L",
-    "source": "NIH MedlinePlus"
+    "id": "cardiovascular_6",
+    "name": "Total Cholesterol",
+    "system": "Cardiovascular",
+    "unit": "mg/dL",
+    "normalMin": "125.000",
+    "normalMax": "200.000",
+    "isKey": true
   },
   {
-    "system": "Nervous/Brain",
-    "metric": "CSF Gamma Globulin",
-    "normalRangeMin": 3,
-    "normalRangeMax": 3,
-    "units": "%",
-    "source": "NIH MedlinePlus"
+    "id": "cardiovascular_7",
+    "name": "LDL",
+    "system": "Cardiovascular",
+    "unit": "mg/dL",
+    "normalMin": "0.000",
+    "normalMax": "100.000",
+    "isKey": true
   },
   {
-    "system": "Nervous/Brain",
-    "metric": "Serum Vitamin B12",
-    "normalRangeMin": 200,
-    "normalRangeMax": 900,
-    "units": "pg/mL",
-    "source": "Johns Hopkins (study)"
+    "id": "cardiovascular_8",
+    "name": "HDL",
+    "system": "Cardiovascular",
+    "unit": "mg/dL",
+    "normalMin": "40.000",
+    "normalMax": "100.000",
+    "isKey": true
   },
   {
-    "system": "Nervous/Brain",
-    "metric": "Serum Folate (Vitamin B9)",
-    "normalRangeMin": 2.7,
-    "normalRangeMax": 17,
-    "units": "ng/mL",
-    "source": "NIH MedlinePlus"
+    "id": "cardiovascular_9",
+    "name": "Triglycerides",
+    "system": "Cardiovascular",
+    "unit": "mg/dL",
+    "normalMin": "0.000",
+    "normalMax": "150.000",
+    "isKey": true
   },
   {
-    "system": "Nervous/Brain",
-    "metric": "Intracranial Pressure (ICP)",
-    "normalRangeMin": 7,
-    "normalRangeMax": 15,
-    "units": "mmHg",
-    "source": "(normal <20 mmHg)"
-  },
-  {
-    "system": "Nervous/Brain",
-    "metric": "Glasgow Coma Scale (GCS)",
-    "normalRangeMin": 15,
-    "normalRangeMax": 15,
-    "units": "score (3–15)",
-    "source": "Clinical standard (GCS=15 is fully alert)"
-  },
-  {
-    "system": "Respiratory",
-    "metric": "Arterial Blood pH",
-    "normalRangeMin": 7.35,
-    "normalRangeMax": 7.45,
-    "units": "pH units",
-    "source": "Cleveland Clinic (CCJM)"
-  },
-  {
-    "system": "Respiratory",
-    "metric": "PaO2 (Arterial O₂)",
-    "normalRangeMin": 80,
-    "normalRangeMax": 100,
-    "units": "mmHg",
-    "source": "StatPearls (NIH/NLM)"
-  },
-  {
-    "system": "Respiratory",
-    "metric": "PaCO2 (Arterial CO₂)",
-    "normalRangeMin": 35,
-    "normalRangeMax": 45,
-    "units": "mmHg",
-    "source": "StatPearls (NIH/NLM)"
-  },
-  {
-    "system": "Respiratory",
-    "metric": "Bicarbonate (HCO₃⁻)",
-    "normalRangeMin": 22,
-    "normalRangeMax": 26,
-    "units": "mEq/L",
-    "source": "StatPearls (NIH/NLM)"
-  },
-  {
-    "system": "Respiratory",
-    "metric": "Oxygen Saturation (SpO₂)",
-    "normalRangeMin": 95,
-    "normalRangeMax": 100,
-    "units": "% (on room air)",
-    "source": "Mayo Clinic"
-  },
-  {
-    "system": "Respiratory",
-    "metric": "Respiratory Rate",
-    "normalRangeMin": 12,
-    "normalRangeMax": 18,
-    "units": "breaths/min",
-    "source": "Johns Hopkins Medicine"
-  },
-  {
-    "system": "Respiratory",
-    "metric": "Tidal Volume",
-    "normalRangeMin": 500,
-    "normalRangeMax": 500,
-    "units": "mL (at rest)",
-    "source": "StatPearls (NIH/NLM)"
-  },
-  {
-    "system": "Respiratory",
-    "metric": "Vital Capacity (FVC)",
-    "normalRangeMin": 3,
-    "normalRangeMax": 5,
-    "units": "liters",
-    "source": "Method-dependent (spirometry prediction)"
-  },
-  {
-    "system": "Respiratory",
-    "metric": "FEV₁/FVC Ratio",
-    "normalRangeMin": 0.75,
-    "normalRangeMax": 80,
-    "units": "ratio (no units)",
-    "source": "Used in spirometry; normal ≥~0.7"
-  },
-  {
-    "system": "Respiratory",
-    "metric": "Peak Expiratory Flow (PEF)",
-    "normalRangeMin": 400,
-    "normalRangeMax": 600,
-    "units": "L/min",
-    "source": "Varies with sex, age, height (personal best used)"
-  },
-  {
+    "id": "digestive_1",
+    "name": "Alanine Aminotransferase (ALT)",
     "system": "Digestive",
-    "metric": "Alanine Aminotransferase (ALT)",
-    "normalRangeMin": 5,
-    "normalRangeMax": 55,
-    "units": "U/L",
-    "source": "Cleveland Clinic (sex-specific)"
+    "unit": "U/L",
+    "normalMin": "5.000",
+    "normalMax": "55.000",
+    "isKey": false
   },
   {
+    "id": "digestive_10",
+    "name": "Ferritin",
     "system": "Digestive",
-    "metric": "Aspartate Aminotransferase (AST)",
-    "normalRangeMin": 8,
-    "normalRangeMax": 48,
-    "units": "U/L",
-    "source": "Cleveland Clinic (sex-specific)"
+    "unit": "ng/mL",
+    "normalMin": "15.000",
+    "normalMax": "250.000",
+    "isKey": false
   },
   {
+    "id": "digestive_2",
+    "name": "Aspartate Aminotransferase (AST)",
     "system": "Digestive",
-    "metric": "Alkaline Phosphatase (ALP)",
-    "normalRangeMin": 44,
-    "normalRangeMax": 147,
-    "units": "U/L",
-    "source": "Cleveland Clinic (Health Essentials) (liver)"
+    "unit": "U/L",
+    "normalMin": "8.000",
+    "normalMax": "48.000",
+    "isKey": false
   },
   {
+    "id": "digestive_3",
+    "name": "Alkaline Phosphatase (ALP)",
     "system": "Digestive",
-    "metric": "Gamma-Glutamyl Transferase (GGT)",
-    "normalRangeMin": 9,
-    "normalRangeMax": 48,
-    "units": "U/L",
-    "source": "NIH MedlinePlus (Lab Test) (adult male)"
+    "unit": "U/L",
+    "normalMin": "44.000",
+    "normalMax": "147.000",
+    "isKey": false
   },
   {
+    "id": "digestive_4",
+    "name": "Gamma-Glutamyl Transferase (GGT)",
     "system": "Digestive",
-    "metric": "Total Bilirubin",
-    "normalRangeMin": 0.1,
-    "normalRangeMax": 1.2,
-    "units": "mg/dL",
-    "source": "Cleveland Clinic (part of liver panel)"
+    "unit": "U/L",
+    "normalMin": "9.000",
+    "normalMax": "48.000",
+    "isKey": false
   },
   {
+    "id": "digestive_5",
+    "name": "Total Bilirubin",
     "system": "Digestive",
-    "metric": "Amylase (Pancreatic)",
-    "normalRangeMin": 30,
-    "normalRangeMax": 110,
-    "units": "U/L",
-    "source": "Cleveland Clinic (Pancreatitis)"
+    "unit": "mg/dL",
+    "normalMin": "0.100",
+    "normalMax": "1.200",
+    "isKey": false
   },
   {
+    "id": "digestive_6",
+    "name": "Amylase (Pancreatic)",
     "system": "Digestive",
-    "metric": "Lipase (Pancreatic)",
-    "normalRangeMin": 0,
-    "normalRangeMax": 160,
-    "units": "U/L",
-    "source": "Cleveland Clinic (Pancreatitis)"
+    "unit": "U/L",
+    "normalMin": "30.000",
+    "normalMax": "110.000",
+    "isKey": false
   },
   {
+    "id": "digestive_7",
+    "name": "Lipase (Pancreatic)",
     "system": "Digestive",
-    "metric": "Serum Albumin",
-    "normalRangeMin": 3.5,
-    "normalRangeMax": 5,
-    "units": "g/dL",
-    "source": "NIH MedlinePlus (normal CSF uses albumin)"
+    "unit": "U/L",
+    "normalMin": "0.000",
+    "normalMax": "160.000",
+    "isKey": false
   },
   {
+    "id": "digestive_8",
+    "name": "Serum Albumin",
     "system": "Digestive",
-    "metric": "Serum Iron",
-    "normalRangeMin": 60,
-    "normalRangeMax": 170,
-    "units": "μg/dL",
-    "source": "Cleveland Clinic (Iron Studies)"
+    "unit": "g/dL",
+    "normalMin": "3.500",
+    "normalMax": "5.000",
+    "isKey": false
   },
   {
+    "id": "digestive_9",
+    "name": "Serum Iron",
     "system": "Digestive",
-    "metric": "Ferritin",
-    "normalRangeMin": 15,
-    "normalRangeMax": 250,
-    "units": "ng/mL",
-    "source": "Cleveland Clinic (Iron Studies) (approximate)"
+    "unit": "μg/dL",
+    "normalMin": "60.000",
+    "normalMax": "170.000",
+    "isKey": false
   },
   {
+    "id": "endocrine_hormonal_1",
+    "name": "Thyroid Stimulating Hormone (TSH)",
     "system": "Endocrine/Hormonal",
-    "metric": "Thyroid Stimulating Hormone (TSH)",
-    "normalRangeMin": 0.4,
-    "normalRangeMax": 4,
-    "units": "mIU/L",
-    "source": "NIH (MedlinePlus)"
+    "unit": "mIU/L",
+    "normalMin": "0.400",
+    "normalMax": "4.000",
+    "isKey": false
   },
   {
+    "id": "endocrine_hormonal_10",
+    "name": "Calcium (Total Serum)",
     "system": "Endocrine/Hormonal",
-    "metric": "Free T4 (Thyroxine)",
-    "normalRangeMin": 0.8,
-    "normalRangeMax": 2,
-    "units": "ng/dL",
-    "source": "Mayo Clinic Labs"
+    "unit": "mg/dL",
+    "normalMin": "8.500",
+    "normalMax": "10.500",
+    "isKey": false
   },
   {
+    "id": "endocrine_hormonal_11",
+    "name": "Parathyroid Hormone (PTH)",
     "system": "Endocrine/Hormonal",
-    "metric": "Free T3 (Triiodothyronine)",
-    "normalRangeMin": 2.3,
-    "normalRangeMax": 4.2,
-    "units": "pg/mL",
-    "source": "StatPearls (typical range)"
+    "unit": "pg/mL",
+    "normalMin": "10.000",
+    "normalMax": "65.000",
+    "isKey": false
   },
   {
+    "id": "endocrine_hormonal_12",
+    "name": "Estradiol (Female)",
     "system": "Endocrine/Hormonal",
-    "metric": "Morning Cortisol (8 AM)",
-    "normalRangeMin": 10,
-    "normalRangeMax": 20,
-    "units": "μg/dL",
-    "source": "Cleveland Clinic"
+    "unit": "pg/mL",
+    "normalMin": "0.000",
+    "normalMax": "350.000",
+    "isKey": false
   },
   {
+    "id": "endocrine_hormonal_13",
+    "name": "Testosterone (Total)",
     "system": "Endocrine/Hormonal",
-    "metric": "Afternoon Cortisol (4 PM)",
-    "normalRangeMin": 3,
-    "normalRangeMax": 10,
-    "units": "μg/dL",
-    "source": "Cleveland Clinic"
+    "unit": "ng/dL",
+    "normalMin": "15.000",
+    "normalMax": "1000.000",
+    "isKey": false
   },
   {
+    "id": "endocrine_hormonal_2",
+    "name": "Free T4 (Thyroxine)",
     "system": "Endocrine/Hormonal",
-    "metric": "Fasting Glucose",
-    "normalRangeMin": 70,
-    "normalRangeMax": 99,
-    "units": "mg/dL",
-    "source": "Cleveland Clinic"
+    "unit": "ng/dL",
+    "normalMin": "0.800",
+    "normalMax": "2.000",
+    "isKey": false
   },
   {
+    "id": "endocrine_hormonal_3",
+    "name": "Free T3 (Triiodothyronine)",
     "system": "Endocrine/Hormonal",
-    "metric": "Hemoglobin A1c (HbA1c)",
-    "normalRangeMin": 0,
-    "normalRangeMax": 5.7,
-    "units": "% (of total Hb)",
-    "source": "Cleveland Clinic"
+    "unit": "pg/mL",
+    "normalMin": "2.300",
+    "normalMax": "4.200",
+    "isKey": false
   },
   {
+    "id": "endocrine_hormonal_4",
+    "name": "Morning Cortisol (8 AM)",
     "system": "Endocrine/Hormonal",
-    "metric": "Fasting Insulin",
-    "normalRangeMin": 0,
-    "normalRangeMax": 25,
-    "units": "μIU/mL",
-    "source": "Medscape"
+    "unit": "μg/dL",
+    "normalMin": "10.000",
+    "normalMax": "20.000",
+    "isKey": false
   },
   {
+    "id": "endocrine_hormonal_5",
+    "name": "Afternoon Cortisol (4 PM)",
     "system": "Endocrine/Hormonal",
-    "metric": "Vitamin D, 25-OH",
-    "normalRangeMin": 30,
-    "normalRangeMax": 100,
-    "units": "ng/mL",
-    "source": "Cleveland Clinic"
+    "unit": "μg/dL",
+    "normalMin": "3.000",
+    "normalMax": "10.000",
+    "isKey": false
   },
   {
+    "id": "endocrine_hormonal_6",
+    "name": "Fasting Glucose",
     "system": "Endocrine/Hormonal",
-    "metric": "Calcium (Total Serum)",
-    "normalRangeMin": 8.5,
-    "normalRangeMax": 10.5,
-    "units": "mg/dL",
-    "source": "NIH (PubMed)"
+    "unit": "mg/dL",
+    "normalMin": "70.000",
+    "normalMax": "99.000",
+    "isKey": true
   },
   {
+    "id": "endocrine_hormonal_7",
+    "name": "Hemoglobin A1c (HbA1c)",
     "system": "Endocrine/Hormonal",
-    "metric": "Parathyroid Hormone (PTH)",
-    "normalRangeMin": 10,
-    "normalRangeMax": 65,
-    "units": "pg/mL",
-    "source": "NIH (OUP) (reference range)"
+    "unit": "% (of total Hb)",
+    "normalMin": "0.000",
+    "normalMax": "5.700",
+    "isKey": false
   },
   {
+    "id": "endocrine_hormonal_8",
+    "name": "Fasting Insulin",
     "system": "Endocrine/Hormonal",
-    "metric": "Estradiol (Female)",
-    "normalRangeMin": 0,
-    "normalRangeMax": 350,
-    "units": "pg/mL",
-    "source": "Varies by cycle phase; method-dependent"
+    "unit": "μIU/mL",
+    "normalMin": "0.000",
+    "normalMax": "25.000",
+    "isKey": false
   },
   {
+    "id": "endocrine_hormonal_9",
+    "name": "Vitamin D, 25-OH",
     "system": "Endocrine/Hormonal",
-    "metric": "Testosterone (Total)",
-    "normalRangeMin": 15,
-    "normalRangeMax": 1000,
-    "units": "ng/dL",
-    "source": "UpToDate (range for adults)"
+    "unit": "ng/mL",
+    "normalMin": "30.000",
+    "normalMax": "100.000",
+    "isKey": false
   },
   {
-    "system": "Urinary/Renal",
-    "metric": "Blood Urea Nitrogen (BUN)",
-    "normalRangeMin": 7,
-    "normalRangeMax": 20,
-    "units": "mg/dL",
-    "source": "Cleveland Clinic"
+    "id": "immune_inflammatory_1",
+    "name": "White Blood Cell Count (WBC)",
+    "system": "Immune/Inflammatory",
+    "unit": "per μL",
+    "normalMin": "4500.000",
+    "normalMax": "11000.000",
+    "isKey": false
   },
   {
-    "system": "Urinary/Renal",
-    "metric": "Serum Creatinine",
-    "normalRangeMin": 0.59,
-    "normalRangeMax": 1.35,
-    "units": "mg/dL",
-    "source": "Mayo Clinic"
+    "id": "immune_inflammatory_10",
+    "name": "IgM (Immunoglobulin M)",
+    "system": "Immune/Inflammatory",
+    "unit": "mg/dL",
+    "normalMin": "40.000",
+    "normalMax": "230.000",
+    "isKey": false
   },
   {
-    "system": "Urinary/Renal",
-    "metric": "eGFR (estimated GFR)",
-    "normalRangeMin": 90,
-    "normalRangeMax": 0,
-    "units": "mL/min/1.73 m²",
-    "source": "National Kidney Foundation"
+    "id": "immune_inflammatory_11",
+    "name": "Complement C3",
+    "system": "Immune/Inflammatory",
+    "unit": "mg/dL",
+    "normalMin": "90.000",
+    "normalMax": "180.000",
+    "isKey": false
   },
   {
-    "system": "Urinary/Renal",
-    "metric": "Sodium (Serum)",
-    "normalRangeMin": 135,
-    "normalRangeMax": 145,
-    "units": "mmol/L",
-    "source": "Cleveland Clinic (Ref.)"
+    "id": "immune_inflammatory_12",
+    "name": "Complement C4",
+    "system": "Immune/Inflammatory",
+    "unit": "mg/dL",
+    "normalMin": "10.000",
+    "normalMax": "40.000",
+    "isKey": false
   },
   {
-    "system": "Urinary/Renal",
-    "metric": "Potassium (Serum)",
-    "normalRangeMin": 3.5,
-    "normalRangeMax": 5,
-    "units": "mmol/L",
-    "source": "Cleveland Clinic (Ref.)"
+    "id": "immune_inflammatory_2",
+    "name": "Neutrophils (Absolute)",
+    "system": "Immune/Inflammatory",
+    "unit": "per μL",
+    "normalMin": "1500.000",
+    "normalMax": "8000.000",
+    "isKey": false
   },
   {
-    "system": "Urinary/Renal",
-    "metric": "Chloride (Serum)",
-    "normalRangeMin": 98,
-    "normalRangeMax": 107,
-    "units": "mmol/L",
-    "source": "Clinical reference"
+    "id": "immune_inflammatory_3",
+    "name": "Lymphocytes (Absolute)",
+    "system": "Immune/Inflammatory",
+    "unit": "per μL",
+    "normalMin": "1000.000",
+    "normalMax": "4000.000",
+    "isKey": false
   },
   {
-    "system": "Urinary/Renal",
-    "metric": "Serum Phosphate",
-    "normalRangeMin": 2.5,
-    "normalRangeMax": 4.5,
-    "units": "mg/dL",
-    "source": "NIH PubMed"
+    "id": "immune_inflammatory_4",
+    "name": "Platelet Count",
+    "system": "Immune/Inflammatory",
+    "unit": "per μL",
+    "normalMin": "150000.000",
+    "normalMax": "450000.000",
+    "isKey": false
   },
   {
-    "system": "Urinary/Renal",
-    "metric": "Serum Magnesium",
-    "normalRangeMin": 1.8,
-    "normalRangeMax": 2.4,
-    "units": "mg/dL",
-    "source": "NIH PubMed"
+    "id": "immune_inflammatory_5",
+    "name": "Erythrocyte Sedimentation Rate (ESR)",
+    "system": "Immune/Inflammatory",
+    "unit": "mm/hour",
+    "normalMin": "0.000",
+    "normalMax": "30.000",
+    "isKey": false
   },
   {
-    "system": "Urinary/Renal",
-    "metric": "Urine Specific Gravity",
-    "normalRangeMin": 1.005,
-    "normalRangeMax": 1.03,
-    "units": "(ratio)",
-    "source": "Cleveland Clinic"
+    "id": "immune_inflammatory_6",
+    "name": "C-Reactive Protein (CRP)",
+    "system": "Immune/Inflammatory",
+    "unit": "mg/L",
+    "normalMin": "0.000",
+    "normalMax": "5.000",
+    "isKey": false
   },
   {
-    "system": "Urinary/Renal",
-    "metric": "Urine pH",
-    "normalRangeMin": 4.5,
-    "normalRangeMax": 8,
-    "units": "pH units",
-    "source": "Standard UA range"
+    "id": "immune_inflammatory_7",
+    "name": "Rheumatoid Factor (RF)",
+    "system": "Immune/Inflammatory",
+    "unit": "IU/mL",
+    "normalMin": "0.000",
+    "normalMax": "20.000",
+    "isKey": false
   },
   {
-    "system": "Urinary/Renal",
-    "metric": "Urine Protein",
-    "normalRangeMin": 0,
-    "normalRangeMax": 150,
-    "units": "mg/day",
-    "source": "National Kidney Foundation"
+    "id": "immune_inflammatory_8",
+    "name": "IgG (Immunoglobulin G)",
+    "system": "Immune/Inflammatory",
+    "unit": "mg/dL",
+    "normalMin": "700.000",
+    "normalMax": "1600.000",
+    "isKey": false
   },
   {
-    "system": "Urinary/Renal",
-    "metric": "Urine Albumin-Creatinine Ratio",
-    "normalRangeMin": 0,
-    "normalRangeMax": 30,
-    "units": "mg/g",
-    "source": "Cleveland Clinic"
+    "id": "immune_inflammatory_9",
+    "name": "IgA (Immunoglobulin A)",
+    "system": "Immune/Inflammatory",
+    "unit": "mg/dL",
+    "normalMin": "70.000",
+    "normalMax": "400.000",
+    "isKey": false
   },
   {
-    "system": "Urinary/Renal",
-    "metric": "Urine RBCs (microscopic)",
-    "normalRangeMin": 0,
-    "normalRangeMax": 2,
-    "units": "per HPF",
-    "source": "NIH MedlinePlus (UA)"
-  },
-  {
-    "system": "Urinary/Renal",
-    "metric": "Urine WBCs (microscopic)",
-    "normalRangeMin": 0,
-    "normalRangeMax": 5,
-    "units": "per HPF",
-    "source": "NIH MedlinePlus (UA)"
-  },
-  {
-    "system": "Reproductive",
-    "metric": "Follicle-Stim. Hormone (FSH)",
-    "normalRangeMin": 1.5,
-    "normalRangeMax": 13,
-    "units": "mIU/mL",
-    "source": "Johns Hopkins (Health Lib.)"
-  },
-  {
-    "system": "Reproductive",
-    "metric": "Luteinizing Hormone (LH)",
-    "normalRangeMin": 1.8,
-    "normalRangeMax": 15,
-    "units": "mIU/mL",
-    "source": "Johns Hopkins (Health Lib.)"
-  },
-  {
-    "system": "Reproductive",
-    "metric": "Estradiol (E2, Female)",
-    "normalRangeMin": 50,
-    "normalRangeMax": 250,
-    "units": "pg/mL",
-    "source": "Cleveland Clinic (varies by cycle)"
-  },
-  {
-    "system": "Reproductive",
-    "metric": "Progesterone (Female)",
-    "normalRangeMin": 5,
-    "normalRangeMax": 20,
-    "units": "ng/mL",
-    "source": "Cleveland Clinic (Ob/Gyn)"
-  },
-  {
-    "system": "Reproductive",
-    "metric": "Total Testosterone",
-    "normalRangeMin": 15,
-    "normalRangeMax": 1000,
-    "units": "ng/dL",
-    "source": "NIH Urology"
-  },
-  {
-    "system": "Reproductive",
-    "metric": "Prostate-Specific Antigen (PSA)",
-    "normalRangeMin": 0,
-    "normalRangeMax": 4,
-    "units": "ng/mL",
-    "source": "Cleveland Clinic"
-  },
-  {
-    "system": "Reproductive",
-    "metric": "hCG (Pregnancy Test)",
-    "normalRangeMin": 0,
-    "normalRangeMax": 5,
-    "units": "mIU/mL",
-    "source": "Harvard Medical School"
-  },
-  {
-    "system": "Reproductive",
-    "metric": "Anti-Müllerian Hormone (AMH)",
-    "normalRangeMin": 1,
-    "normalRangeMax": 4,
-    "units": "ng/mL",
-    "source": "Johns Hopkins (Fertility)"
-  },
-  {
-    "system": "Reproductive",
-    "metric": "Semen Sperm Count",
-    "normalRangeMin": 15000000,
-    "normalRangeMax": 0,
-    "units": "per mL",
-    "source": "WHO Guidelines"
-  },
-  {
+    "id": "integumentary__skin__1",
+    "name": "Body Temperature (oral)",
     "system": "Integumentary (Skin)",
-    "metric": "Body Temperature (oral)",
-    "normalRangeMin": 97.8,
-    "normalRangeMax": 99,
-    "units": "°F",
-    "source": "Johns Hopkins Medicine"
+    "unit": "°F",
+    "normalMin": "97.800",
+    "normalMax": "99.000",
+    "isKey": false
   },
   {
+    "id": "integumentary__skin__2",
+    "name": "Skin pH (surface)",
     "system": "Integumentary (Skin)",
-    "metric": "Skin pH (surface)",
-    "normalRangeMin": 4.7,
-    "normalRangeMax": 5.9,
-    "units": "pH units",
-    "source": "WHO Dermatology"
+    "unit": "pH units",
+    "normalMin": "4.700",
+    "normalMax": "5.900",
+    "isKey": false
   },
   {
+    "id": "integumentary__skin__3",
+    "name": "Vitamin C (Plasma)",
     "system": "Integumentary (Skin)",
-    "metric": "Vitamin C (Plasma)",
-    "normalRangeMin": 0.6,
-    "normalRangeMax": 2,
-    "units": "mg/dL",
-    "source": "NIH ODS"
+    "unit": "mg/dL",
+    "normalMin": "0.600",
+    "normalMax": "2.000",
+    "isKey": false
   },
   {
+    "id": "integumentary__skin__4",
+    "name": "Zinc (Serum)",
     "system": "Integumentary (Skin)",
-    "metric": "Zinc (Serum)",
-    "normalRangeMin": 60,
-    "normalRangeMax": 130,
-    "units": "μg/dL",
-    "source": "NIH ODS"
+    "unit": "μg/dL",
+    "normalMin": "60.000",
+    "normalMax": "130.000",
+    "isKey": false
   },
   {
+    "id": "integumentary__skin__5",
+    "name": "Copper (Serum)",
     "system": "Integumentary (Skin)",
-    "metric": "Copper (Serum)",
-    "normalRangeMin": 70,
-    "normalRangeMax": 155,
-    "units": "μg/dL",
-    "source": "NIH ODS"
+    "unit": "μg/dL",
+    "normalMin": "70.000",
+    "normalMax": "155.000",
+    "isKey": false
   },
   {
+    "id": "integumentary__skin__6",
+    "name": "Vitamin A (Retinol)",
     "system": "Integumentary (Skin)",
-    "metric": "Vitamin A (Retinol)",
-    "normalRangeMin": 20,
-    "normalRangeMax": 60,
-    "units": "μg/dL",
-    "source": "WHO Nutrition"
+    "unit": "μg/dL",
+    "normalMin": "20.000",
+    "normalMax": "60.000",
+    "isKey": false
   },
   {
-    "system": "Immune/Inflammatory",
-    "metric": "White Blood Cell Count (WBC)",
-    "normalRangeMin": 4500,
-    "normalRangeMax": 11000,
-    "units": "per μL",
-    "source": "Johns Hopkins (CBC)"
+    "id": "nervous_brain_1",
+    "name": "CSF Opening Pressure",
+    "system": "Nervous/Brain",
+    "unit": "mm H2O",
+    "normalMin": "70.000",
+    "normalMax": "180.000",
+    "isKey": false
   },
   {
-    "system": "Immune/Inflammatory",
-    "metric": "Neutrophils (Absolute)",
-    "normalRangeMin": 1500,
-    "normalRangeMax": 8000,
-    "units": "per μL",
-    "source": "Johns Hopkins (CBC diff)"
+    "id": "nervous_brain_10",
+    "name": "Intracranial Pressure (ICP)",
+    "system": "Nervous/Brain",
+    "unit": "mmHg",
+    "normalMin": "7.000",
+    "normalMax": "15.000",
+    "isKey": false
   },
   {
-    "system": "Immune/Inflammatory",
-    "metric": "Lymphocytes (Absolute)",
-    "normalRangeMin": 1000,
-    "normalRangeMax": 4000,
-    "units": "per μL",
-    "source": "Johns Hopkins (CBC diff)"
+    "id": "nervous_brain_11",
+    "name": "Glasgow Coma Scale (GCS)",
+    "system": "Nervous/Brain",
+    "unit": "score (3–15)",
+    "normalMin": "15.000",
+    "normalMax": "15.000",
+    "isKey": false
   },
   {
-    "system": "Immune/Inflammatory",
-    "metric": "Platelet Count",
-    "normalRangeMin": 150000,
-    "normalRangeMax": 450000,
-    "units": "per μL",
-    "source": "Johns Hopkins (CBC)"
+    "id": "nervous_brain_2",
+    "name": "CSF Total Protein",
+    "system": "Nervous/Brain",
+    "unit": "mg/dL",
+    "normalMin": "15.000",
+    "normalMax": "60.000",
+    "isKey": false
   },
   {
-    "system": "Immune/Inflammatory",
-    "metric": "Erythrocyte Sedimentation Rate (ESR)",
-    "normalRangeMin": 0,
-    "normalRangeMax": 30,
-    "units": "mm/hour",
-    "source": "Cleveland Clinic"
+    "id": "nervous_brain_3",
+    "name": "CSF Glucose",
+    "system": "Nervous/Brain",
+    "unit": "mg/dL",
+    "normalMin": "50.000",
+    "normalMax": "80.000",
+    "isKey": false
   },
   {
-    "system": "Immune/Inflammatory",
-    "metric": "C-Reactive Protein (CRP)",
-    "normalRangeMin": 0,
-    "normalRangeMax": 5,
-    "units": "mg/L",
-    "source": "Cleveland Clinic (conventional CRP)"
+    "id": "nervous_brain_4",
+    "name": "CSF White Blood Cells",
+    "system": "Nervous/Brain",
+    "unit": "cells/μL",
+    "normalMin": "0.000",
+    "normalMax": "5.000",
+    "isKey": false
   },
   {
-    "system": "Immune/Inflammatory",
-    "metric": "Rheumatoid Factor (RF)",
-    "normalRangeMin": 0,
-    "normalRangeMax": 20,
-    "units": "IU/mL",
-    "source": "Cleveland Clinic"
+    "id": "nervous_brain_5",
+    "name": "CSF Red Blood Cells",
+    "system": "Nervous/Brain",
+    "unit": "cells/μL",
+    "normalMin": "0.000",
+    "normalMax": "0.000",
+    "isKey": false
   },
   {
-    "system": "Immune/Inflammatory",
-    "metric": "IgG (Immunoglobulin G)",
-    "normalRangeMin": 700,
-    "normalRangeMax": 1600,
-    "units": "mg/dL",
-    "source": "Cleveland Clinic (Sjögren’s)"
+    "id": "nervous_brain_6",
+    "name": "CSF Chloride",
+    "system": "Nervous/Brain",
+    "unit": "mEq/L",
+    "normalMin": "110.000",
+    "normalMax": "125.000",
+    "isKey": false
   },
   {
-    "system": "Immune/Inflammatory",
-    "metric": "IgA (Immunoglobulin A)",
-    "normalRangeMin": 70,
-    "normalRangeMax": 400,
-    "units": "mg/dL",
-    "source": "Cleveland Clinic (Sjögren’s)"
+    "id": "nervous_brain_7",
+    "name": "CSF Gamma Globulin",
+    "system": "Nervous/Brain",
+    "unit": "%",
+    "normalMin": "3.000",
+    "normalMax": "3.000",
+    "isKey": false
   },
   {
-    "system": "Immune/Inflammatory",
-    "metric": "IgM (Immunoglobulin M)",
-    "normalRangeMin": 40,
-    "normalRangeMax": 230,
-    "units": "mg/dL",
-    "source": "Cleveland Clinic (Sjögren’s)"
+    "id": "nervous_brain_8",
+    "name": "Serum Vitamin B12",
+    "system": "Nervous/Brain",
+    "unit": "pg/mL",
+    "normalMin": "200.000",
+    "normalMax": "900.000",
+    "isKey": false
   },
   {
-    "system": "Immune/Inflammatory",
-    "metric": "Complement C3",
-    "normalRangeMin": 90,
-    "normalRangeMax": 180,
-    "units": "mg/dL",
-    "source": "UpToDate (normal range)"
+    "id": "nervous_brain_9",
+    "name": "Serum Folate (Vitamin B9)",
+    "system": "Nervous/Brain",
+    "unit": "ng/mL",
+    "normalMin": "2.700",
+    "normalMax": "17.000",
+    "isKey": false
   },
   {
-    "system": "Immune/Inflammatory",
-    "metric": "Complement C4",
-    "normalRangeMin": 10,
-    "normalRangeMax": 40,
-    "units": "mg/dL",
-    "source": "UpToDate"
+    "id": "reproductive_1",
+    "name": "Follicle-Stim. Hormone (FSH)",
+    "system": "Reproductive",
+    "unit": "mIU/mL",
+    "normalMin": "1.500",
+    "normalMax": "13.000",
+    "isKey": false
   },
   {
-    "system": "Sensory (Vision)",
-    "metric": "Visual Acuity (Snellen)",
-    "normalRangeMin": 20,
-    "normalRangeMax": 20,
-    "units": "%",
-    "source": "Harvard Med. (Ophthalmology)"
+    "id": "reproductive_2",
+    "name": "Luteinizing Hormone (LH)",
+    "system": "Reproductive",
+    "unit": "mIU/mL",
+    "normalMin": "1.800",
+    "normalMax": "15.000",
+    "isKey": false
   },
   {
-    "system": "Sensory (Vision)",
-    "metric": "Intraocular Pressure (IOP)",
-    "normalRangeMin": 10,
-    "normalRangeMax": 21,
-    "units": "mmHg",
-    "source": "Johns Hopkins (Glaucoma)"
+    "id": "reproductive_3",
+    "name": "Estradiol (E2, Female)",
+    "system": "Reproductive",
+    "unit": "pg/mL",
+    "normalMin": "50.000",
+    "normalMax": "250.000",
+    "isKey": false
   },
   {
-    "system": "Sensory (Vision)",
-    "metric": "Color Vision (Ishihara)",
-    "normalRangeMin": 0,
-    "normalRangeMax": 0,
-    "units": "",
-    "source": "NIH (NEI)"
+    "id": "reproductive_4",
+    "name": "Progesterone (Female)",
+    "system": "Reproductive",
+    "unit": "ng/mL",
+    "normalMin": "5.000",
+    "normalMax": "20.000",
+    "isKey": false
   },
   {
+    "id": "reproductive_5",
+    "name": "Total Testosterone",
+    "system": "Reproductive",
+    "unit": "ng/dL",
+    "normalMin": "15.000",
+    "normalMax": "1000.000",
+    "isKey": false
+  },
+  {
+    "id": "reproductive_6",
+    "name": "Prostate-Specific Antigen (PSA)",
+    "system": "Reproductive",
+    "unit": "ng/mL",
+    "normalMin": "0.000",
+    "normalMax": "4.000",
+    "isKey": false
+  },
+  {
+    "id": "reproductive_7",
+    "name": "hCG (Pregnancy Test)",
+    "system": "Reproductive",
+    "unit": "mIU/mL",
+    "normalMin": "0.000",
+    "normalMax": "5.000",
+    "isKey": false
+  },
+  {
+    "id": "reproductive_8",
+    "name": "Anti-Müllerian Hormone (AMH)",
+    "system": "Reproductive",
+    "unit": "ng/mL",
+    "normalMin": "1.000",
+    "normalMax": "4.000",
+    "isKey": false
+  },
+  {
+    "id": "reproductive_9",
+    "name": "Semen Sperm Count",
+    "system": "Reproductive",
+    "unit": "per mL",
+    "normalMin": "9999999.999",
+    "normalMax": "0.000",
+    "isKey": false
+  },
+  {
+    "id": "respiratory_1",
+    "name": "Arterial Blood pH",
+    "system": "Respiratory",
+    "unit": "pH units",
+    "normalMin": "7.350",
+    "normalMax": "7.450",
+    "isKey": false
+  },
+  {
+    "id": "respiratory_10",
+    "name": "Peak Expiratory Flow (PEF)",
+    "system": "Respiratory",
+    "unit": "L/min",
+    "normalMin": "400.000",
+    "normalMax": "600.000",
+    "isKey": false
+  },
+  {
+    "id": "respiratory_2",
+    "name": "PaO2 (Arterial O₂)",
+    "system": "Respiratory",
+    "unit": "mmHg",
+    "normalMin": "80.000",
+    "normalMax": "100.000",
+    "isKey": false
+  },
+  {
+    "id": "respiratory_3",
+    "name": "PaCO2 (Arterial CO₂)",
+    "system": "Respiratory",
+    "unit": "mmHg",
+    "normalMin": "35.000",
+    "normalMax": "45.000",
+    "isKey": false
+  },
+  {
+    "id": "respiratory_4",
+    "name": "Bicarbonate (HCO₃⁻)",
+    "system": "Respiratory",
+    "unit": "mEq/L",
+    "normalMin": "22.000",
+    "normalMax": "26.000",
+    "isKey": false
+  },
+  {
+    "id": "respiratory_5",
+    "name": "Oxygen Saturation (SpO₂)",
+    "system": "Respiratory",
+    "unit": "% (on room air)",
+    "normalMin": "95.000",
+    "normalMax": "100.000",
+    "isKey": false
+  },
+  {
+    "id": "respiratory_6",
+    "name": "Respiratory Rate",
+    "system": "Respiratory",
+    "unit": "breaths/min",
+    "normalMin": "12.000",
+    "normalMax": "18.000",
+    "isKey": false
+  },
+  {
+    "id": "respiratory_7",
+    "name": "Tidal Volume",
+    "system": "Respiratory",
+    "unit": "mL (at rest)",
+    "normalMin": "500.000",
+    "normalMax": "500.000",
+    "isKey": false
+  },
+  {
+    "id": "respiratory_8",
+    "name": "Vital Capacity (FVC)",
+    "system": "Respiratory",
+    "unit": "liters",
+    "normalMin": "3.000",
+    "normalMax": "5.000",
+    "isKey": false
+  },
+  {
+    "id": "respiratory_9",
+    "name": "FEV₁/FVC Ratio",
+    "system": "Respiratory",
+    "unit": "ratio (no units)",
+    "normalMin": "0.750",
+    "normalMax": "80.000",
+    "isKey": false
+  },
+  {
+    "id": "sensory__hearing__1",
+    "name": "Hearing Level (Audiometry)",
     "system": "Sensory (Hearing)",
-    "metric": "Hearing Level (Audiometry)",
-    "normalRangeMin": 0,
-    "normalRangeMax": 25,
-    "units": "dB HL",
-    "source": "NIH (NIDCD)"
+    "unit": "dB HL",
+    "normalMin": "0.000",
+    "normalMax": "25.000",
+    "isKey": false
   },
   {
+    "id": "sensory__hearing__2",
+    "name": "Tympanic Membrane Mobility",
     "system": "Sensory (Hearing)",
-    "metric": "Tympanic Membrane Mobility",
-    "normalRangeMin": 0,
-    "normalRangeMax": 0,
-    "units": "– (qualitative)",
-    "source": "Johns Hopkins (ENT)"
+    "unit": "– (qualitative)",
+    "normalMin": "0.000",
+    "normalMax": "0.000",
+    "isKey": false
   },
   {
-    "system": "Biological Age/Epigenetics",
-    "metric": "DNA Methylation Age (Epigenetic Age)",
-    "normalRangeMin": 0,
-    "normalRangeMax": 0,
-    "units": "years",
-    "source": "Method-dependent (e.g. Horvath clock)"
+    "id": "sensory__vision__1",
+    "name": "Visual Acuity (Snellen)",
+    "system": "Sensory (Vision)",
+    "unit": "%",
+    "normalMin": "20.000",
+    "normalMax": "20.000",
+    "isKey": false
   },
   {
-    "system": "Biological Age/Epigenetics",
-    "metric": "Telomere Length (Leukocyte)",
-    "normalRangeMin": 7,
-    "normalRangeMax": 10,
-    "units": "kilobases",
-    "source": "WHO Aging Research"
+    "id": "sensory__vision__2",
+    "name": "Intraocular Pressure (IOP)",
+    "system": "Sensory (Vision)",
+    "unit": "mmHg",
+    "normalMin": "10.000",
+    "normalMax": "21.000",
+    "isKey": false
   },
   {
-    "system": "Biological Age/Epigenetics",
-    "metric": "Frailty Index",
-    "normalRangeMin": 0,
-    "normalRangeMax": 0.2,
-    "units": "(proportion)",
-    "source": "Johns Hopkins Geriatrics"
+    "id": "sensory__vision__3",
+    "name": "Color Vision (Ishihara)",
+    "system": "Sensory (Vision)",
+    "unit": "unitless",
+    "normalMin": "0.000",
+    "normalMax": "0.000",
+    "isKey": false
   },
   {
-    "system": "Biological Age/Epigenetics",
-    "metric": "Grip Strength",
-    "normalRangeMin": 20,
-    "normalRangeMax": 0,
-    "units": "kg",
-    "source": "NIH Geriatrics"
+    "id": "urinary_renal_1",
+    "name": "Blood Urea Nitrogen (BUN)",
+    "system": "Urinary/Renal",
+    "unit": "mg/dL",
+    "normalMin": "7.000",
+    "normalMax": "20.000",
+    "isKey": false
   },
   {
-    "system": "Biological Age/Epigenetics",
-    "metric": "Gait Speed (4-m walk)",
-    "normalRangeMin": 1,
-    "normalRangeMax": 0,
-    "units": "m/s",
-    "source": "NIH Aging"
+    "id": "urinary_renal_10",
+    "name": "Urine pH",
+    "system": "Urinary/Renal",
+    "unit": "pH units",
+    "normalMin": "4.500",
+    "normalMax": "8.000",
+    "isKey": false
   },
   {
-    "system": "Biological Age/Epigenetics",
-    "metric": "Bone Density (T-score)",
-    "normalRangeMin": -1,
-    "normalRangeMax": 0,
-    "units": "– (SD score)",
-    "source": "WHO (osteoporosis criteria)"
+    "id": "urinary_renal_11",
+    "name": "Urine Protein",
+    "system": "Urinary/Renal",
+    "unit": "mg/day",
+    "normalMin": "0.000",
+    "normalMax": "150.000",
+    "isKey": false
   },
   {
-    "system": "Biological Age/Epigenetics",
-    "metric": "Advanced Glycation (AGEs)",
-    "normalRangeMin": 0,
-    "normalRangeMax": 14,
-    "units": "AU (arbitrary)",
-    "source": "UpToDate (Diabetes)"
+    "id": "urinary_renal_12",
+    "name": "Urine Albumin-Creatinine Ratio",
+    "system": "Urinary/Renal",
+    "unit": "mg/g",
+    "normalMin": "0.000",
+    "normalMax": "30.000",
+    "isKey": false
+  },
+  {
+    "id": "urinary_renal_13",
+    "name": "Urine RBCs (microscopic)",
+    "system": "Urinary/Renal",
+    "unit": "per HPF",
+    "normalMin": "0.000",
+    "normalMax": "2.000",
+    "isKey": false
+  },
+  {
+    "id": "urinary_renal_14",
+    "name": "Urine WBCs (microscopic)",
+    "system": "Urinary/Renal",
+    "unit": "per HPF",
+    "normalMin": "0.000",
+    "normalMax": "5.000",
+    "isKey": false
+  },
+  {
+    "id": "urinary_renal_2",
+    "name": "Serum Creatinine",
+    "system": "Urinary/Renal",
+    "unit": "mg/dL",
+    "normalMin": "0.590",
+    "normalMax": "1.350",
+    "isKey": true
+  },
+  {
+    "id": "urinary_renal_3",
+    "name": "eGFR (estimated GFR)",
+    "system": "Urinary/Renal",
+    "unit": "mL/min/1.73 m²",
+    "normalMin": "90.000",
+    "normalMax": "0.000",
+    "isKey": false
+  },
+  {
+    "id": "urinary_renal_4",
+    "name": "Sodium (Serum)",
+    "system": "Urinary/Renal",
+    "unit": "mmol/L",
+    "normalMin": "135.000",
+    "normalMax": "145.000",
+    "isKey": false
+  },
+  {
+    "id": "urinary_renal_5",
+    "name": "Potassium (Serum)",
+    "system": "Urinary/Renal",
+    "unit": "mmol/L",
+    "normalMin": "3.500",
+    "normalMax": "5.000",
+    "isKey": false
+  },
+  {
+    "id": "urinary_renal_6",
+    "name": "Chloride (Serum)",
+    "system": "Urinary/Renal",
+    "unit": "mmol/L",
+    "normalMin": "98.000",
+    "normalMax": "107.000",
+    "isKey": false
+  },
+  {
+    "id": "urinary_renal_7",
+    "name": "Serum Phosphate",
+    "system": "Urinary/Renal",
+    "unit": "mg/dL",
+    "normalMin": "2.500",
+    "normalMax": "4.500",
+    "isKey": false
+  },
+  {
+    "id": "urinary_renal_8",
+    "name": "Serum Magnesium",
+    "system": "Urinary/Renal",
+    "unit": "mg/dL",
+    "normalMin": "1.800",
+    "normalMax": "2.400",
+    "isKey": false
+  },
+  {
+    "id": "urinary_renal_9",
+    "name": "Urine Specific Gravity",
+    "system": "Urinary/Renal",
+    "unit": "(ratio)",
+    "normalMin": "1.005",
+    "normalMax": "1.030",
+    "isKey": false
   }
 ]
