@@ -379,48 +379,23 @@ router.get('/google/callback', async (req, res) => {
       console.log('[AUTH] Fallback redirect_uri constructed:', redirectUri);
     }
     
-    // Exchange code for tokens
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        code: code,
-        grant_type: 'authorization_code',
-        redirect_uri: redirectUri
-      })
+    // Set the redirect_uri on the client and exchange the code for tokens
+    client.redirectUri = redirectUri;
+    const { tokens } = await client.getToken(code);
+
+    // Verify the ID token to get user information
+    const ticket = await client.verifyIdToken({
+        idToken: tokens.id_token,
+        audience: process.env.GOOGLE_CLIENT_ID,
     });
-    
-    const tokenData = await tokenResponse.json();
-    
-    if (!tokenResponse.ok) {
-      console.error('[AUTH] Token exchange failed:', tokenData);
-      return res.redirect('/?error=token_exchange_failed');
-    }
-    
-    // Get user info from Google
-    const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: {
-        'Authorization': `Bearer ${tokenData.access_token}`
-      }
-    });
-    
-    const googleUser = await userResponse.json();
-    
-    if (!userResponse.ok) {
-      console.error('[AUTH] Failed to get user info:', googleUser);
-      return res.redirect('/?error=user_info_failed');
-    }
-    
+    const payload = ticket.getPayload();
+
     // Find or create user
     const googleUserData = {
-      id: googleUser.id,
-      email: googleUser.email,
-      name: googleUser.name,
-      picture: googleUser.picture
+        id: payload.sub,
+        email: payload.email,
+        name: payload.name,
+        picture: payload.picture,
     };
     
     const user = await authService.findOrCreateUser(googleUserData);

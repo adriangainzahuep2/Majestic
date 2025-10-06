@@ -146,6 +146,40 @@ app.get('/health', (req, res) => {
   res.status(200).send('OK');
 });
 
+// Enhanced health check endpoint for deployment
+app.get('/api/health', async (req, res) => {
+  try {
+    // Basic service health
+    const health = {
+      status: 'OK',
+      timestamp: new Date().toISOString(),
+      service: 'Majestic Health Dashboard',
+      port: process.env.PORT,
+      environment: process.env.NODE_ENV || 'development'
+    };
+
+    // Test database connection for deployment readiness
+    if (process.env.NODE_ENV === 'production') {
+      try {
+        await (req.db || pool).query('SELECT 1');
+        health.database = 'connected';
+      } catch (dbError) {
+        health.database = 'error';
+        health.status = 'DEGRADED';
+      }
+    }
+
+    res.status(200).json(health);
+  } catch (error) {
+    console.error('Health check failed:', error);
+    res.status(503).json({
+      status: 'ERROR',
+      timestamp: new Date().toISOString(),
+      error: error.message
+    });
+  }
+});
+
 // 3. Static assets (CSS, JS, images) - AFTER API routes
 app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
@@ -312,7 +346,11 @@ async function startServer() {
     
     // Initialize queue service (with graceful degradation)
     console.log('Initializing queue service...');
-    queueService.init();
+    if (process.env.SKIP_QUEUE_INIT === 'true') {
+      console.log('SKIP_QUEUE_INIT is true – skipping queue initialization');
+    } else {
+      queueService.init();
+    }
     
     // Configuration logging
     if (process.env.SKIP_GLOBAL_JOBS === "true") {

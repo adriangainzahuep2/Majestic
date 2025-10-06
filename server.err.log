@@ -1,5 +1,0 @@
-Failed to start server: Error: The server does not support SSL connections
-    at C:\Users\encue\Dropbox\toshiba 2021 F\proyectos cursor\majestic\Majestic\node_modules\pg-pool\index.js:45:11
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async initializeDatabase (C:\Users\encue\Dropbox\toshiba 2021 F\proyectos cursor\majestic\Majestic\database\schema.js:27:18)
-    at async startServer (C:\Users\encue\Dropbox\toshiba 2021 F\proyectos cursor\majestic\Majestic\server.js:229:7)

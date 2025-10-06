@@ -8,6 +8,21 @@ class AuthService {
 
   async findOrCreateUser(googleUserData) {
     const { id: googleId, email, name, picture } = googleUserData;
+
+    // --- MOCK IMPLEMENTATION FOR DB-LESS ENVIRONMENTS ---
+    // This block simulates user creation/retrieval when the database is disabled
+    // (e.g., for local testing or CI environments without a PostgreSQL instance).
+    // It allows the Google OAuth flow to complete without database errors.
+    if (process.env.SKIP_DB_INIT === 'true') {
+      console.log('[AUTH_SERVICE_MOCK] Simulating findOrCreateUser for', email);
+      return {
+        id: 1,
+        google_id: googleId,
+        email: email,
+        name: name,
+        avatar_url: picture,
+      };
+    }
     
     try {
       // Check if user exists
@@ -64,6 +79,21 @@ class AuthService {
   }
 
   async getUserById(userId) {
+    // --- MOCK IMPLEMENTATION FOR DB-LESS ENVIRONMENTS ---
+    // This block simulates user retrieval when the database is disabled.
+    // It's essential for testing features that require a user session
+    // without a live database connection.
+    if (process.env.SKIP_DB_INIT === 'true') {
+      console.log('[AUTH_SERVICE_MOCK] Simulating getUserById for userId', userId);
+      return {
+        id: userId,
+        email: 'mock.user@example.com',
+        name: 'Mock User',
+        avatar_url: '',
+        created_at: new Date().toISOString(),
+      };
+    }
+
     try {
       const result = await pool.query(
         'SELECT id, email, name, avatar_url, created_at FROM users WHERE id = $1',
