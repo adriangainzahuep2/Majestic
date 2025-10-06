@@ -25,7 +25,7 @@ const HEALTH_SYSTEMS = [
 // Initialize database schema
 async function initializeDatabase() {
   const client = await pool.connect();
-  
+
   try {
     // Create tables
     await client.query(`

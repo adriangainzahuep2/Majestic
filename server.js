@@ -1,6 +1,4 @@
-// Load environment variables from .env file
 try { require('dotenv').config(); } catch (_) {}
-
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');

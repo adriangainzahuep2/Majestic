@@ -1,0 +1,228 @@
+Here’s a hardened, agent-proof restatement optimized for a clean first run on Replit (excluding Google OAuth config). It removes ambiguity, pins deps, and inlines the tricky parts so a Replit Agent is least likely to err.
+
+⸻
+
+✅ Verdict (after these edits)
+	•	Build/scaffold: high
+	•	First run (OAuth disabled or pending): high
+
+⸻
+
+🔒 Pin the toolchain (no improvisation)
+
+package.json (use exactly)
+
+{
+  "name": "majestic-admin",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "start": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "cookie-session": "^2.0.0",
+    "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "multer": "^1.4.5-lts.1",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "sqlite3": "^5.1.7",
+    "xlsx": "^0.18.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/cookie-session": "^2.0.46",
+    "@types/express": "^4.17.21",
+    "@types/multer": "^1.4.11",
+    "@types/node": "^20.14.11",
+    "@types/passport": "^1.0.16",
+    "@types/passport-google-oauth20": "^2.0.14",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.5"
+  }
+}
+
+tsconfig.json (use exactly)
+
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "resolveJsonModule": true
+  },
+  "include": ["src"]
+}
+
+
+⸻
+
+🗂️ Boot-safety (SQLite, folders, cookies, CSRF)
+	1.	Create required folders + enable WAL
+
+import fs from "node:fs";
+fs.mkdirSync("./data/versions", { recursive: true });
+// after opening sqlite db:
+db.exec(`PRAGMA journal_mode=WAL;`);
+
+	2.	Session cookies behind proxy (works in sidebar preview)
+
+app.set("trust proxy", 1);
+const isProd = process.env.NODE_ENV === "production";
+app.use(cookieSession({
+  name: "sess",
+  secret: process.env.SESSION_SECRET!,
+  httpOnly: true,
+  sameSite: "lax",
+  secure: isProd
+}));
+
+	3.	CSRF/Origin guard (host-based, no Replit env dependency)
+
+function requireSameOrigin(req, res, next){
+  if (req.method === "GET") return next();
+  const origin = req.headers.origin || "";
+  const host = req.get("host") || "";
+  if (origin && origin.endsWith(host)) return next();
+  return res.status(403).send("CSRF blocked");
+}
+app.use("/admin", requireSameOrigin);
+
+
+⸻
+
+📤 Upload hardening (multer + friendly errors)
+
+import multer from "multer";
+const upload = multer({
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (_, file, cb) => {
+    const ok = file.mimetype === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            || file.originalname.toLowerCase().endsWith(".xlsx");
+    cb(ok ? null : new Error("Only .xlsx files allowed"));
+  }
+});
+
+// Example usage with JSON error surface:
+app.post("/admin/dry-run", (req, res, next) => upload.single("file")(req, res, (err) => {
+  if (err) return res.status(400).json({ error: String(err.message || err) });
+  next();
+}), handlerDryRun);
+
+
+⸻
+
+♻️ Idempotency that actually works (data-based, not bytes)
+
+import crypto from "node:crypto";
+type Row = Record<string, unknown>;
+
+function normalize(v: unknown){
+  if (v === null || v === undefined) return "";
+  if (typeof v === "string") return v.trim();
+  if (typeof v === "number") return Number.isNaN(v) ? "" : v;
+  if (typeof v === "boolean") return v;
+  return String(v).trim();
+}
+
+function sortByKeys<T extends Row>(rows: T[], keys: string[]){
+  return [...rows].sort((a,b)=>{
+    for (const k of keys){
+      const ak = String(a[k] ?? "");
+      const bk = String(b[k] ?? "");
+      if (ak < bk) return -1;
+      if (ak > bk) return 1;
+    }
+    return 0;
+  });
+}
+
+export function canonicalHash(data: {
+  metrics: Row[]; approved_overrides: Row[]; synonyms: Row[]; conversion_groups: Row[];
+}){
+  const pk = {
+    metrics:["metric_id"],
+    approved_overrides:["override_id"],
+    synonyms:["synonym_id"],
+    conversion_groups:["conversion_group_id"]
+  } as const;
+
+  const canon: Record<string, Row[]> = {};
+  for (const [sheet, rows] of Object.entries(data)){
+    const normalized = (rows as Row[]).map(r=>{
+      const o: Row = {};
+      for (const [k,v] of Object.entries(r)) o[k] = normalize(v);
+      return o;
+    });
+    canon[sheet] = sortByKeys(normalized, (pk as any)[sheet]);
+  }
+  return crypto.createHash("sha256").update(JSON.stringify(canon)).digest("hex");
+}
+
+
+⸻
+
+📑 Sheet names (exact; avoid Agent “helpfulness”)
+
+Validator must require these exact sheet names:
+	•	"metrics"
+	•	"approved_overrides"
+	•	"synonyms"
+	•	"conversion_groups"
+
+⸻
+
+🖥️ Inline minimal Admin UI (avoid missing files)
+
+Serve /admin with a single inline HTML (no build, no external assets). The form must include:
+	•	<input type="file" name="file" />
+	•	<textarea name="change_summary"></textarea>
+	•	Buttons that use fetch to call /admin/dry-run and, on success, enable Confirm Commit to /admin/commit.
+	•	Links for /admin/download-template and /admin/download-master.
+
+This removes the common “forgot to create views/admin.html” error.
+
+⸻
+
+🌐 OAuth callback domain (stable)
+	•	Set GOOGLE_CALLBACK_URL to:
+
+https://<your-repl-name>.<your-username>.repl.co/auth/google/callback
+
+
+	•	Register this exact URI in Google Cloud. You can still visit the app at your .replit.dev URL, but the OAuth redirect must be the .repl.co one.
+
+⸻
+
+📌 Agent-Ready Addendum (paste at end of your prompt verbatim)
+
+Agent must also do the following exactly:
+	1.	Create the exact package.json and tsconfig.json above.
+	2.	Create all folders and run SQLite migrations on server start; run PRAGMA journal_mode=WAL; and fs.mkdirSync("./data/versions", { recursive: true }).
+	3.	Add app.set("trust proxy", 1) and cookie-session with secure conditional on NODE_ENV.
+	4.	Add requireSameOrigin middleware (Origin endsWith Host) on all /admin POST routes.
+	5.	Use the provided multer config and return JSON errors on upload failure.
+	6.	Implement idempotency using the provided canonicalHash helper (sorted PK, trimmed, normalized). Do not hash raw XLSX bytes.
+	7.	Validate sheet names are exactly: "metrics", "approved_overrides", "synonyms", "conversion_groups".
+	8.	Serve a built-in HTML for /admin (no external assets/build), with inputs file, change_summary, buttons for Dry-Run and Confirm Commit, and links for Download Template/Master.
+	9.	Bind to process.env.PORT.
+	10.	Ensure /admin is the exact route (no trailing-slash mismatch); use absolute paths in links/forms.
+
+⸻
+
+🧪 Quick self-check (before OAuth)
+	•	/healthz returns OK
+	•	/admin renders (you can temporarily set ENABLE_BASIC_AUTH=true to smoke-test)
+	•	/admin/dry-run returns JSON diffs and helpful errors on bad files
+	•	Re-upload identical data → “No changes”
+	•	After first commit, Download Master returns the active workbook
+
+⸻
+
+If you want, I can also hand you a single-file src/server.ts starter that includes all of the above pieces pre-wired (min UI, migrations, routes, hashing, WAL, uploads) to further reduce Agent variance.

@@ -1,0 +1,221 @@
+Perfect 👍 Since you already use Postgres, here’s the updated prompt — same design, but adapted to Postgres instead of sqlite3.
+
+⸻
+
+💡 Replit Agent Prompt — Majestic Admin Console (Postgres, One-File, Hardened)
+
+Goal: Extend the existing server.ts with a secure Admin Console at
+https://<your-repl-name>.<your-username>.repl.co/admin
+that lets approved admins Download Master (XLSX), Upload Master (XLSX) with dry-run + versioning + rollback, using Google OAuth with an allowlist of emails.
+👉 No in-app editors — admins edit offline in Excel/Sheets.
+👉 Use your existing Postgres database, not sqlite3.
+
+⸻
+
+🔧 Stack & Packages
+	•	Node 20
+	•	Express
+	•	Passport + passport-google-oauth20
+	•	cookie-session
+	•	pg (Postgres client)
+	•	xlsx (read) + exceljs (write)
+	•	multer (upload with size/type limits)
+	•	zod (schema validation)
+	•	dotenv (for Replit Secrets)
+	•	express-rate-limit
+
+⸻
+
+📦 package.json (use exactly)
+
+{
+  "name": "majestic-admin",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "start": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "cookie-session": "^2.0.0",
+    "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "multer": "^1.4.5-lts.1",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "pg": "^8.12.0",
+    "xlsx": "^0.18.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/cookie-session": "^2.0.46",
+    "@types/express": "^4.17.21",
+    "@types/multer": "^1.4.11",
+    "@types/node": "^20.14.11",
+    "@types/passport": "^1.0.16",
+    "@types/passport-google-oauth20": "^2.0.14",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.5"
+  }
+}
+
+
+⸻
+
+⚙️ tsconfig.json (use exactly)
+
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "resolveJsonModule": true
+  },
+  "include": ["src"]
+}
+
+
+⸻
+
+🔐 ENV (set in Replit Secrets)
+	•	DATABASE_URL=postgres://user:pass@host:5432/dbname
+	•	GOOGLE_CLIENT_ID
+	•	GOOGLE_CLIENT_SECRET
+	•	GOOGLE_CALLBACK_URL=https://<your-repl-name>.<your-username>.repl.co/auth/google/callback
+	•	ADMIN_EMAILS (comma-separated list)
+	•	SESSION_SECRET (fallback to "dev-secret" if not set)
+	•	Optional: ENABLE_BASIC_AUTH, BASIC_AUTH_USER, BASIC_AUTH_PASS
+
+⸻
+
+🗂️ Database Schema (Postgres)
+
+-- Metrics dictionary
+CREATE TABLE IF NOT EXISTS metrics (
+  metric_id TEXT PRIMARY KEY,
+  metric_name TEXT NOT NULL,
+  metric_slug TEXT NOT NULL,
+  system_id TEXT,
+  canonical_unit TEXT,
+  conversion_group_id TEXT,
+  normal_min NUMERIC,
+  normal_max NUMERIC,
+  is_key_metric BOOLEAN,
+  source TEXT,
+  explanation TEXT,
+  description TEXT
+);
+
+-- Context-specific overrides
+CREATE TABLE IF NOT EXISTS approved_overrides (
+  override_id TEXT PRIMARY KEY,
+  metric_id TEXT REFERENCES metrics(metric_id),
+  sex TEXT,
+  age_min NUMERIC,
+  age_max NUMERIC,
+  context_reason TEXT,
+  phase TEXT,
+  range_min NUMERIC,
+  range_max NUMERIC,
+  source TEXT,
+  notes TEXT
+);
+
+-- Synonyms
+CREATE TABLE IF NOT EXISTS synonyms (
+  synonym_id TEXT PRIMARY KEY,
+  metric_id TEXT REFERENCES metrics(metric_id),
+  synonym_name TEXT,
+  notes TEXT
+);
+
+-- Conversion groups
+CREATE TABLE IF NOT EXISTS conversion_groups (
+  conversion_group_id TEXT PRIMARY KEY,
+  canonical_unit TEXT,
+  alt_unit TEXT,
+  to_canonical_formula TEXT,
+  from_canonical_formula TEXT,
+  notes TEXT
+);
+
+-- Version history
+CREATE TABLE IF NOT EXISTS versions (
+  id SERIAL PRIMARY KEY,
+  sha256 TEXT UNIQUE NOT NULL,
+  change_summary TEXT NOT NULL,
+  author_email TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT now()
+);
+
+-- Pointer to current version
+CREATE TABLE IF NOT EXISTS current_version (
+  id BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (id),
+  version_id INT REFERENCES versions(id)
+);
+
+
+⸻
+
+🖥️ Admin Console Behavior (all in server.ts)
+	•	/admin (HTML page)
+	•	Inline HTML form with file input name="file" + textarea name="change_summary"
+	•	Buttons for Dry-Run + Confirm Commit (via fetch)
+	•	Links: /admin/download-template, /admin/download-master
+	•	Routes:
+	•	/admin/download-template → XLSX with 4 headers
+	•	/admin/download-master → current data from Postgres as XLSX
+	•	/admin/dry-run → parse XLSX, validate, return JSON { added, changed, removed } per sheet
+	•	/admin/commit → re-validate, compute canonical hash, insert version row, replace tables in a transaction
+	•	/admin/versions → JSON list of all versions
+	•	/admin/rollback → restore prior version transactionally
+	•	/auth/google, /auth/google/callback, /logout → Google OAuth + allowlist
+	•	/healthz → ok
+
+⸻
+
+🛡️ Safeguards
+	•	CSRF guard: Origin must end with Host
+	•	Multer limits: 20MB, .xlsx only, JSON error responses
+	•	Idempotency: canonical hash (normalized + sorted PKs)
+	•	Transactions: wrap commits/rollbacks atomically in Postgres
+	•	Fallbacks: SESSION_SECRET defaults to "dev-secret"
+	•	Bind host: app.listen(PORT, "0.0.0.0")
+
+⸻
+
+📌 Agent Checklist (must do exactly)
+	1.	Modify existing server.ts (do not create multiple files).
+	2.	Use pg instead of sqlite3. Connect with process.env.DATABASE_URL.
+	3.	Run migrations (tables above) on startup if they don’t exist.
+	4.	Store uploaded XLSX → DB tables (metrics, approved_overrides, etc.).
+	5.	Manage versioning with versions + current_version.
+	6.	Add Google OAuth with allowlist.
+	7.	Add inline /admin HTML page.
+	8.	Implement dry-run, commit, rollback exactly as described.
+	9.	Enforce CSRF, file validation, idempotency.
+	10.	Bind on 0.0.0.0:${PORT}.
+
+⸻
+
+🧪 Self-Check
+	•	/healthz → ok
+	•	/admin shows inline UI
+	•	Upload invalid XLSX → JSON error
+	•	Dry-run → diff counts
+	•	Commit → creates new version in Postgres
+	•	Re-upload same file → "No changes"
+	•	Rollback → restores prior version
+
+⸻
+
+📊 Expected success probability: 90–95% with this Postgres setup if all in server.ts.
+
+⸻
+
+Do you want me to now write out the Postgres-enabled server.ts template (Express app + DB connect + migrations + admin routes) so you can drop it in directly?

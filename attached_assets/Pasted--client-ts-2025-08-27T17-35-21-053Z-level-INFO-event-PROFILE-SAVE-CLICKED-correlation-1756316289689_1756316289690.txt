@@ -1,0 +1,21 @@
+[client] {"ts":"2025-08-27T17:35:21.053Z","level":"INFO","event":"PROFILE_SAVE_CLICKED","correlation_id":"2983fdac-d475-43b8-8175-17480c75d3a9","field_count":13,"summary":{"field_count":15,"has_height":true,"has_weight":true,"has_dob":true,"has_sex":true,"has_ethnicity":true,"has_country":true,"unit_system":"US","smoker":false,"pregnant":null,"has_alcohol_data":true,"allergies_count":0,"chronic_conditions_count":0}}
+app.js:23 [client] {"ts":"2025-08-27T17:35:21.054Z","level":"INFO","event":"PROFILE_SAVE_REQUEST_DISPATCHED","correlation_id":"2983fdac-d475-43b8-8175-17480c75d3a9","url":"/api/profile","method":"PUT","payload_summary":{"field_count":15,"has_height":true,"has_weight":true,"has_dob":true,"has_sex":true,"has_ethnicity":true,"has_country":true,"unit_system":"US","smoker":false,"pregnant":null,"has_alcohol_data":true,"allergies_count":0,"chronic_conditions_count":0}}
+app.js:3057 Sending profile data: {
+  "sex": "Male",
+  "date_of_birth": "2003-12-12",
+  "height_in": 64,
+  "weight_lb": 343,
+  "preferred_unit_system": "US",
+  "country_of_residence": "AO",
+  "ethnicity": "Asian",
+  "smoker": false,
+  "packs_per_week": 0,
+  "alcohol_drinks_per_week": 0,
+  "pregnant": null,
+  "pregnancy_start_date": null,
+  "cycle_phase": null,
+  "allergies": [],
+  "chronicConditions": []
+}
+app.js:23 [client] {"ts":"2025-08-27T17:35:22.398Z","level":"INFO","event":"PROFILE_SAVE_SUCCESS","correlation_id":"2983fdac-d475-43b8-8175-17480c75d3a9","status":200,"duration_ms":1346}
+app.js:3081 Profile save response: {sex: 'Male', date_of_birth: '2003-12-12T00:00:00.000Z', height_in: 64, weight_lb: '343.00', preferred_unit_system: 'US', …}alcohol_drinks_per_week: 0country_of_residence: "AO"cycle_phase: nulldate_of_birth: "2003-12-12T00:00:00.000Z"ethnicity: "Asian"height_in: 64packs_per_week: "0.0"preferred_unit_system: "US"pregnancy_start_date: nullpregnant: nullsex: "Male"smoker: falseweight_lb: "343.00"[[Prototype]]: Objectconstructor: ƒ Object()hasOwnProperty: ƒ hasOwnProperty()isPrototypeOf: ƒ isPrototypeOf()propertyIsEnumerable: ƒ propertyIsEnumerable()toLocaleString: ƒ toLocaleString()toString: ƒ toString()valueOf: ƒ valueOf()__defineGetter__: ƒ __defineGetter__()__defineSetter__: ƒ __defineSetter__()__lookupGetter__: ƒ __lookupGetter__()__lookupSetter__: ƒ __lookupSetter__()__proto__: (...)get __proto__: ƒ __proto__()set __proto__: ƒ __proto__()

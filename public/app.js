@@ -9,88 +9,11 @@ class HealthDashboard {
         this.googleClientId = null;
 
         this.systemsData = new Map();
+        this.isRefreshingInsights = false;
+        this.insightsPollingInterval = null;
         this.currentProfile = null; // holds last loaded normalized profile
+        this.trendsChartManager = null; // Will be initialized when needed
 
-        // Initialize app after base members are set
-        this.initializeApp();
-    }
-
-    getApiBaseUrl() {
-        // For local development
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            return `http://localhost:5000/api`;
-        }
-        // For Replit deployment
-        if (window.location.hostname.includes('replit.dev')) {
-            return `${window.location.protocol}//${window.location.host}/api`;
-        }
-        // Default fallback
-        return `${window.location.protocol}//${window.location.host}/api`;
-    }
-
-    toYMD(input) {
-        if (!input) return '';
-        const dt = new Date(input);
-        if (isNaN(dt)) return '';
-        const y = dt.getFullYear();
-        const m = String(dt.getMonth() + 1).padStart(2, '0');
-        const d = String(dt.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
-    }
-
-    // Minimal user header renderer to avoid runtime error if not defined elsewhere
-    updateUserUI(profile) {
-        try {
-            const nameEl = document.getElementById('userName');
-            const emailEl = document.getElementById('userEmail');
-            const avatarEl = document.getElementById('userAvatar');
-            if (nameEl && profile?.name) nameEl.textContent = profile.name;
-            if (emailEl && profile?.email) emailEl.textContent = profile.email;
-            if (avatarEl && profile?.avatar_url) avatarEl.src = profile.avatar_url;
-        } catch (_) { /* no-op */ }
-    }
-
-    async initializeApp() {
-        // Check for OAuth redirect first
-        await this.checkForOAuthCallback();
-        
-        // Always fetch server config first
-        try {
-            const config = await this.apiCall('/auth/config');
-            if (config && config.hasGoogleAuth) {
-                this.googleClientId = config.googleClientId;
-                console.log('[DEBUG] Google OAuth configured, client ID:', config.googleClientId.substring(0, 20) + '...');
-                this.initializeGoogleSignIn(config);
-                // Keep the button visible and functional
-                const googleLoginBtn = document.getElementById('googleLoginBtn');
-                if (googleLoginBtn) {
-                    googleLoginBtn.style.display = 'block';
-                    // DO NOT override onclick - let the event listener handle it
-                }
-            } else {
-                console.log('Google Auth not configured on server, but keeping button visible.');
-                const googleLoginBtn = document.getElementById('googleLoginBtn');
-                if (googleLoginBtn) {
-                    googleLoginBtn.style.display = 'block';
-                    // Add a click handler to show a message
-                    googleLoginBtn.onclick = () => {
-                        this.showToast('info', 'Google Auth', 'Google authentication is not configured. Please use "Try Demo" instead.');
-                    };
-                }
-            }
-        } catch (error) {
-            console.error('Failed to fetch auth config:', error);
-            this.showToast('error', 'Config Error', 'Could not load authentication configuration.');
-            const googleLoginBtn = document.getElementById('googleLoginBtn');
-            if (googleLoginBtn) {
-                googleLoginBtn.style.display = 'block';
-                googleLoginBtn.onclick = () => {
-                    this.showToast('info', 'Google Auth', 'Google authentication is not configured. Please use "Try Demo" instead.');
-                };
-            }
-        }
-
-        // Now initialize the rest of the app
         this.init();
     }
 
@@ -113,11 +36,11 @@ class HealthDashboard {
     // Create privacy-safe summary of profile data for logging
     createClientProfileSummary(profileData) {
         const summary = {};
-        
+
         if (profileData) {
             // Count changed fields
             summary.field_count = Object.keys(profileData).length;
-            
+
             // Boolean flags for presence of key data (safe to log)
             summary.has_height = profileData.height_in !== null && profileData.height_in !== undefined;
             summary.has_weight = profileData.weight_lb !== null && profileData.weight_lb !== undefined;
@@ -126,17 +49,17 @@ class HealthDashboard {
             summary.has_ethnicity = !!profileData.ethnicity;
             summary.has_country = !!profileData.country_of_residence;
             summary.unit_system = profileData.preferred_unit_system || null;
-            
+
             // Lifestyle flags (safe to log as they're not directly identifiable)
             summary.smoker = profileData.smoker;
             summary.pregnant = profileData.pregnant;
             summary.has_alcohol_data = profileData.alcohol_drinks_per_week !== null && profileData.alcohol_drinks_per_week !== undefined;
-            
+
             // Count arrays without exposing content
             summary.allergies_count = Array.isArray(profileData.allergies) ? profileData.allergies.length : 0;
             summary.chronic_conditions_count = Array.isArray(profileData.chronicConditions) ? profileData.chronicConditions.length : 0;
         }
-        
+
         return summary;
     }
 
@@ -154,13 +77,7 @@ class HealthDashboard {
         // Setup UI event listeners
         this.setupEventListeners();
 
-        // Check for token in localStorage on init
-        const storedAuthToken = localStorage.getItem('authToken');
-        const storedJwtToken = localStorage.getItem('jwtToken');
-        this.jwtToken = storedAuthToken || storedJwtToken || null;
-        this.token = this.jwtToken; // keep in sync for legacy calls
-
-        if (this.jwtToken) {
+        if (this.token) {
             console.log('[INIT] Found token, attempting to load user profile...');
             try {
                 await this.loadUserProfile();
@@ -183,7 +100,7 @@ class HealthDashboard {
         document.getElementById('demoLoginBtn').addEventListener('click', () => this.demoLogin());
         document.getElementById('googleLoginBtn').addEventListener('click', () => this.googleLogin());
         document.getElementById('logoutBtn').addEventListener('click', () => this.logout());
-        
+
         // Profile navigation
         document.getElementById('profileLink').addEventListener('click', (e) => {
             e.preventDefault();
@@ -191,25 +108,17 @@ class HealthDashboard {
         });
         document.getElementById('backToApp').addEventListener('click', () => this.showApp());
         document.getElementById('cancelProfile').addEventListener('click', () => this.showApp());
-        
-        // Custom reference ranges (hidden by default for future use)
-        try {
-            const addBtn = document.getElementById('addCustomRangeBtn');
-            if (addBtn) addBtn.style.display = 'none';
-            const list = document.getElementById('customRangesList');
-            if (list) list.style.display = 'none';
-        } catch(_) {}
-        
+
         // Tab navigation
         document.getElementById('dashboard-tab').addEventListener('click', () => this.loadDashboard());
         document.getElementById('daily-plan-tab').addEventListener('click', () => this.loadDailyPlan());
         document.getElementById('uploads-tab').addEventListener('click', () => this.loadUploads());
         document.getElementById('trends-tab').addEventListener('click', () => this.loadTrends());
-        
+
         // Dashboard actions
         document.getElementById('refreshDashboard').addEventListener('click', () => this.loadDashboard());
         document.getElementById('regeneratePlan').addEventListener('click', () => this.regenerateDailyPlan());
-        
+
         // Phase 1 Unified Ingestion Pipeline
         document.getElementById('fileUpload').addEventListener('change', (e) => this.handleFileSelect(e));
         document.getElementById('uploadBtn').addEventListener('click', () => this.uploadFilesToUnifiedPipeline());
@@ -220,7 +129,7 @@ class HealthDashboard {
 
         // Profile form
         document.getElementById('profileForm').addEventListener('submit', (e) => this.saveProfile(e));
-        
+
         // Profile field interactions
         document.getElementById('dateOfBirth').addEventListener('change', this.calculateAge);
         document.getElementById('heightFeet').addEventListener('input', this.convertHeight);
@@ -242,18 +151,18 @@ class HealthDashboard {
         console.log('Attempting demo login...');
         this.showLoading('Logging in as Demo User...');
         try {
-            const response = await this.apiCall('/auth/demo', 'POST');
-            
-            this.jwtToken = response.token;
-            this.token = response.token; // sync legacy
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('jwtToken');
-            localStorage.setItem('authToken', this.jwtToken);
-            localStorage.setItem('jwtToken', this.jwtToken);
-            
-            if (response.success) {
-                this.user = response.user;
-                await this.showApp();
+            const response = await fetch(`${this.apiBase}/auth/demo`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                this.token = data.token;
+                this.user = data.user;
+                localStorage.setItem('authToken', this.token);
+                this.showApp();
                 this.showToast('success', 'Welcome!', 'Successfully logged in with demo account');
                 // Optionally trigger background checks
                 this.checkPendingMetricSuggestions().catch(()=>{});
@@ -279,21 +188,13 @@ class HealthDashboard {
         }
 
         try {
-            console.log('[DEBUG] Checking if Google library is loaded...');
-            // Ensure GSI library is loaded
-            if (typeof window.google === 'undefined' || typeof window.google.accounts === 'undefined') {
-                console.log('[DEBUG] Google library not loaded, waiting...');
-                await new Promise(resolve => {
-                    const interval = setInterval(() => {
-                        if (typeof window.google !== 'undefined' && typeof window.google.accounts !== 'undefined') {
-                            console.log('[DEBUG] Google library loaded');
-                            clearInterval(interval);
-                            resolve();
-                        }
-                    }, 100);
-                });
-            } else {
-                console.log('[DEBUG] Google library already loaded');
+            // Get Google Client ID from backend
+            const configResponse = await fetch(`${this.apiBase}/auth/config`);
+            const config = await configResponse.json();
+
+            if (!config.googleClientId) {
+                this.showToast('error', 'Configuration Error', 'Google OAuth not configured. Please contact support.');
+                return;
             }
 
             console.log('[DEBUG] Triggering Google Sign-In popup...');
@@ -342,18 +243,18 @@ class HealthDashboard {
                 callback: this.handleGoogleSignIn.bind(this),
                 use_fedcm_for_prompt: false,
             });
-            
+
             // Create a temporary button and click it to trigger popup
             const tempDiv = document.createElement('div');
             tempDiv.style.display = 'none';
             document.body.appendChild(tempDiv);
-            
+
             window.google.accounts.id.renderButton(tempDiv, {
                 theme: 'outline',
                 size: 'large',
                 type: 'standard'
             });
-            
+
             // Auto-click the button
             setTimeout(() => {
                 const button = tempDiv.querySelector('div[role="button"]');
@@ -459,14 +360,12 @@ class HealthDashboard {
         try {
             console.log('[DEBUG] handleGoogleSignIn called with:', response);
             this.showLoading(true);
-            
+
             if (!response.credential) {
                 console.error('[DEBUG] No credential in response:', response);
                 throw new Error('No credential received from Google');
             }
-            
-            console.log('[DEBUG] Credential received, length:', response.credential.length);
-            
+
             // Send the Google ID token to our backend
             console.log('[DEBUG] Sending token to backend:', `${this.apiBase}/auth/google`);
             const authResponse = await fetch(`${this.apiBase}/auth/google`, {
@@ -481,8 +380,7 @@ class HealthDashboard {
 
             console.log('[DEBUG] Backend response status:', authResponse.status);
             const data = await authResponse.json();
-            console.log('[DEBUG] Backend response data:', data);
-            
+
             if (data.success) {
                 this.token = data.token;
                 this.user = data.user;
@@ -553,12 +451,12 @@ class HealthDashboard {
         document.getElementById('profileSection').classList.add('d-none');
         document.getElementById('userSection').classList.remove('d-none');
         document.getElementById('loginBtn').classList.add('d-none');
-        
+
         // Update user avatar
         if (this.user) {
             this.updateUserAvatar();
         }
-        
+
         this.loadDashboard();
     }
 
@@ -659,6 +557,11 @@ class HealthDashboard {
 
         // Add click handler for drill-down
         col.querySelector('.system-tile').addEventListener('click', () => {
+            console.log('[DEBUG] System tile clicked:', {
+                systemId: system.id,
+                systemName: system.name,
+                clickedAt: new Date().toISOString()
+            });
             this.showSystemDetails(system.id);
         });
 
@@ -666,7 +569,8 @@ class HealthDashboard {
     }
 
     async showSystemDetails(systemId) {
-        this.showLoading('Loading System Details...');
+        console.log('[DEBUG] showSystemDetails called with systemId:', systemId);
+        this.showLoading(true);
         try {
             const [metrics, studies, insights] = await Promise.all([
                 this.apiCall(`/metrics/system/${systemId}`),
@@ -674,20 +578,21 @@ class HealthDashboard {
                 this.apiCall(`/dashboard/insights/${systemId}`)
             ]);
 
-            const system = this.systemsData.get(systemId);
-            if (!system) {
-                throw new Error('System not found');
-            }
-
             // Combine data
             const combinedData = {
                 ...metrics,
                 studies: studies.studies || [],
                 insights: insights.insights || []
             };
-            
+
             // Store current system data for range analysis
             this.currentSystemData = combinedData;
+            console.log('[DEBUG] Combined system data:', {
+                systemId: systemId,
+                systemName: combinedData.system?.name,
+                keyMetricsCount: combinedData.keyMetrics?.length,
+                hasStudies: combinedData.studies?.length > 0
+            });
             this.renderSystemModal(combinedData);
         } catch (error) {
             console.error('Failed to load system details:', error);
@@ -697,8 +602,44 @@ class HealthDashboard {
         }
     }
 
+    recreateSystemModal() {
+        // Remove existing modal if it exists
+        const existingModal = document.getElementById('systemModal');
+        if (existingModal) {
+            // Destroy any Bootstrap modal instance
+            const modalInstance = bootstrap.Modal.getInstance(existingModal);
+            if (modalInstance) {
+                modalInstance.dispose();
+            }
+            existingModal.remove();
+        }
+
+        // Create completely new modal DOM
+        const newModal = document.createElement('div');
+        newModal.className = 'modal fade system-drill-down';
+        newModal.id = 'systemModal';
+        newModal.setAttribute('tabindex', '-1');
+        newModal.innerHTML = `
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="systemModalTitle">System Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">✕</button>
+                    </div>
+                    <div class="modal-body" id="systemModalBody">
+                        <!-- System details will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(newModal);
+
+        return newModal;
+    }
+
     renderSystemModal(systemData) {
-        const modal = document.getElementById('systemModal');
+        // Always recreate the modal to avoid state persistence
+        const modal = this.recreateSystemModal();
         const title = document.getElementById('systemModalTitle');
         const body = document.getElementById('systemModalBody');
 
@@ -719,8 +660,8 @@ class HealthDashboard {
                 <div class="col-lg-8">
                     <!-- Trends -->
                     <div id="trends-section" class="card mb-4" style="display: none;">
-                        <div class="card-header" style="background: #007AFF; color: #FFFFFF;">
-                            <h6 class="mb-0" style="color: #FFFFFF;">
+                        <div class="card-header system-section-header">
+                            <h6 class="mb-0">
                                 <i class="fas fa-chart-line me-2"></i>Trends
                             </h6>
                         </div>
@@ -751,8 +692,8 @@ class HealthDashboard {
 
                     <!-- Additional Metrics (Non-Key + Custom) -->
                     <div class="card mb-4">
-                        <div class="card-header">
-                            <h6 class="mb-0" style="color: #FFFFFF;">
+                        <div class="card-header system-section-header">
+                            <h6 class="mb-0">
                                 <i class="fas fa-list me-2"></i>Additional Metrics
                             </h6>
                         </div>
@@ -763,8 +704,8 @@ class HealthDashboard {
 
                     <!-- Studies & Imaging Section (Phase 1) -->
                     <div class="card mb-4">
-                        <div class="card-header">
-                            <h6 class="mb-0" style="color: #FFFFFF;">
+                        <div class="card-header system-section-header">
+                            <h6 class="mb-0">
                                 <i class="fas fa-images me-2"></i>Studies & Imaging
                             </h6>
                         </div>
@@ -777,8 +718,8 @@ class HealthDashboard {
                 <div class="col-lg-4">
                     <!-- AI Insights -->
                     <div class="card mb-4 insights-panel">
-                        <div class="card-header">
-                            <h6 class="mb-0" style="color: #FFFFFF;">
+                        <div class="card-header system-section-header">
+                            <h6 class="mb-0">
                                 <div class="ai-insights-icon"></div>AI Insights
                             </h6>
                         </div>
@@ -792,8 +733,8 @@ class HealthDashboard {
 
                     <!-- System Status -->
                     <div class="card mb-4">
-                        <div class="card-header">
-                            <h6 class="mb-0" style="color: #FFFFFF;">
+                        <div class="card-header system-section-header">
+                            <h6 class="mb-0">
                                 <i class="fas fa-heartbeat me-2"></i>System Status
                             </h6>
                         </div>
@@ -813,166 +754,261 @@ class HealthDashboard {
 
         const modalInstance = new bootstrap.Modal(modal);
         modalInstance.show();
-        
-        // Load trends data after modal is shown
+
+        // Initialize trends chart manager and load trends after modal is shown
         modal.addEventListener('shown.bs.modal', async () => {
             const tooltipTriggerList = modal.querySelectorAll('[data-bs-toggle="tooltip"]');
             const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
-            
-            // Load trends for this system
-            await this.loadSystemTrends(systemData.system.id);
+
+            // Initialize and use trends chart manager
+            this.trendsChartManager = this.createTrendsChartManager();
+            await this.trendsChartManager.render(systemData.system.id, this.apiCall.bind(this));
+        });
+
+        // Clean up trends chart manager when modal is hidden
+        modal.addEventListener('hidden.bs.modal', () => {
+            if (this.trendsChartManager) {
+                this.trendsChartManager.destroy();
+                this.trendsChartManager = null;
+            }
         });
     }
 
-    async loadSystemTrends(systemId) {
-        try {
-            const trendsData = await this.apiCall(`/metrics/system/${systemId}/trends`, 'GET');
-            
-            if (trendsData && trendsData.length > 0) {
-                this.renderTrendsCharts(trendsData);
-                document.getElementById('trends-section').style.display = 'block';
-            } else {
-                // Hide trends section if no data
-                document.getElementById('trends-section').style.display = 'none';
-            }
-        } catch (error) {
-            console.error('Error loading trends:', error);
-            const trendsContainer = document.getElementById('trends-container');
-            if (trendsContainer) {
-                trendsContainer.innerHTML = '<p class="text-muted">Unable to load trend data.</p>';
-            }
-        }
-    }
-
-    renderTrendsCharts(trendsData) {
-        const container = document.getElementById('trends-container');
-        if (!container) return;
-
-        // Clear loading state
-        container.innerHTML = '';
-
-        // Create a chart for each metric trend
-        trendsData.forEach((trend, index) => {
-            const chartId = `trend-chart-${trend.metric_id}`;
-            
-            // Create chart container
-            const chartDiv = document.createElement('div');
-            chartDiv.id = chartId;
-            chartDiv.className = 'trend-chart mb-4';
-            chartDiv.style.height = '300px';
-            container.appendChild(chartDiv);
-
-            // Prepare data for Plotly
-            const xValues = trend.series.map(point => new Date(point.t));
-            const yValues = trend.series.map(point => point.v);
-
-            const traces = [{
-                x: xValues,
-                y: yValues,
-                type: 'scatter',
-                mode: 'lines+markers',
-                name: trend.metric_name,
-                line: {
-                    color: '#007AFF',
-                    width: 3
-                },
-                marker: {
-                    color: '#007AFF',
-                    size: 8,
-                    symbol: 'circle'
-                }
-            }];
-
-            // Add reference range band if available
-            if (trend.range_band) {
-                traces.push({
-                    x: [xValues[0], xValues[xValues.length - 1]],
-                    y: [trend.range_band.min, trend.range_band.min],
-                    type: 'scatter',
-                    mode: 'lines',
-                    name: 'Lower Normal',
-                    line: {
-                        color: '#34C759',
-                        width: 1,
-                        dash: 'dash'
-                    },
-                    showlegend: false,
-                    hoverinfo: 'skip'
-                });
-
-                traces.push({
-                    x: [xValues[0], xValues[xValues.length - 1]],
-                    y: [trend.range_band.max, trend.range_band.max],
-                    type: 'scatter',
-                    mode: 'lines',
-                    name: 'Upper Normal',
-                    line: {
-                        color: '#34C759',
-                        width: 1,
-                        dash: 'dash'
-                    },
-                    showlegend: false,
-                    hoverinfo: 'skip'
-                });
-
-                // Add shaded area between normal range
-                traces.push({
-                    x: [...xValues, ...xValues.slice().reverse()],
-                    y: [...new Array(xValues.length).fill(trend.range_band.min), 
-                        ...new Array(xValues.length).fill(trend.range_band.max).reverse()],
-                    type: 'scatter',
-                    mode: 'lines',
-                    fill: 'tonexty',
-                    fillcolor: 'rgba(52, 199, 89, 0.1)',
-                    line: { color: 'transparent' },
-                    name: 'Normal Range',
-                    showlegend: true,
-                    hoverinfo: 'skip'
-                });
+    // TrendsChart class for managing chart lifecycle
+    createTrendsChartManager() {
+        return new (class TrendsChart {
+            constructor() {
+                this.activeCharts = new Map();
+                this.containerId = 'trends-container';
+                this.sectionId = 'trends-section';
             }
 
-            const layout = {
-                title: {
-                    text: `${trend.metric_name} Trend (${trend.points_count} data points)`,
-                    font: { 
-                        color: '#FFFFFF',
-                        size: 16
+            async render(systemId, apiCallFn) {
+                console.log('[DEBUG] TrendsChart.render called with systemId:', systemId);
+                
+                // Always clean up first
+                this.destroy();
+
+                try {
+                    // Fetch trends data
+                    const trendsData = await apiCallFn(`/metrics/system/${systemId}/trends`, 'GET');
+                    console.log('[DEBUG] Trends API response:', {
+                        systemId: systemId,
+                        trendsCount: trendsData?.length || 0,
+                        trendsMetrics: trendsData?.map(t => t.metric_name) || []
+                    });
+
+                    const container = document.getElementById(this.containerId);
+                    const section = document.getElementById(this.sectionId);
+                    
+                    if (!container || !section) {
+                        console.warn('Trends container or section not found');
+                        return;
                     }
-                },
-                xaxis: {
-                    title: 'Date',
-                    color: '#EBEBF5',
-                    gridcolor: '#2C2C2E',
-                    tickfont: { color: '#EBEBF5' },
-                    titlefont: { color: '#EBEBF5' }
-                },
-                yaxis: {
-                    title: 'Value',
-                    color: '#EBEBF5',
-                    gridcolor: '#2C2C2E',
-                    tickfont: { color: '#EBEBF5' },
-                    titlefont: { color: '#EBEBF5' }
-                },
-                plot_bgcolor: '#1C1C1E',
-                paper_bgcolor: '#1C1C1E',
-                font: { color: '#FFFFFF' },
-                margin: { l: 60, r: 40, t: 60, b: 60 },
-                legend: {
-                    font: { color: '#EBEBF5' },
-                    bgcolor: 'transparent'
+
+                    if (trendsData && trendsData.length > 0) {
+                        this.renderCharts(trendsData);
+                        section.style.display = 'block';
+                    } else {
+                        section.style.display = 'none';
+                    }
+                } catch (error) {
+                    console.error('Error loading trends:', error);
+                    const section = document.getElementById(this.sectionId);
+                    if (section) {
+                        section.style.display = 'none';
+                    }
                 }
-            };
+            }
 
-            const config = {
-                responsive: true,
-                displayModeBar: false,
-                displaylogo: false
-            };
+            renderCharts(trendsData) {
+                const container = document.getElementById(this.containerId);
+                if (!container) return;
 
-            // Render the chart
-            Plotly.newPlot(chartId, traces, layout, config);
-        });
+                // Clear container completely
+                container.innerHTML = '';
+
+                trendsData.forEach((trend, index) => {
+                    console.log('[DEBUG] Creating chart for metric:', {
+                        index: index,
+                        metricName: trend.metric_name,
+                        metricId: trend.metric_id,
+                        seriesLength: trend.series?.length || 0,
+                        firstDataPoint: trend.series?.[0],
+                        lastDataPoint: trend.series?.[trend.series?.length - 1]
+                    });
+
+                    const chartId = `trend-chart-${trend.metric_id}`;
+
+                    // Create chart container
+                    const chartDiv = document.createElement('div');
+                    chartDiv.id = chartId;
+                    chartDiv.className = 'trend-chart mb-4';
+                    chartDiv.style.height = '300px';
+                    container.appendChild(chartDiv);
+
+                    // Register this chart for cleanup
+                    this.activeCharts.set(chartId, true);
+
+                    // Prepare data for Plotly
+                    const xValues = trend.series.map(point => new Date(point.t));
+                    const yValues = trend.series.map(point => point.v);
+
+                    const traces = [{
+                        x: xValues,
+                        y: yValues,
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        name: trend.metric_name,
+                        line: {
+                            color: '#007AFF',
+                            width: 3
+                        },
+                        marker: {
+                            color: '#007AFF',
+                            size: 8,
+                            symbol: 'circle'
+                        }
+                    }];
+
+                    // Add reference range band if available
+                    if (trend.range_band) {
+                        traces.push({
+                            x: [xValues[0], xValues[xValues.length - 1]],
+                            y: [trend.range_band.min, trend.range_band.min],
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: 'Lower Normal',
+                            line: {
+                                color: '#34C759',
+                                width: 1,
+                                dash: 'dash'
+                            },
+                            showlegend: false,
+                            hoverinfo: 'skip'
+                        });
+
+                        traces.push({
+                            x: [xValues[0], xValues[xValues.length - 1]],
+                            y: [trend.range_band.max, trend.range_band.max],
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: 'Upper Normal',
+                            line: {
+                                color: '#34C759',
+                                width: 1,
+                                dash: 'dash'
+                            },
+                            showlegend: false,
+                            hoverinfo: 'skip'
+                        });
+
+                        // Add shaded area between normal range
+                        traces.push({
+                            x: [...xValues, ...xValues.slice().reverse()],
+                            y: [...new Array(xValues.length).fill(trend.range_band.min), 
+                                ...new Array(xValues.length).fill(trend.range_band.max).reverse()],
+                            type: 'scatter',
+                            mode: 'lines',
+                            fill: 'tonexty',
+                            fillcolor: 'rgba(52, 199, 89, 0.1)',
+                            line: { color: 'transparent' },
+                            name: 'Normal Range',
+                            showlegend: true,
+                            hoverinfo: 'skip'
+                        });
+                    }
+
+                    const layout = {
+                        title: {
+                            text: `${trend.metric_name} Trend (${trend.points_count} data points)`,
+                            font: { 
+                                color: '#FFFFFF',
+                                size: 16
+                            }
+                        },
+                        xaxis: {
+                            title: 'Date',
+                            color: '#EBEBF5',
+                            gridcolor: '#2C2C2E',
+                            tickfont: { color: '#EBEBF5' },
+                            titlefont: { color: '#EBEBF5' }
+                        },
+                        yaxis: {
+                            title: 'Value',
+                            color: '#EBEBF5',
+                            gridcolor: '#2C2C2E',
+                            tickfont: { color: '#EBEBF5' },
+                            titlefont: { color: '#EBEBF5' }
+                        },
+                        plot_bgcolor: '#1C1C1E',
+                        paper_bgcolor: '#1C1C1E',
+                        font: { color: '#FFFFFF' },
+                        margin: { l: 60, r: 40, t: 60, b: 60 },
+                        legend: {
+                            font: { color: '#EBEBF5' },
+                            bgcolor: 'transparent'
+                        }
+                    };
+
+                    const config = {
+                        responsive: true,
+                        displayModeBar: false,
+                        displaylogo: false
+                    };
+
+                    // Render the chart
+                    Plotly.newPlot(chartId, traces, layout, config);
+                });
+            }
+
+            destroy() {
+                console.log('[DEBUG] TrendsChart.destroy called, purging', this.activeCharts.size, 'charts');
+                
+                // Purge all active Plotly charts
+                this.activeCharts.forEach((_, chartId) => {
+                    const chartElement = document.getElementById(chartId);
+                    if (chartElement) {
+                        try {
+                            Plotly.purge(chartId);
+                            console.log('[DEBUG] Purged chart:', chartId);
+                        } catch (error) {
+                            console.warn('Error purging chart:', chartId, error);
+                        }
+                    }
+                });
+
+                // Clear the registry
+                this.activeCharts.clear();
+
+                // Clear container DOM
+                const container = document.getElementById(this.containerId);
+                if (container) {
+                    container.innerHTML = '';
+                }
+
+                // Hide the section
+                const section = document.getElementById(this.sectionId);
+                if (section) {
+                    section.style.display = 'none';
+                }
+            }
+
+            reset() {
+                this.destroy();
+                const container = document.getElementById(this.containerId);
+                if (container) {
+                    container.innerHTML = `
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                            <span>Loading trend data...</span>
+                        </div>
+                    `;
+                }
+            }
+        })();
     }
+
 
     renderMetricsTable(metrics, systemData) {
         return `
@@ -1000,40 +1036,23 @@ class HealthDashboard {
         // Check for custom reference range first (from database), then fall back to metricUtils
         let rangeBlock = '';
         let metricMatch = null;
-        
+
         if (metric.reference_range) {
             // Use custom reference range from database metric
             const rangeMatch = metric.reference_range.match(/(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\s*(.+)?/);
             if (rangeMatch) {
                 const [, minVal, maxVal, units] = rangeMatch;
-                const customMin = parseFloat(minVal);
-                const customMax = parseFloat(maxVal);
-                const customUnits = (units?.trim() || metric.metric_unit || '');
-                // Use only backend flag for persistence
-                const isAdjusted = !!metric.is_adjusted;
-                
-                // Determine baseline (catalog) range to display
-                let displayMin = customMin;
-                let displayMax = customMax;
-                let displayUnits = customUnits;
-                try {
-                    const systemName = (systemData && (systemData.system?.name || systemData.name)) || '';
-                    const customMetrics = (this.currentSystemData?.customMetrics) || systemData.customMetrics || [];
-                    const baseline = window.metricUtils ? window.metricUtils.findMetricMatch(metric.metric_name, systemName, customMetrics) : null;
-                    if (baseline && typeof baseline.normalRangeMin === 'number' && typeof baseline.normalRangeMax === 'number') {
-                        displayMin = baseline.normalRangeMin;
-                        displayMax = baseline.normalRangeMax;
-                        displayUnits = baseline.units || displayUnits;
-                    }
-                } catch(_) {}
-                
-                const statusText = window.metricUtils ? 
-                    window.metricUtils.calculateStatusSync(metric.metric_value, displayMin, displayMax) : 
-                    (metric.metric_value >= displayMin && metric.metric_value <= displayMax ? 'Normal' : 'Out of Range');
-                const statusClass = statusText.toLowerCase().replace(' ', '-');
+                const normalRangeMin = parseFloat(minVal);
+                const normalRangeMax = parseFloat(maxVal);
+                const rangeUnits = units?.trim() || metric.metric_unit || '';
+
+                const status = window.metricUtils ? 
+                    window.metricUtils.calculateStatus(metric.metric_value, normalRangeMin, normalRangeMax) : 
+                    (metric.metric_value >= normalRangeMin && metric.metric_value <= normalRangeMax ? 'Normal' : 'Out of Range');
+                const statusClass = status.toLowerCase().replace(' ', '-');
                 const rangeBar = window.metricUtils ? 
-                    window.metricUtils.generateMicroRangeBar(metric.metric_value, displayMin, displayMax) : '';
-                
+                    window.metricUtils.generateMicroRangeBar(metric.metric_value, normalRangeMin, normalRangeMax) : '';
+
                 rangeBlock = `
                     <div class="metric-range-block">
                         <div class="metric-status-chip ${statusClass}">${statusText}</div>
@@ -1049,18 +1068,18 @@ class HealthDashboard {
                 `;
             }
         }
-        
+
         // Fall back to metricUtils if no custom reference range
         if (!rangeBlock) {
             const customMetrics = systemData.customMetrics || [];
             metricMatch = window.metricUtils ? 
                 window.metricUtils.findMetricMatch(metric.metric_name, systemData.system?.name || systemData.name, customMetrics) : null;
-            
+
             if (metricMatch) {
                 const statusText = window.metricUtils.calculateStatusSync(metric.metric_value, metricMatch.normalRangeMin, metricMatch.normalRangeMax);
                 const statusClass = statusText.toLowerCase().replace(' ', '-');
                 const rangeBar = window.metricUtils.generateMicroRangeBar(metric.metric_value, metricMatch.normalRangeMin, metricMatch.normalRangeMax);
-                
+
                 rangeBlock = `
                     <div class="metric-range-block">
                         <div class="metric-status-chip ${statusClass}">${statusText}</div>
@@ -1081,7 +1100,7 @@ class HealthDashboard {
                 `;
             }
         }
-        
+
         const needsReview = !metricMatch && !metric.reference_range || metric.needs_review;
 
         const editForm = `
@@ -1235,18 +1254,18 @@ class HealthDashboard {
     renderCombinedAdditionalMetrics(systemData) {
         const nonKeyMetrics = systemData.nonKeyMetrics || [];
         const customMetrics = systemData.customMetrics || [];
-        
+
         if (nonKeyMetrics.length === 0 && customMetrics.length === 0) {
             return '<p style="color: #EBEBF5;">No additional metrics available</p>';
         }
-        
+
         let html = '';
-        
+
         // Render non-key official metrics
         if (nonKeyMetrics.length > 0) {
             html += this.renderMetricsTable(nonKeyMetrics, systemData.system);
         }
-        
+
         // Render custom metrics
         if (customMetrics.length > 0) {
             if (nonKeyMetrics.length > 0) {
@@ -1255,7 +1274,7 @@ class HealthDashboard {
             }
             html += this.renderCustomMetricsTable(customMetrics, systemData.system);
         }
-        
+
         return html;
     }
 
@@ -1284,7 +1303,7 @@ class HealthDashboard {
         const sourceIcon = metric.source_type === 'official' ? 
             '<i class="fas fa-globe text-success" title="Global metric"></i>' : 
             '<i class="fas fa-user text-info" title="Personal metric"></i>';
-        
+
         return `
             <tr>
                 <td style="color: #FFFFFF; font-weight: 600;">
@@ -1307,7 +1326,31 @@ class HealthDashboard {
         `;
     }
 
-    
+    isCustomMetricInRange(metric) {
+        if (!metric.normal_range_min || !metric.normal_range_max) return null;
+
+        const value = parseFloat(metric.value);
+        if (isNaN(value)) return null;
+
+        return value >= metric.normal_range_min && value <= metric.normal_range_max;
+    }
+
+    getCustomMetricStatusBadge(metric, isInRange) {
+        if (isInRange === null) {
+            return '<span class="badge bg-secondary">-</span>';
+        }
+
+        if (isInRange) {
+            return '<span class="badge bg-success">Normal</span>';
+        } else {
+            const value = parseFloat(metric.value);
+            if (value < metric.normal_range_min) {
+                return '<span class="badge bg-warning">Low</span>';
+            } else {
+                return '<span class="badge bg-danger">High</span>';
+            }
+        }
+    }
 
     generateTooltipTitle(metricData, metricName) {
         let tooltip = metricName;
@@ -1326,9 +1369,9 @@ class HealthDashboard {
         if (this.isRefreshingInsights) {
             return;
         }
-        
+
         this.isRefreshingInsights = true;
-        
+
         // Add refreshing indicator to insights panels
         const insightsPanels = document.querySelectorAll('.insights-panel .card-body');
         insightsPanels.forEach(panel => {
@@ -1337,7 +1380,7 @@ class HealthDashboard {
             if (existingRefreshing) {
                 existingRefreshing.remove();
             }
-            
+
             const refreshingDiv = document.createElement('div');
             refreshingDiv.className = 'text-center py-3 insights-refreshing';
             refreshingDiv.innerHTML = `
@@ -1351,7 +1394,7 @@ class HealthDashboard {
     hideInsightsRefreshing() {
         // Reset the refreshing state
         this.isRefreshingInsights = false;
-        
+
         // Remove refreshing indicators
         const refreshingDivs = document.querySelectorAll('.insights-refreshing');
         refreshingDivs.forEach(div => div.remove());
@@ -1423,11 +1466,11 @@ class HealthDashboard {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(modal);
         const modalInstance = new bootstrap.Modal(modal);
         modalInstance.show();
-        
+
         // Clean up modal after hiding
         modal.addEventListener('hidden.bs.modal', () => {
             document.body.removeChild(modal);
@@ -1441,7 +1484,7 @@ class HealthDashboard {
         const currentMetricName = currentMetricSelect.options[0].text; // First option is current metric
         const currentUnitsElement = document.getElementById(`edit-unit-${metricId}`);
         const currentUnits = currentUnitsElement ? currentUnitsElement.value : '';
-        
+
         const modal = document.createElement('div');
         modal.className = 'modal fade';
         modal.id = 'inlineCustomMetricModal';
@@ -1503,11 +1546,11 @@ class HealthDashboard {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(modal);
         const modalInstance = new bootstrap.Modal(modal);
         modalInstance.show();
-        
+
         // Clean up modal after hiding
         modal.addEventListener('hidden.bs.modal', () => {
             document.body.removeChild(modal);
@@ -1551,15 +1594,15 @@ class HealthDashboard {
             const currentValue = document.getElementById(`edit-value-${metricId}`).value;
             const currentUnit = document.getElementById(`edit-unit-${metricId}`).value;
             const currentDate = document.getElementById(`edit-date-${metricId}`).value;
-            
+
             selectElement.value = metricName;
-            
+
             // Step 3: Update the metric with custom type and reference range
             const referenceRange = (rangeMin !== null || rangeMax !== null) ? 
                 `${rangeMin || 0}-${rangeMax || ''} ${units}`.trim() : '';
-            
+
             console.log('DEBUG updating metric:', { metricId, metricName, currentValue, units, referenceRange, rangeMin, rangeMax });
-            
+
             await this.apiCall(`/metrics/${metricId}`, 'PUT', {
                 metric_name: metricName,
                 metric_value: parseFloat(currentValue),
@@ -1573,10 +1616,10 @@ class HealthDashboard {
             bootstrap.Modal.getInstance(document.getElementById('inlineCustomMetricModal')).hide();
 
             this.showToast('success', 'Custom Metric Type', 'New metric type created and metric updated successfully');
-            
+
             // Cancel edit mode first, then refresh
             this.cancelMetricEdit(metricId);
-            
+
             // Refresh the system details to show updated data
             if (this.currentSystemData && this.currentSystemData.system) {
                 this.showSystemDetails(this.currentSystemData.system.id);
@@ -1599,7 +1642,7 @@ class HealthDashboard {
             'IU/L', 'mEq/L', 'U/L', 'g/24h', 'Osm/kg', 'Osm/L',
             'kg', 'cm', 'mmol/mol', 'Angstrom', 'Other'
         ];
-        
+
         return units.map(unit => `<option value="${unit}">${unit}</option>`).join('');
     }
 
@@ -1612,7 +1655,7 @@ class HealthDashboard {
             'IU/L', 'mEq/L', 'U/L', 'g/24h', 'Osm/kg', 'Osm/L',
             'kg', 'cm', 'mmol/mol', 'Angstrom', 'Other'
         ];
-        
+
         return units.map(unit => {
             const selected = unit === selectedUnit ? 'selected' : '';
             return `<option value="${unit}" ${selected}>${unit}</option>`;
@@ -1639,15 +1682,15 @@ class HealthDashboard {
 
             this.showLoading(true);
             await this.apiCall('/metrics/custom', 'POST', formData);
-            
+
             // Close modal
             bootstrap.Modal.getInstance(document.getElementById('addCustomMetricModal')).hide();
-            
+
             // Refresh system details
             this.showSystemDetails(systemId);
-            
+
             this.showToast('success', 'Custom Metric', 'Custom metric added successfully');
-            
+
         } catch (error) {
             console.error('Failed to save custom metric:', error);
             this.showToast('error', 'Save Failed', error.message);
@@ -1663,16 +1706,16 @@ class HealthDashboard {
 
     async deleteCustomMetric(metricId) {
         if (!confirm('Are you sure you want to delete this custom metric?')) return;
-        
+
         try {
             this.showLoading(true);
             await this.apiCall(`/metrics/custom/${metricId}`, 'DELETE');
-            
+
             // Refresh current system view
             this.refreshCurrentSystemView();
-            
+
             this.showToast('success', 'Custom Metric', 'Custom metric deleted successfully');
-            
+
         } catch (error) {
             console.error('Failed to delete custom metric:', error);
             this.showToast('error', 'Delete Failed', error.message);
@@ -1692,20 +1735,20 @@ class HealthDashboard {
 
         this.insightsPollingInterval = setInterval(async () => {
             pollCount++;
-            
+
             try {
                 // Check if new insights are available
                 const response = await this.apiCall('/dashboard');
                 if (response.success && response.data) {
                     // Update system insights if they're different
                     this.hideInsightsRefreshing();
-                    
+
                     // Refresh current system view if modal is open
                     const modal = document.getElementById('systemModal');
                     if (modal && modal.classList.contains('show')) {
                         this.refreshCurrentSystemView();
                     }
-                    
+
                     this.showToast('success', 'Insights Updated', 'AI insights have been refreshed with your latest data.');
                     clearInterval(this.insightsPollingInterval);
                     return;
@@ -1738,13 +1781,13 @@ class HealthDashboard {
             if (metricNameSpan) {
                 metricNameSpan.textContent = updatedMetric.metric_name;
             }
-            
+
             // Remove existing "Needs Review" indicator
             const existingIndicator = nameCell.querySelector('.needs-review-indicator');
             if (existingIndicator) {
                 existingIndicator.remove();
             }
-            
+
             // Add "Needs Review" indicator only if still needed
             if (needsReview) {
                 const indicator = document.createElement('span');
@@ -1780,63 +1823,18 @@ class HealthDashboard {
 
         // Update the range indicator preferring metric.reference_range
         const rangeCell = metricRow.querySelector('.range-indicator');
-        let rangeRendered = false;
 
-        if (rangeCell && updatedMetric.reference_range) {
-            const m = String(updatedMetric.reference_range).match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*(.+)?/);
-            if (m) {
-                const minV = parseFloat(m[1]);
-                const maxV = parseFloat(m[2]);
-                const units = (m[3] || updatedMetric.metric_unit || '').trim();
+        // Get custom metrics for range analysis
+        const systemData = this.currentSystemData || {};
+        const customMetrics = systemData.customMetrics || [];
+        const metricMatch = window.metricUtils ? 
+            window.metricUtils.findMetricMatch(updatedMetric.metric_name, systemData.system?.name || systemData.name, customMetrics) : null;
 
-                const systemData = this.currentSystemData || {};
-                const customMetrics = systemData.customMetrics || [];
-                const baseline = window.metricUtils ?
-                    window.metricUtils.findMetricMatch(updatedMetric.metric_name, systemData.system?.name || systemData.name, customMetrics) : null;
-
-                // Prefer backend flag when present on updatedMetric
-                let isAdjusted = !!updatedMetric.is_adjusted;
-                if (!isAdjusted && baseline && typeof baseline.normalRangeMin === 'number' && typeof baseline.normalRangeMax === 'number') {
-                    const bMin = baseline.normalRangeMin;
-                    const bMax = baseline.normalRangeMax;
-                    const bUnits = baseline.units || '';
-                    isAdjusted = (bMin !== minV) || (bMax !== maxV) || ((bUnits || '') !== units);
-                }
-
-                const statusText = window.metricUtils ?
-                    window.metricUtils.calculateStatusSync(updatedMetric.metric_value, minV, maxV) :
-                    (updatedMetric.metric_value >= minV && updatedMetric.metric_value <= maxV ? 'Normal' : 'Out of Range');
-                const statusClass = statusText.toLowerCase().replace(' ', '-');
-                const rangeBar = window.metricUtils ? window.metricUtils.generateMicroRangeBar(updatedMetric.metric_value, minV, maxV) : '';
-
-                rangeCell.innerHTML = `
-                    <div class="metric-range-block">
-                        <div class="metric-status-chip ${statusClass}">${statusText}</div>
-                        ${rangeBar}
-                        <div class="normal-range-caption" style="text-align: center; display: flex; flex-direction: column; align-items: center;">
-                            <div>
-                                Normal Range: ${minV}–${maxV} ${units}
-                            <span class="info-icon" data-metric="${updatedMetric.metric_name}" data-bs-toggle="tooltip" title="Custom reference range">i</span>
-                            </div>
-                            ${isAdjusted ? '<div><span class="badge bg-warning text-dark mt-1">Adjusted Range</span></div>' : ''}
-                        </div>
-                    </div>
-                `;
-                rangeRendered = true;
-            }
-        }
-
-        if (!rangeRendered) {
-            // Fallback to baseline
-            const systemData = this.currentSystemData || {};
-            const customMetrics = systemData.customMetrics || [];
-            const metricMatch = window.metricUtils ?
-                window.metricUtils.findMetricMatch(updatedMetric.metric_name, systemData.system?.name || systemData.name, customMetrics) : null;
-
-            if (rangeCell && window.metricUtils && metricMatch && updatedMetric.metric_value) {
-                const statusText = window.metricUtils.calculateStatusSync(
-                    updatedMetric.metric_value,
-                    metricMatch.normalRangeMin,
+        if (rangeCell && window.metricUtils && metricMatch) {
+            if (updatedMetric.metric_value) {
+                const status = window.metricUtils.calculateStatus(
+                    updatedMetric.metric_value, 
+                    metricMatch.normalRangeMin, 
                     metricMatch.normalRangeMax
                 );
                 const statusClass = statusText.toLowerCase().replace(' ', '-');
@@ -1920,7 +1918,7 @@ class HealthDashboard {
         const studiesList = studies.map(study => {
             const testDate = study.test_date ? new Date(study.test_date).toLocaleDateString() : 'Unknown date';
             const keyMetricsText = this.formatStudyKeyMetrics(study.metrics_json);
-            
+
             return `
                 <div class="study-item mb-3 p-3" style="background: #2C2C2E; border-radius: 8px; border: 1px solid #3A3A3C;">
                     <div class="row align-items-center">
@@ -2060,7 +2058,7 @@ class HealthDashboard {
                                 <div class="col-md-6">
                                     <h6 style="color: #FFFFFF;">AI Summary</h6>
                                     <p style="color: #EBEBF5; font-size: 14px;">${study.ai_summary || 'No summary available'}</p>
-                                    
+
                                     ${study.comparison_summary ? `
                                         <h6 style="color: #FFFFFF; margin-top: 20px;">Comparison Analysis</h6>
                                         <p style="color: #EBEBF5; font-size: 14px;">${study.comparison_summary}</p>
@@ -2069,7 +2067,7 @@ class HealthDashboard {
                                 <div class="col-md-6">
                                     <h6 style="color: #FFFFFF;">Measurements</h6>
                                     ${this.renderStudyMetricsTable(study.metrics_json)}
-                                    
+
                                     ${study.metric_changes_json ? `
                                         <h6 style="color: #FFFFFF; margin-top: 20px;">Metric Changes</h6>
                                         ${this.renderMetricChangesTable(study.metric_changes_json)}
@@ -2170,7 +2168,7 @@ class HealthDashboard {
             const systemMatch = modalTitle.textContent.match(/(\w+)\s+System/);
             if (systemMatch) {
                 const systemName = systemMatch[1];
-                
+
                 // Find system ID from dashboard data
                 if (this.dashboardData && this.dashboardData.systems) {
                     const system = this.dashboardData.systems.find(s => 
@@ -2189,27 +2187,27 @@ class HealthDashboard {
             // Fetch available metric types from new API endpoint
             const response = await this.apiCall(`/metrics/types?systemId=${systemId}`, 'GET');
             const { officialMetricNames, approvedCustomMetricNames, userPendingMetricNames } = response;
-            
+
             // Clear existing options except current
             selectElement.innerHTML = `<option value="${currentMetric}" selected>${currentMetric}</option>`;
-            
+
             // Add all available metric names
             const allMetricNames = [
                 ...officialMetricNames,
                 ...approvedCustomMetricNames,
                 ...userPendingMetricNames
             ];
-            
+
             // Remove duplicates and current metric
             const uniqueMetrics = [...new Set(allMetricNames)].filter(name => name !== currentMetric);
-            
+
             uniqueMetrics.forEach(metricName => {
                 const option = document.createElement('option');
                 option.value = metricName;
                 option.textContent = metricName;
                 selectElement.appendChild(option);
             });
-            
+
             // Add "+ Add New Metric" option
             const addOption = document.createElement('option');
             addOption.value = '__ADD_NEW__';
@@ -2217,7 +2215,7 @@ class HealthDashboard {
             addOption.style.fontStyle = 'italic';
             addOption.style.color = '#007AFF';
             selectElement.appendChild(addOption);
-            
+
             return true;
         } catch (error) {
             console.error('Failed to populate metric dropdown:', error);
@@ -2227,19 +2225,19 @@ class HealthDashboard {
 
     generateUnitOptions(metricMatch, currentUnit) {
         const commonUnits = ['mg/dL', 'mmHg', 'g/dL', '%', 'U/L', 'ng/mL', 'pg/mL', 'μg/L', 'IU/mL', 'beats/min', 'L/min'];
-        
+
         let options = `<option value="${currentUnit || ''}">${currentUnit || 'Select unit'}</option>`;
-        
+
         if (metricMatch && metricMatch.units && metricMatch.units !== currentUnit) {
             options += `<option value="${metricMatch.units}">${metricMatch.units} (recommended)</option>`;
         }
-        
+
         commonUnits.forEach(unit => {
             if (unit !== currentUnit && (!metricMatch || unit !== metricMatch.units)) {
                 options += `<option value="${unit}">${unit}</option>`;
             }
         });
-        
+
         return options;
     }
 
@@ -2248,27 +2246,19 @@ class HealthDashboard {
         const editRow = document.getElementById(`edit-row-${metricId}`);
         const editForm = document.getElementById(`edit-form-${metricId}`);
         const displayRow = document.getElementById(`metric-row-${metricId}`);
-        try { console.log('[EDIT_METRIC] Elements', { hasEditRow: !!editRow, hasEditForm: !!editForm, hasDisplayRow: !!displayRow }); } catch (_) {}
-        
-        // Show edit form below without hiding display row
+
+        // Show edit form and hide display row
+        displayRow.classList.add('d-none');
         editRow.classList.remove('d-none');
-        editRow.style.display = 'table-row';
-        if (!editForm) { console.warn('[EDIT_METRIC] Missing edit form container'); }
-        // Force reveal any nested d-none just in case
-        try {
-            editRow.querySelectorAll('.d-none').forEach(el => el.classList.remove('d-none'));
-        } catch(_) {}
-        
+
         // Populate metric dropdown with available options
         const selectElement = document.getElementById(`edit-metric-${metricId}`);
         const systemId = selectElement.dataset.systemId;
         const currentMetric = selectElement.value;
-        try { console.log('[EDIT_METRIC] Dropdown', { systemId, currentMetric }); } catch (_) {}
-        
+
         if (systemId) {
             await this.populateMetricDropdown(selectElement, systemId, currentMetric);
-            try { console.log('[EDIT_METRIC] Dropdown populated'); } catch (_) {}
-            
+
             // Add change handler for "+ Add New Metric" option
             selectElement.addEventListener('change', (e) => {
                 if (e.target.value === '__ADD_NEW__') {
@@ -2281,7 +2271,7 @@ class HealthDashboard {
                 }
             });
         }
-        
+
         // Pre-populate the date field with the existing metric date
         const metricRow = document.querySelector(`[data-metric-id="${metricId}"]`);
         if (metricRow) {
@@ -2337,7 +2327,7 @@ class HealthDashboard {
                 }
             }
         }
-        
+
         editRow.classList.remove('d-none');
         editForm.classList.remove('d-none');
         editForm.style.display = 'block';
@@ -2414,7 +2404,7 @@ class HealthDashboard {
         const editRow = document.getElementById(`edit-row-${metricId}`);
         const editForm = document.getElementById(`edit-form-${metricId}`);
         const displayRow = document.getElementById(`metric-row-${metricId}`);
-        
+
         // Hide edit form and show display row
         if (editRow) editRow.classList.add('d-none');
         if (editForm) editForm.classList.add('d-none');
@@ -2528,19 +2518,19 @@ class HealthDashboard {
                 }
 
                 this.showToast('success', 'Metric Updated', 'Metric updated. AI insights and daily plan refreshed.');
-                
+
                 // Update the metric row in the table immediately
                 this.updateMetricRowInTable(metricId, response.metric);
-                
+
                 // Hide edit form  
                 this.cancelMetricEdit(metricId);
-                
+
                 // Show refreshing state for insights
                 this.showInsightsRefreshing();
-                
+
                 // Start polling for updated insights
                 this.startInsightsPolling(this.user?.id);
-                
+
                 // Refresh main dashboard to update tile colors immediately  
                 setTimeout(() => {
                     this.loadDashboard();
@@ -2579,7 +2569,7 @@ class HealthDashboard {
                 <span class="badge bg-${statusColor} mb-2" style="font-size: 0.9rem;">${systemStatus}</span>
                 ${summaryInsight ? `<div style="color: #FFFFFF; margin-top: 8px; line-height: 1.4;">${summaryInsight}</div>` : ''}
             </div>
-            
+
             ${outOfRangeMetrics && outOfRangeMetrics.length > 0 ? `
                 <div class="mb-3">
                     <h6 style="color: #FFFFFF; font-size: 0.9rem; margin-bottom: 12px;">
@@ -2664,12 +2654,91 @@ class HealthDashboard {
         }
     }
 
+    renderDailyPlan(dailyPlan) {
+        const container = document.getElementById('dailyPlanContent');
+
+        if (!dailyPlan) {
+            container.innerHTML = `
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-calendar-plus fa-3x text-muted mb-3"></i>
+                        <h4>No Daily Plan Available</h4>
+                        <p class="text-muted mb-4">Upload some health data to generate your personalized daily plan</p>
+                        <button class="btn btn-primary" onclick="document.getElementById('uploads-tab').click()">
+                            <i class="fas fa-upload me-2"></i>Upload Health Data
+                        </button>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-calendar-day me-2"></i>
+                            Daily Plan for ${dailyPlan.plan_date ? new Date(dailyPlan.plan_date).toLocaleDateString() : 'Today'}
+                        </h5>
+                        <small class="text-muted">
+                            Generated: ${dailyPlan.generated_at ? new Date(dailyPlan.generated_at).toLocaleString() : 'Recently'}
+                        </small>
+                    </div>
+                </div>
+                <div class="card-body">
+                    ${dailyPlan.key_focus_areas && dailyPlan.key_focus_areas.length > 0 ? `
+                        <div class="mb-4">
+                            <h6 class="text-muted mb-2">Focus Areas:</h6>
+                            <div class="d-flex flex-wrap gap-2">
+                                ${dailyPlan.key_focus_areas.map(area => `
+                                    <span class="badge bg-primary">${area}</span>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${dailyPlan.recommendations && dailyPlan.recommendations.length > 0 ? `
+                        <div class="mb-4">
+                            <h6 class="text-muted mb-3">Recommendations:</h6>
+                            <div class="row">
+                                ${dailyPlan.recommendations.map((rec, index) => `
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card h-100 border-${rec.priority === 'high' ? 'danger' : rec.priority === 'medium' ? 'warning' : 'success'}">
+                                            <div class="card-body">
+                                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                                    <span class="badge bg-secondary">${rec.category}</span>
+                                                    <span class="badge bg-${rec.priority === 'high' ? 'danger' : rec.priority === 'medium' ? 'warning' : 'success'}">${rec.priority}</span>
+                                                </div>
+                                                <h6 class="card-title">${rec.action}</h6>
+                                                <p class="card-text text-muted small">${rec.reason}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${dailyPlan.estimated_compliance_time_minutes ? `
+                        <div class="text-center">
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>
+                                Estimated time: ${dailyPlan.estimated_compliance_time_minutes} minutes
+                            </small>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+
     async regenerateDailyPlan() {
         this.showLoading(true);
         try {
             await this.apiCall('/dashboard/daily-plan/regenerate', 'POST');
             this.showToast('success', 'Daily Plan', 'Daily plan regeneration queued. Check back in a few minutes.');
-            
+
             // Reload after a delay
             setTimeout(() => this.loadDailyPlan(), 30000);
         } catch (error) {
@@ -2685,7 +2754,7 @@ class HealthDashboard {
         const files = event.target.files;
         const uploadBtn = document.getElementById('uploadBtn');
         const dropZone = document.getElementById('dropZone');
-        
+
         if (files.length > 0) {
             uploadBtn.disabled = false;
             uploadBtn.innerHTML = `<i class="fas fa-magic me-2"></i>Process ${files.length} File(s) with AI`;
@@ -2719,11 +2788,11 @@ class HealthDashboard {
             e.preventDefault();
             dropZone.style.borderColor = '#3A3A3C';
             dropZone.style.background = '#2C2C2E';
-            
+
             const files = e.dataTransfer.files;
             const fileInput = document.getElementById('fileUpload');
             fileInput.files = files;
-            
+
             // Trigger change event
             const event = new Event('change', { bubbles: true });
             fileInput.dispatchEvent(event);
@@ -2741,7 +2810,7 @@ class HealthDashboard {
         const fileInput = document.getElementById('fileUpload');
         const files = fileInput.files;
         const testDateInput = document.getElementById('testDate');
-        
+
         if (files.length === 0) return;
 
         this.showUploadProgress(true);
@@ -2752,11 +2821,11 @@ class HealthDashboard {
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
                 console.log(`[UPLOAD] Processing file ${i + 1}/${files.length}: ${file.name}`);
-                
+
                 // Update progress
                 const progress = ((i / files.length) * 100).toFixed(0);
                 document.querySelector('#uploadProgress .progress-bar').style.width = `${progress}%`;
-                
+
                 const formData = new FormData();
                 formData.append('file', file);
                 if (testDateInput.value) {
@@ -2773,7 +2842,7 @@ class HealthDashboard {
 
                 const result = await response.json();
                 results.push({ fileName: file.name, result });
-                
+
                 if (!response.ok) {
                     throw new Error(result.message || `Failed to process ${file.name}`);
                 }
@@ -2781,15 +2850,15 @@ class HealthDashboard {
 
             // Complete progress
             document.querySelector('#uploadProgress .progress-bar').style.width = '100%';
-            
+
             // Show results
             this.showUploadResults(results);
-            
+
             // Clean up
             fileInput.value = '';
             testDateInput.value = '';
             document.getElementById('uploadBtn').disabled = true;
-            
+
             // Refresh dashboard to show new data
             setTimeout(() => {
                 this.loadDashboard();
@@ -2817,10 +2886,10 @@ class HealthDashboard {
 
     showUploadResults(results) {
         const resultDiv = document.getElementById('uploadResult');
-        
+
         const successCount = results.filter(r => r.result.success).length;
         const totalCount = results.length;
-        
+
         let html = `
             <div class="alert alert-success" style="background: #1e3a3a; border: 1px solid #28a745; color: #FFFFFF;">
                 <h6><i class="fas fa-check-circle me-2"></i>Processing Complete</h6>
@@ -2833,7 +2902,7 @@ class HealthDashboard {
                 const icon = dataType === 'lab' ? 'fas fa-vials' : 
                            dataType === 'visual' ? 'fas fa-images' : 
                            'fas fa-file-medical';
-                
+
                 html += `
                     <div class="mb-2 p-2" style="background: #2C2C2E; border-radius: 4px;">
                         <strong><i class="${icon} me-1"></i>${fileName}</strong>
@@ -2853,10 +2922,10 @@ class HealthDashboard {
         });
 
         html += '</div>';
-        
+
         resultDiv.innerHTML = html;
         resultDiv.style.display = 'block';
-        
+
         // Auto-hide after 10 seconds
         setTimeout(() => {
             resultDiv.style.display = 'none';
@@ -2891,11 +2960,17 @@ class HealthDashboard {
 
     renderUploads(uploads) {
         const container = document.getElementById('uploadsList');
-        if (!container) return;
-        const items = Array.isArray(uploads) ? uploads : [];
-        container.innerHTML = '';
-        if (items.length === 0) {
-            container.innerHTML = '<div class="text-muted">No uploads yet.</div>';
+
+        if (uploads.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-cloud-arrow-up"></i>
+                    </div>
+                    <div class="empty-state-title">No uploads yet</div>
+                    <div class="empty-state-text">Upload your first health document to get started</div>
+                </div>
+            `;
             return;
         }
         container.innerHTML = items.map(u => `
@@ -2959,7 +3034,7 @@ class HealthDashboard {
             const promises = trendMetrics.map(metrics => 
                 this.apiCall(`/metrics/trends?metrics=${metrics}`, 'GET').catch(() => null)
             );
-            
+
             const results = await Promise.all(promises);
             this.renderTrendCharts(results);
         } catch (error) {
@@ -2973,20 +3048,20 @@ class HealthDashboard {
     renderTrendCharts(trendsData) {
         // LDL Chart
         this.renderChart('ldlChart', trendsData[0], 'LDL Cholesterol', 'mg/dL');
-        
+
         // ApoB Chart
         this.renderChart('apoBChart', trendsData[1], 'ApoB', 'mg/dL');
-        
+
         // CRP Chart
         this.renderChart('crpChart', trendsData[2], 'CRP', 'mg/L');
-        
+
         // IL-6 Chart
         this.renderChart('il6Chart', trendsData[3], 'IL-6', 'pg/mL');
     }
 
     renderChart(containerId, trendData, title, unit) {
         const container = document.getElementById(containerId);
-        
+
         if (!trendData || !trendData.trends || Object.keys(trendData.trends).length === 0) {
             container.innerHTML = `
                 <div class="d-flex align-items-center justify-content-center h-100">
@@ -3080,20 +3155,16 @@ class HealthDashboard {
         }
 
         const response = await fetch(`${this.apiBase}${endpoint}`, config);
-        
+
         if (!response.ok) {
-            let errorData = {};
-            try {
-                errorData = await response.json();
-            } catch (_) {
-                errorData = { error: 'Unknown error', message: response.statusText };
-            }
-            
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+
+            // Handle 401 specifically for session expiry
             if (response.status === 401) {
                 this.handleSessionExpiry();
                 throw new Error(errorData.message || 'Session expired - please sign in again');
             }
-            
+
             const error = new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
             error.status = response.status;
             throw error;
@@ -3101,16 +3172,16 @@ class HealthDashboard {
 
         return await response.json();
     }
-    
+
     handleSessionExpiry() {
         // Clear stored token
         localStorage.removeItem('authToken');
         this.token = null;
         this.user = null;
-        
+
         // Show sign-in prompt
         this.showToast('warning', 'Session Expired', 'Please sign in again to continue');
-        
+
         // Redirect to login after a short delay
         setTimeout(() => {
             this.showLogin();
@@ -3181,44 +3252,41 @@ class HealthDashboard {
     async loadProfileData() {
         const startTime = performance.now();
         const correlationId = this.generateCorrelationId();
-        
+
         this.logClient('PROFILE_LOAD_REQUESTED', {
             correlation_id: correlationId,
             url: '/api/profile',
             method: 'GET'
         });
-        
+
         try {
             const response = await this.apiCall('/profile', 'GET', null, {
                 'X-Request-ID': correlationId
             });
-            
+
             const duration = performance.now() - startTime;
-            
+
             // Handle both flat response and wrapped response for backwards compatibility
             const profileData = response.profile || response;
             const normalizedProfile = this.normalizeProfileResponse(profileData);
             this.currentProfile = normalizedProfile;
-            
+
             // Create privacy-safe summary for logging
             const profileSummary = this.createClientProfileSummary(profileData);
-            
+
             this.logClient('PROFILE_LOAD_SUCCESS', {
                 correlation_id: correlationId,
                 status: 200,
                 duration_ms: Math.round(duration),
                 summary: profileSummary
             });
-            
+
             this.populateProfileForm(normalizedProfile, profileData.allergies || []);
             this.expandProfileSections(normalizedProfile);
-            
-            // Load custom reference ranges (disabled for now)
-            // this.loadCustomReferenceRanges();
-            
+
         } catch (error) {
             const duration = performance.now() - startTime;
-            
+
             this.logClient('PROFILE_LOAD_FAILED', {
                 correlation_id: correlationId,
                 status: error.status || 0,
@@ -3226,13 +3294,13 @@ class HealthDashboard {
                 server_message: error.message || 'Unknown error',
                 duration_ms: Math.round(duration)
             }, 'ERROR');
-            
+
             console.error('Failed to load profile:', {
                 message: error.message,
                 status: error.status,
                 endpoint: '/profile'
             });
-            
+
             // Don't show error toast for 401 (handled by handleSessionExpiry)
             if (!error.message.includes('Session expired')) {
                 this.showToast('error', 'Profile Load Failed', 
@@ -3243,22 +3311,22 @@ class HealthDashboard {
 
     populateProfileForm(profile, allergies = []) {
         if (!profile) return;
-        
+
         // Set unit system preference
         const unitSystem = profile.preferredUnitSystem || 'US';
         document.getElementById(`unit${unitSystem}`).checked = true;
         this.toggleUnitSystem(unitSystem);
-        
+
         // Demographics - use null-safe values
         document.getElementById('sex').value = profile.sex || '';
         // Convert ISO date to YYYY-MM-DD format for date input
         if (profile.dateOfBirth) {
             const dobDate = new Date(profile.dateOfBirth);
-            document.getElementById('dateOfBirth').value = this.toYMD(dobDate);
+            document.getElementById('dateOfBirth').value = dobDate.toISOString().split('T')[0];
         } else {
             document.getElementById('dateOfBirth').value = '';
         }
-        
+
         // Height and weight from canonical storage
         if (profile.heightIn !== null && profile.heightIn !== undefined) {
             if (unitSystem === 'US') {
@@ -3271,7 +3339,7 @@ class HealthDashboard {
                 document.getElementById('heightCm').value = cm;
             }
         }
-        
+
         if (profile.weightLb !== null && profile.weightLb !== undefined) {
             if (unitSystem === 'US') {
                 document.getElementById('weightLbs').value = profile.weightLb;
@@ -3280,10 +3348,10 @@ class HealthDashboard {
                 document.getElementById('weightKg').value = parseFloat(kg);
             }
         }
-        
+
         document.getElementById('ethnicity').value = profile.ethnicity || '';
         document.getElementById('countryOfResidence').value = profile.countryOfResidence || '';
-        
+
         // Lifestyle - null-safe boolean handling
         if (profile.smoker === true || profile.smoker === false) {
             document.getElementById('smoker').value = profile.smoker.toString();
@@ -3294,29 +3362,29 @@ class HealthDashboard {
         } else {
             document.getElementById('smoker').value = '';
         }
-        
+
         document.getElementById('alcoholDrinksPerWeek').value = profile.alcoholDrinksPerWeek || '';
-        
+
         // Reproductive context - null-safe boolean handling
         if (profile.pregnant === true || profile.pregnant === false) {
             document.getElementById('pregnant').value = profile.pregnant.toString();
             if (profile.pregnant && profile.pregnancyStartDate) {
                 // Convert ISO date to YYYY-MM-DD format for date input
                 const pregnancyDate = new Date(profile.pregnancyStartDate);
-                document.getElementById('pregnancyStartDate').value = this.toYMD(pregnancyDate);
+                document.getElementById('pregnancyStartDate').value = pregnancyDate.toISOString().split('T')[0];
                 document.getElementById('pregnancyDateContainer').classList.remove('d-none');
             }
         } else {
             document.getElementById('pregnant').value = '';
         }
-        
+
         document.getElementById('cyclePhase').value = profile.cyclePhase || '';
-        
+
         // Calculate age if DOB exists
         if (profile.dateOfBirth) {
             this.calculateAge();
         }
-        
+
         // Show reproductive section if sex is female
         this.toggleReproductiveSection();
 
@@ -3345,7 +3413,7 @@ class HealthDashboard {
             const response = await this.apiCall('/profile/countries', 'GET');
             const select = document.getElementById('countryOfResidence');
             select.innerHTML = '<option value="">Select country...</option>';
-            
+
             response.countries.forEach(country => {
                 const option = document.createElement('option');
                 option.value = country.code;
@@ -3373,11 +3441,11 @@ class HealthDashboard {
 
     handleUnitSystemChange(newSystem) {
         const currentSystem = newSystem === 'US' ? 'SI' : 'US';
-        
+
         // Get current values
         let currentHeight = null;
         let currentWeight = null;
-        
+
         if (currentSystem === 'US') {
             const feet = parseInt(document.getElementById('heightFeet').value) || 0;
             const inches = parseInt(document.getElementById('heightInches').value) || 0;
@@ -3395,14 +3463,14 @@ class HealthDashboard {
                 currentWeight = kg * 2.2046226218; // convert to lbs
             }
         }
-        
+
         // Clear all inputs
         document.getElementById('heightFeet').value = '';
         document.getElementById('heightInches').value = '';
         document.getElementById('heightCm').value = '';
         document.getElementById('weightLbs').value = '';
         document.getElementById('weightKg').value = '';
-        
+
         // Convert and populate in new system
         if (currentHeight !== null) {
             if (newSystem === 'US') {
@@ -3415,7 +3483,7 @@ class HealthDashboard {
                 document.getElementById('heightCm').value = cm;
             }
         }
-        
+
         if (currentWeight !== null) {
             if (newSystem === 'US') {
                 document.getElementById('weightLbs').value = currentWeight.toFixed(1);
@@ -3424,7 +3492,7 @@ class HealthDashboard {
                 document.getElementById('weightKg').value = parseFloat(kg);
             }
         }
-        
+
         // Toggle UI visibility
         this.toggleUnitSystem(newSystem);
     }
@@ -3434,13 +3502,13 @@ class HealthDashboard {
         const heightSI = document.getElementById('heightSI');
         const weightUS = document.getElementById('weightUS');
         const weightSI = document.getElementById('weightSI');
-        
+
         if (system === 'US') {
             heightUS.classList.remove('d-none');
             heightSI.classList.add('d-none');
             weightUS.classList.remove('d-none');
             weightSI.classList.add('d-none');
-            
+
             // Disable validation for hidden metric inputs
             document.getElementById('heightCm').disabled = true;
             document.getElementById('weightKg').disabled = true;
@@ -3453,7 +3521,7 @@ class HealthDashboard {
             heightSI.classList.remove('d-none');
             weightUS.classList.add('d-none');
             weightSI.classList.remove('d-none');
-            
+
             // Disable validation for hidden US inputs
             document.getElementById('heightFeet').disabled = true;
             document.getElementById('heightInches').disabled = true;
@@ -3466,26 +3534,26 @@ class HealthDashboard {
 
     async saveProfile(e) {
         e.preventDefault();
-        
+
         const startTime = performance.now();
         const correlationId = this.generateCorrelationId();
-        
+
         // Show saving state
         const saveBtn = document.getElementById('saveProfileBtn');
         const saveText = document.getElementById('saveButtonText');
         const savingSpinner = document.getElementById('savingSpinner');
-        
+
         saveBtn.disabled = true;
         saveText.classList.add('d-none');
         savingSpinner.classList.remove('d-none');
-        
+
         // Get current unit system
         const unitSystem = document.querySelector('input[name="unitSystem"]:checked').value;
-        
+
         // Convert to canonical US units
         let heightIn = null;
         let weightLb = null;
-        
+
         if (unitSystem === 'US') {
             const feet = parseInt(document.getElementById('heightFeet').value) || 0;
             const inches = parseInt(document.getElementById('heightInches').value) || 0;
@@ -3503,14 +3571,14 @@ class HealthDashboard {
                 weightLb = kg * 2.2046226218;
             }
         }
-        
+
         // Validate height and weight bounds
         if (heightIn !== null && (heightIn < 48 || heightIn > 90)) {
             // Reset button state on validation error
             saveBtn.disabled = false;
             saveText.classList.remove('d-none');
             savingSpinner.classList.add('d-none');
-            
+
             this.showToast('error', 'Validation Error', 'Height must be between 4\'0" and 7\'6" (48-90 inches)');
             return;
         }
@@ -3519,11 +3587,11 @@ class HealthDashboard {
             saveBtn.disabled = false;
             saveText.classList.remove('d-none');
             savingSpinner.classList.add('d-none');
-            
+
             this.showToast('error', 'Validation Error', 'Weight must be between 66-660 lbs');
             return;
         }
-        
+
         // Build profile state in camelCase for processing
         const profileState = {
             preferredUnitSystem: unitSystem,
@@ -3542,7 +3610,7 @@ class HealthDashboard {
             pregnancyStartDate: document.getElementById('pregnancyStartDate').value || null,
             cyclePhase: document.getElementById('cyclePhase').value || null
         };
-        
+
         // Convert to snake_case payload for API
         const profileData = this.buildProfilePayload(profileState);
 
@@ -3574,7 +3642,7 @@ class HealthDashboard {
             allergies,
             chronicConditions
         };
-        
+
         // Log profile save attempt 
         const payloadSummary = this.createClientProfileSummary(fullPayload);
         this.logClient('PROFILE_SAVE_CLICKED', {
@@ -3582,9 +3650,9 @@ class HealthDashboard {
             field_count: Object.keys(profileData).length,
             summary: payloadSummary
         });
-        
+
         // Data is already normalized by buildProfilePayload
-        
+
         // Validate inches field if in US mode
         if (unitSystem === 'US') {
             const inches = parseInt(document.getElementById('heightInches').value) || 0;
@@ -3593,19 +3661,19 @@ class HealthDashboard {
                 saveBtn.disabled = false;
                 saveText.classList.remove('d-none');
                 savingSpinner.classList.add('d-none');
-                
+
                 this.showToast('error', 'Validation Error', 'Inches must be between 0-11');
                 return;
             }
         }
-        
+
         // Ensure numeric fields are properly validated
         if (profileData.packs_per_week !== null && profileData.packs_per_week < 0) {
             // Reset button state on validation error
             saveBtn.disabled = false;
             saveText.classList.remove('d-none');
             savingSpinner.classList.add('d-none');
-            
+
             this.showToast('error', 'Validation Error', 'Packs per week cannot be negative');
             return;
         }
@@ -3614,7 +3682,7 @@ class HealthDashboard {
             saveBtn.disabled = false;
             saveText.classList.remove('d-none');
             savingSpinner.classList.add('d-none');
-            
+
             this.showToast('error', 'Validation Error', 'Drinks per week cannot be negative');
             return;
         }
@@ -3627,9 +3695,9 @@ class HealthDashboard {
                 method: 'PUT',
                 payload_summary: payloadSummary
             });
-            
+
             console.log('Sending profile data:', JSON.stringify({...profileData, allergies, chronicConditions}, null, 2));
-            
+
             const response = await this.apiCall('/profile', 'PUT', {
                 ...profileData,
                 allergies,
@@ -3637,36 +3705,36 @@ class HealthDashboard {
             }, {
                 'X-Request-ID': correlationId
             });
-            
+
             const duration = performance.now() - startTime;
-            
+
             // Reset button state on success
             saveBtn.disabled = false;
             saveText.classList.remove('d-none');
             savingSpinner.classList.add('d-none');
-            
+
             // Log successful save
             this.logClient('PROFILE_SAVE_SUCCESS', {
                 correlation_id: correlationId,
                 status: 200,
                 duration_ms: Math.round(duration)
             });
-            
+
             console.log('Profile save response:', response);
             this.showToast('success', 'Profile Saved', 'Your profile has been updated successfully');
-            
+
             // Auto-dismiss success toast after 3 seconds
             setTimeout(() => {
                 const toastElement = document.getElementById('alertToast');
                 const toast = bootstrap.Toast.getInstance(toastElement);
                 if (toast) toast.hide();
             }, 3000);
-            
+
             // Keep unit system toggle highlight by not navigating away
-            
+
         } catch (error) {
             const duration = performance.now() - startTime;
-            
+
             // Log failed save
             this.logClient('PROFILE_SAVE_FAILED', {
                 correlation_id: correlationId,
@@ -3675,16 +3743,16 @@ class HealthDashboard {
                 server_message: error.message || 'Unknown error',
                 duration_ms: Math.round(duration)
             }, 'ERROR');
-            
+
             console.error('Failed to save profile:', error);
-            
+
             // Reset button state on error
             saveBtn.disabled = false;
             saveText.classList.remove('d-none');
             savingSpinner.classList.add('d-none');
-            
+
             let errorMessage = 'Failed to save profile. Please try again.';
-            
+
             // Try to extract specific error details
             if (error && error.response) {
                 try {
@@ -3703,7 +3771,7 @@ class HealthDashboard {
             } else if (error && error.error) {
                 errorMessage = `Save failed: ${error.error}`;
             }
-            
+
             this.showToast('error', 'Save Failed', errorMessage);
         }
     }
@@ -3711,17 +3779,17 @@ class HealthDashboard {
     calculateAge() {
         const dob = document.getElementById('dateOfBirth').value;
         const ageSpan = document.getElementById('calculatedAge');
-        
+
         if (dob) {
             const birthDate = new Date(dob);
             const today = new Date();
             let age = today.getFullYear() - birthDate.getFullYear();
             const monthDiff = today.getMonth() - birthDate.getMonth();
-            
+
             if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
                 age--;
             }
-            
+
             ageSpan.textContent = `${age} years old`;
         } else {
             ageSpan.textContent = '-';
@@ -3732,7 +3800,7 @@ class HealthDashboard {
         const feet = parseInt(document.getElementById('heightFeet').value) || 0;
         const inches = parseInt(document.getElementById('heightInches').value) || 0;
         const cm = parseInt(document.getElementById('heightCm').value) || 0;
-        
+
         if ((feet || inches) && !cm) {
             // Convert ft/in to cm
             const totalInches = feet * 12 + inches;
@@ -3751,7 +3819,7 @@ class HealthDashboard {
     convertWeight() {
         const lbs = parseFloat(document.getElementById('weightLbs').value) || 0;
         const kg = parseFloat(document.getElementById('weightKg').value) || 0;
-        
+
         if (lbs && !kg) {
             // Convert lbs to kg
             const convertedKg = (lbs * 0.453592).toFixed(1);
@@ -3766,7 +3834,7 @@ class HealthDashboard {
     toggleReproductiveSection() {
         const sex = document.getElementById('sex').value;
         const reproductiveSection = document.getElementById('reproductiveSection');
-        
+
         if (sex === 'Female') {
             reproductiveSection.style.display = 'block';
         } else {
@@ -3777,7 +3845,7 @@ class HealthDashboard {
     toggleSmokingFields() {
         const smoker = document.getElementById('smoker').value;
         const container = document.getElementById('packsPerWeekContainer');
-        
+
         if (smoker === 'true') {
             container.classList.remove('d-none');
         } else {
@@ -3789,7 +3857,7 @@ class HealthDashboard {
     togglePregnancyFields() {
         const pregnant = document.getElementById('pregnant').value;
         const container = document.getElementById('pregnancyDateContainer');
-        
+
         if (pregnant === 'true') {
             container.classList.remove('d-none');
         } else {
@@ -3801,12 +3869,12 @@ class HealthDashboard {
     calculateTrimester() {
         const startDate = document.getElementById('pregnancyStartDate').value;
         const trimesterSpan = document.getElementById('calculatedTrimester');
-        
+
         if (startDate) {
             const start = new Date(startDate);
             const today = new Date();
             const weeks = Math.floor((today - start) / (7 * 24 * 60 * 60 * 1000));
-            
+
             let trimester;
             if (weeks <= 13) {
                 trimester = '1st Trimester';
@@ -3817,7 +3885,7 @@ class HealthDashboard {
             } else {
                 trimester = 'Full Term+';
             }
-            
+
             trimesterSpan.textContent = `${trimester} (${weeks} weeks)`;
         } else {
             trimesterSpan.textContent = '-';
@@ -3851,635 +3919,6 @@ class HealthDashboard {
             if (allg && !allg.classList.contains('show')) allg.classList.add('show');
         } catch (e) {
             console.warn('expandProfileSections warning:', e);
-        }
-    }
-
-    // ========================================
-    // METRIC SUGGESTIONS MANAGEMENT
-    // ========================================
-
-    async checkPendingMetricSuggestions() {
-        try {
-            const response = await this.apiCall('/metric-suggestions/pending');
-            if (response && response.pending_suggestions && response.pending_suggestions.length > 0) {
-                this.showPendingMetricsNotification(response.pending_suggestions.length);
-            }
-        } catch (error) {
-            console.error('Failed to check pending metric suggestions:', error);
-        }
-    }
-
-    showPendingMetricsNotification(count) {
-        const alert = document.getElementById('pendingMetricsAlert');
-        const countSpan = document.getElementById('pendingCount');
-        
-        if (alert && countSpan) {
-            countSpan.textContent = count;
-            alert.classList.remove('d-none');
-        }
-    }
-
-    hidePendingMetricsNotification() {
-        const alert = document.getElementById('pendingMetricsAlert');
-        if (alert) {
-            alert.classList.add('d-none');
-        }
-    }
-
-    async showMetricSuggestions() {
-        const modal = new bootstrap.Modal(document.getElementById('metricSuggestionsModal'));
-        modal.show();
-        
-        // Show loading state
-        document.getElementById('suggestionsLoading').classList.remove('d-none');
-        document.getElementById('suggestionsList').classList.add('d-none');
-        document.getElementById('noSuggestions').classList.add('d-none');
-        
-        try {
-            const response = await this.apiCall('/metric-suggestions/pending', 'GET');
-            
-            if (response.pending_suggestions && response.pending_suggestions.length > 0) {
-                this.renderMetricSuggestions(response.pending_suggestions);
-            } else {
-                document.getElementById('suggestionsLoading').classList.add('d-none');
-                document.getElementById('noSuggestions').classList.remove('d-none');
-            }
-        } catch (error) {
-            console.error('Failed to load metric suggestions:', error);
-            this.showToast('error', 'Error', 'Failed to load metric suggestions');
-            document.getElementById('suggestionsLoading').classList.add('d-none');
-        }
-    }
-
-    renderMetricSuggestions(suggestions) {
-        const container = document.getElementById('suggestionsList');
-        let html = '';
-
-        // Add summary stats
-        const totalUnmatched = suggestions.reduce((sum, s) => sum + (s.unmatched_metrics?.length || 0), 0);
-        const totalSuggestions = suggestions.reduce((sum, s) => sum + (s.ai_suggestions?.suggestions?.length || 0), 0);
-
-        html += `
-            <div class="suggestions-stats">
-                <div class="row">
-                    <div class="col-4 text-center">
-                        <div class="stat-number">${suggestions.length}</div>
-                        <div class="stat-label">Uploads</div>
-                    </div>
-                    <div class="col-4 text-center">
-                        <div class="stat-number">${totalUnmatched}</div>
-                        <div class="stat-label">Unmatched Metrics</div>
-                    </div>
-                    <div class="col-4 text-center">
-                        <div class="stat-number">${totalSuggestions}</div>
-                        <div class="stat-label">AI Suggestions</div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        suggestions.forEach((suggestion, index) => {
-            html += this.renderSuggestionItem(suggestion, index);
-        });
-
-        container.innerHTML = html;
-        document.getElementById('suggestionsLoading').classList.add('d-none');
-        document.getElementById('suggestionsList').classList.remove('d-none');
-        
-        this.updateApproveButtonState();
-    }
-
-    renderSuggestionItem(suggestion, index) {
-        const uploadDate = new Date(suggestion.upload_date).toLocaleDateString();
-        const aiSuggestions = suggestion.ai_suggestions?.suggestions || [];
-        
-        let html = `
-            <div class="suggestion-item" data-suggestion-id="${suggestion.id}">
-                <div class="upload-context">
-                    <i class="fas fa-file-medical me-2"></i>
-                    <strong>${suggestion.upload_filename}</strong> 
-                    uploaded on ${uploadDate}
-                </div>
-        `;
-
-        // Render ALL unmatched metrics to maintain parity, showing AI suggestion when available
-        const unmatched = suggestion.unmatched_metrics || [];
-        if (unmatched.length === 0) {
-            html += `
-                <div class="alert alert-secondary">
-                    <i class="fas fa-info-circle me-2"></i>
-                    No unmatched metrics for this upload.
-                </div>
-            `;
-        } else {
-            unmatched.forEach(original => {
-                const aiSuggestion = aiSuggestions.find(s => s.original_name === original.name);
-                const bestMatch = aiSuggestion?.suggested_matches && aiSuggestion.suggested_matches[0];
-                if (bestMatch) {
-                    const confidence = bestMatch.confidence || 0;
-                    const confidenceClass = confidence >= 0.8 ? 'confidence-high' : confidence >= 0.6 ? 'confidence-medium' : 'confidence-low';
-                    const confidenceText = confidence >= 0.8 ? 'High' : confidence >= 0.6 ? 'Medium' : 'Low';
-
-                    html += `
-                        <div class="metric-match-section">
-                            <div class="d-flex align-items-center mb-2">
-                                <input type="checkbox" class="suggestion-checkbox" 
-                                       data-suggestion-id="${suggestion.id}"
-                                       data-original-name="${original.name}"
-                                       data-suggested-name="${bestMatch.standard_name}"
-                                       onchange="healthDashboard.updateApproveButtonState()">
-                                
-                                <div class="flex-grow-1">
-                                    <div class="d-flex align-items-center flex-wrap">
-                                        <span class="original-metric">${original.name}</span>
-                                        <i class="fas fa-arrow-right suggestion-arrow"></i>
-                                        <span class="suggested-metric">${bestMatch.standard_name}</span>
-                                        <span class="confidence-badge ${confidenceClass} ms-2">
-                                            ${confidenceText} (${Math.round(confidence * 100)}%)
-                                        </span>
-                                    </div>
-                                    <div class="mt-2">
-                                        <span class="metric-value-display">
-                                            Value: ${original.value} ${original.unit || ''}
-                                        </span>
-                                    </div>
-                                    ${bestMatch.reason ? `
-                                        <div class="suggestion-reason">
-                                            <i class="fas fa-lightbulb me-1"></i>
-                                            ${bestMatch.reason}
-                                        </div>
-                                    ` : ''}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    // Show unmatched without AI suggestion
-                    html += `
-                        <div class="metric-match-section">
-                            <div class="d-flex align-items-center mb-2">
-                                <input type="checkbox" class="suggestion-checkbox" disabled title="No AI suggestion available">
-                                <div class="flex-grow-1">
-                                    <div class="d-flex align-items-center flex-wrap">
-                                        <span class="original-metric">${original.name}</span>
-                                        <i class="fas fa-arrow-right suggestion-arrow"></i>
-                                        <span class="suggested-metric text-muted">No AI suggestion</span>
-                                    </div>
-                                    <div class="mt-2">
-                                        <span class="metric-value-display">
-                                            Value: ${original.value} ${original.unit || ''}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
-            });
-        }
-
-        html += `</div>`;
-        return html;
-    }
-
-    updateApproveButtonState() {
-        const checkboxes = document.querySelectorAll('.suggestion-checkbox:checked');
-        const button = document.getElementById('approveSelectedBtn');
-        
-        if (button) {
-            button.disabled = checkboxes.length === 0;
-            button.innerHTML = checkboxes.length > 0 ? 
-                `<i class="fas fa-check me-2"></i>Approve Selected (${checkboxes.length})` :
-                `<i class="fas fa-check me-2"></i>Approve Selected`;
-        }
-    }
-
-    async approveSelectedSuggestions() {
-        const checkboxes = document.querySelectorAll('.suggestion-checkbox:checked');
-        
-        if (checkboxes.length === 0) {
-            this.showToast('warning', 'No Selection', 'Please select at least one suggestion to approve');
-            return;
-        }
-
-        // Group approvals by suggestion ID
-        const approvalsByUpload = {};
-        
-        checkboxes.forEach(checkbox => {
-            const suggestionId = checkbox.dataset.suggestionId;
-            const originalName = checkbox.dataset.originalName;
-            const suggestedName = checkbox.dataset.suggestedName;
-            
-            if (!approvalsByUpload[suggestionId]) {
-                approvalsByUpload[suggestionId] = [];
-            }
-            
-            // Find the original metric data
-            const suggestionItem = checkbox.closest('.suggestion-item');
-            const originalMetric = {
-                name: originalName
-            };
-            
-            approvalsByUpload[suggestionId].push({
-                original_metric: originalMetric,
-                approved_standard_name: suggestedName
-            });
-        });
-
-        // Process each upload's approvals
-        try {
-            let totalApproved = 0;
-            
-            for (const [suggestionId, approvals] of Object.entries(approvalsByUpload)) {
-                const response = await this.apiCall(`/metric-suggestions/${suggestionId}/review`, 'POST', {
-                    approved_mappings: approvals,
-                    rejected_metrics: []
-                });
-                
-                totalApproved += response.approved_count || 0;
-            }
-
-            this.showToast('success', 'Success!', `Successfully approved ${totalApproved} metric mappings`);
-            
-            // Close modal and refresh suggestions
-            const modal = bootstrap.Modal.getInstance(document.getElementById('metricSuggestionsModal'));
-            if (modal) modal.hide();
-            
-            // Hide notification if no more pending
-            this.checkPendingMetricSuggestions();
-            
-            // Refresh dashboard to show new metrics
-            this.loadDashboard();
-            
-        } catch (error) {
-            console.error('Failed to approve suggestions:', error);
-            this.showToast('error', 'Error', 'Failed to approve suggestions');
-        }
-    }
-
-    // ========================================
-    // CUSTOM REFERENCE RANGES MANAGEMENT
-    // ========================================
-
-    async loadCustomReferenceRanges() {
-        try {
-            const response = await this.apiCall('/custom-reference-ranges', 'GET');
-            this.renderCustomReferenceRanges(response.custom_ranges || []);
-        } catch (error) {
-            console.error('Failed to load custom reference ranges:', error);
-        }
-    }
-
-    renderCustomReferenceRanges(ranges) {
-        const container = document.getElementById('customRangesList');
-        
-        if (!ranges || ranges.length === 0) {
-            container.innerHTML = `
-                <div class="no-custom-ranges">
-                    <i class="fas fa-sliders-h fa-2x mb-2"></i>
-                    <p class="mb-0">No custom reference ranges set</p>
-                    <small class="text-muted">Add custom ranges for specific medical conditions</small>
-                </div>
-            `;
-            return;
-        }
-
-        let html = '';
-        ranges.forEach(range => {
-            const isActive = this.isRangeCurrentlyActive(range);
-            const conditionDisplay = range.condition_details || this.formatConditionName(range.medical_condition);
-            
-            html += `
-                <div class="custom-range-item" data-range-id="${range.id}">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div class="flex-grow-1">
-                            <div class="range-metric-name">${range.metric_name}</div>
-                            <div class="range-values">
-                                ${range.min_value} - ${range.max_value} ${range.units}
-                            </div>
-                            <div class="range-condition">${conditionDisplay}</div>
-                            
-                            ${range.notes ? `
-                                <div class="range-notes">
-                                    <i class="fas fa-sticky-note me-1"></i>
-                                    ${range.notes}
-                                </div>
-                            ` : ''}
-                            
-                            <div class="range-validity ${isActive ? 'active' : 'expired'}">
-                                <i class="fas fa-calendar me-1"></i>
-                                ${this.formatValidityPeriod(range)}
-                                ${isActive ? '<span class="badge bg-success ms-2">Active</span>' : '<span class="badge bg-secondary ms-2">Inactive</span>'}
-                            </div>
-                        </div>
-                        
-                        <div class="range-actions">
-                            <button class="btn btn-outline-primary btn-sm" onclick="healthDashboard.editCustomRange(${range.id})">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-outline-danger btn-sm" onclick="healthDashboard.deleteCustomRange(${range.id})">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
-
-        container.innerHTML = html;
-    }
-
-    isRangeCurrentlyActive(range) {
-        const today = new Date();
-        const validFrom = range.valid_from ? new Date(range.valid_from) : null;
-        const validUntil = range.valid_until ? new Date(range.valid_until) : null;
-        
-        const isAfterStart = !validFrom || today >= validFrom;
-        const isBeforeEnd = !validUntil || today <= validUntil;
-        
-        return range.is_active && isAfterStart && isBeforeEnd;
-    }
-
-    formatConditionName(condition) {
-        const conditionNames = {
-            'pregnancy': 'Pregnancy',
-            'diabetes': 'Diabetes',
-            'hypertension': 'Hypertension',
-            'medication': 'Medication Effect',
-            'age_related': 'Age-Related',
-            'genetic_condition': 'Genetic Condition',
-            'chronic_disease': 'Chronic Disease',
-            'other': 'Other Condition'
-        };
-        return conditionNames[condition] || condition;
-    }
-
-    formatValidityPeriod(range) {
-        const formatDate = (dateStr) => {
-            if (!dateStr) return null;
-            return new Date(dateStr).toLocaleDateString();
-        };
-
-        const from = formatDate(range.valid_from);
-        const until = formatDate(range.valid_until);
-
-        if (from && until) {
-            return `${from} - ${until}`;
-        } else if (from) {
-            return `From ${from}`;
-        } else if (until) {
-            return `Until ${until}`;
-        } else {
-            return 'No date restrictions';
-        }
-    }
-
-    async showAddCustomRangeModal(rangeId = null, options = null) {
-        const modal = new bootstrap.Modal(document.getElementById('customRangeModal'));
-        const titleElement = document.getElementById('customRangeModalTitle');
-        
-        if (rangeId) {
-            titleElement.innerHTML = '<i class="fas fa-edit me-2"></i>Edit Custom Reference Range';
-            await this.loadCustomRangeForEdit(rangeId);
-        } else {
-            titleElement.innerHTML = '<i class="fas fa-plus me-2"></i>Add Custom Reference Range';
-            this.clearCustomRangeForm();
-        }
-
-        // Load available metrics
-        await this.loadAvailableMetrics();
-        
-        // If invoked from Edit Metric, preselect and optionally lock the metric name
-        if (options && options.preselectMetricName) {
-            const select = document.getElementById('metricSelect');
-            if (select) {
-                // Try to select exact match; if not present, add a temporary option
-                let found = false;
-                for (const opt of Array.from(select.options)) {
-                    if (opt.value === options.preselectMetricName) { found = true; break; }
-                }
-                if (!found) {
-                    const temp = document.createElement('option');
-                    temp.value = options.preselectMetricName;
-                    temp.textContent = options.preselectMetricName;
-                    select.appendChild(temp);
-                }
-                select.value = options.preselectMetricName;
-                // Trigger change to populate units/range info
-                select.dispatchEvent(new Event('change'));
-                if (options.lockMetricSelection) {
-                    select.setAttribute('disabled', 'disabled');
-                }
-            }
-        }
-        
-        // Setup form handlers
-        this.setupCustomRangeFormHandlers();
-        
-        modal.show();
-    }
-
-    async loadAvailableMetrics() {
-        try {
-            const response = await this.apiCall('/custom-reference-ranges/available-metrics', 'GET');
-            const select = document.getElementById('metricSelect');
-            
-            let html = '<option value="">Select a metric...</option>';
-            
-            // Add standard metrics
-            if (response.standard_metrics) {
-                html += '<optgroup label="Standard Metrics">';
-                response.standard_metrics.forEach(metric => {
-                    html += `<option value="${metric.name}" data-units="${metric.units}" data-min="${metric.normalRangeMin}" data-max="${metric.normalRangeMax}">
-                        ${metric.name} (${metric.units})
-                    </option>`;
-                });
-                html += '</optgroup>';
-            }
-            
-            // Add custom option
-            html += '<option value="custom">Custom metric name...</option>';
-            
-            select.innerHTML = html;
-        } catch (error) {
-            console.error('Failed to load available metrics:', error);
-        }
-    }
-
-    setupCustomRangeFormHandlers() {
-        const metricSelect = document.getElementById('metricSelect');
-        const customMetricGroup = document.getElementById('customMetricNameGroup');
-        const conditionSelect = document.getElementById('conditionSelect');
-        const customConditionGroup = document.getElementById('customConditionGroup');
-        const unitSelect = document.getElementById('unitSelect');
-        const standardRangeInfo = document.getElementById('standardRangeInfo');
-
-        // Handle metric selection
-        metricSelect.addEventListener('change', (e) => {
-            if (e.target.value === 'custom') {
-                customMetricGroup.style.display = 'block';
-                standardRangeInfo.style.display = 'none';
-            } else if (e.target.value) {
-                customMetricGroup.style.display = 'none';
-                
-                // Auto-fill units from selected metric
-                const option = e.target.selectedOptions[0];
-                const units = option.dataset.units;
-                const min = option.dataset.min;
-                const max = option.dataset.max;
-                
-                if (units) {
-                    unitSelect.value = units;
-                }
-                
-                // Show standard range info
-                if (min && max) {
-                    document.getElementById('standardRangeText').textContent = `${min} - ${max} ${units}`;
-                    standardRangeInfo.style.display = 'block';
-                } else {
-                    standardRangeInfo.style.display = 'none';
-                }
-            } else {
-                customMetricGroup.style.display = 'none';
-                standardRangeInfo.style.display = 'none';
-            }
-        });
-
-        // Handle condition selection
-        conditionSelect.addEventListener('change', (e) => {
-            if (e.target.value === 'other') {
-                customConditionGroup.style.display = 'block';
-            } else {
-                customConditionGroup.style.display = 'none';
-            }
-        });
-    }
-
-    async loadCustomRangeForEdit(rangeId) {
-        try {
-            const ranges = await this.apiCall('/custom-reference-ranges', 'GET');
-            const range = ranges.custom_ranges.find(r => r.id === rangeId);
-            
-            if (!range) {
-                throw new Error('Range not found');
-            }
-
-            // Populate form fields
-            document.getElementById('customRangeId').value = range.id;
-            document.getElementById('metricSelect').value = range.metric_name;
-            document.getElementById('minValue').value = range.min_value;
-            document.getElementById('maxValue').value = range.max_value;
-            document.getElementById('unitSelect').value = range.units;
-            document.getElementById('conditionSelect').value = range.medical_condition;
-            
-            if (range.medical_condition === 'other' && range.condition_details) {
-                document.getElementById('customConditionGroup').style.display = 'block';
-                document.getElementById('customCondition').value = range.condition_details;
-            }
-            
-            document.getElementById('rangeNotes').value = range.notes || '';
-            
-            if (range.valid_from) {
-                document.getElementById('validFrom').value = range.valid_from;
-            }
-            if (range.valid_until) {
-                document.getElementById('validUntil').value = range.valid_until;
-            }
-
-        } catch (error) {
-            console.error('Failed to load range for edit:', error);
-            this.showToast('error', 'Error', 'Failed to load range data');
-        }
-    }
-
-    clearCustomRangeForm() {
-        document.getElementById('customRangeForm').reset();
-        document.getElementById('customRangeId').value = '';
-        document.getElementById('customMetricNameGroup').style.display = 'none';
-        document.getElementById('customConditionGroup').style.display = 'none';
-        document.getElementById('standardRangeInfo').style.display = 'none';
-        
-        // Set default valid from date to today
-        document.getElementById('validFrom').value = this.toYMD(new Date());
-    }
-
-    async saveCustomRange() {
-        try {
-            const form = document.getElementById('customRangeForm');
-            const rangeId = document.getElementById('customRangeId').value;
-            
-            // Get form data
-            const metricSelect = document.getElementById('metricSelect');
-            const metricName = metricSelect.value === 'custom' ? 
-                document.getElementById('customMetricName').value : 
-                metricSelect.value;
-            
-            const conditionSelect = document.getElementById('conditionSelect');
-            const condition = conditionSelect.value;
-            const conditionDetails = condition === 'other' ? 
-                document.getElementById('customCondition').value : null;
-
-            const data = {
-                metric_name: metricName,
-                min_value: parseFloat(document.getElementById('minValue').value),
-                max_value: parseFloat(document.getElementById('maxValue').value),
-                units: document.getElementById('unitSelect').value,
-                medical_condition: condition,
-                condition_details: conditionDetails,
-                notes: document.getElementById('rangeNotes').value,
-                valid_from: document.getElementById('validFrom').value,
-                valid_until: document.getElementById('validUntil').value || null
-            };
-
-            // Validation
-            if (!data.metric_name || !data.min_value || !data.max_value || !data.units || !data.medical_condition) {
-                this.showToast('warning', 'Validation Error', 'Please fill in all required fields');
-                return;
-            }
-
-            if (data.min_value >= data.max_value) {
-                this.showToast('warning', 'Validation Error', 'Minimum value must be less than maximum value');
-                return;
-            }
-
-            // Save or update
-            const method = rangeId ? 'PUT' : 'POST';
-            const url = rangeId ? `/custom-reference-ranges/${rangeId}` : '/custom-reference-ranges';
-            
-            const response = await this.apiCall(url, method, data);
-            
-            this.showToast('success', 'Success', 
-                rangeId ? 'Custom range updated successfully' : 'Custom range created successfully'
-            );
-
-            // Close modal and refresh list
-            const modal = bootstrap.Modal.getInstance(document.getElementById('customRangeModal'));
-            modal.hide();
-            
-            this.loadCustomReferenceRanges();
-
-        } catch (error) {
-            console.error('Failed to save custom range:', error);
-            this.showToast('error', 'Error', 'Failed to save custom range');
-        }
-    }
-
-    async editCustomRange(rangeId) {
-        await this.showAddCustomRangeModal(rangeId);
-    }
-
-    async deleteCustomRange(rangeId) {
-        if (!confirm('Are you sure you want to delete this custom reference range?')) {
-            return;
-        }
-
-        try {
-            await this.apiCall(`/custom-reference-ranges/${rangeId}`, 'DELETE');
-            this.showToast('success', 'Success', 'Custom range deleted successfully');
-            this.loadCustomReferenceRanges();
-        } catch (error) {
-            console.error('Failed to delete custom range:', error);
-            this.showToast('error', 'Error', 'Failed to delete custom range');
         }
     }
 }

@@ -134,15 +134,52 @@ class HealthSystemsService {
     return map;
   }
 
+  /**
+   * Check if a metric should be excluded from a specific system
+   * @param {number} systemId - The health system ID
+   * @param {string} metricName - The metric name to check
+   * @returns {boolean} - True if the metric should be excluded from this system
+   */
+  isMetricExcludedFromSystem(systemId, metricName) {
+    const exclusions = this.exclusionRules[systemId];
+    if (!exclusions) {
+      return false;
+    }
+
+    // Check if metric is explicitly excluded
+    if (exclusions.excludeMetrics?.includes(metricName)) {
+      return true;
+    }
+    
+    // Check if metric matches any exclusion patterns
+    if (exclusions.excludePatterns?.some(pattern => pattern.test(metricName))) {
+      return true;
+    }
+
+    return false;
+  }
+
   mapMetricToSystem(metricName, category = null) {
     // Try exact match first
     const exactMatch = this.metricSystemMap.get(metricName.toLowerCase());
     if (exactMatch) return exactMatch;
 
-    // Try partial matching
+    // Try partial matching with word boundaries and length restrictions
     for (const [key, systemId] of this.metricSystemMap.entries()) {
-      if (metricName.toLowerCase().includes(key) || key.includes(metricName.toLowerCase())) {
-        return systemId;
+      // Skip partial matching for short keys (< 4 chars) to prevent false matches
+      if (key.length < 4) {
+        continue;
+      }
+      
+      // Use word boundary regex instead of simple substring matching
+      const keyPattern = new RegExp('\\b' + key.toLowerCase() + '\\b', 'i');
+      const metricPattern = new RegExp('\\b' + metricName.toLowerCase() + '\\b', 'i');
+      
+      if (keyPattern.test(metricName.toLowerCase()) || metricPattern.test(key.toLowerCase())) {
+        // Check if this metric should be excluded from this system
+        if (!this.isMetricExcludedFromSystem(systemId, metricName)) {
+          return systemId;
+        }
       }
     }
 
@@ -198,17 +235,8 @@ class HealthSystemsService {
     const systemKeyMetrics = this.keyMetrics[systemId] || [];
     
     // Approach #5: Check exclusion rules first to prevent known conflicts
-    const exclusions = this.exclusionRules[systemId];
-    if (exclusions) {
-      // Check if metric is explicitly excluded
-      if (exclusions.excludeMetrics?.includes(metricName)) {
-        return false;
-      }
-      
-      // Check if metric matches any exclusion patterns
-      if (exclusions.excludePatterns?.some(pattern => pattern.test(metricName))) {
-        return false;
-      }
+    if (this.isMetricExcludedFromSystem(systemId, metricName)) {
+      return false;
     }
     
     // Approach #1: Exact Match Priority with Word Boundary Fallback
@@ -442,6 +470,13 @@ class HealthSystemsService {
   async getSystemTrends(userId, systemId) {
     const { pool } = require('../database/schema');
     
+    console.log('[DEBUG] getSystemTrends called:', {
+      userId: userId,
+      systemId: systemId,
+      systemIdType: typeof systemId,
+      parsedSystemId: parseInt(systemId)
+    });
+    
     try {
       // Get key lab metrics for this system
       const labMetricsResult = await pool.query(`
@@ -452,6 +487,13 @@ class HealthSystemsService {
         WHERE m.user_id = $1 AND m.system_id = $2 AND m.is_key_metric = true AND COALESCE(m.exclude_from_analysis, false) = false
         ORDER BY m.metric_name, m.test_date ASC, m.created_at ASC
       `, [userId, systemId]);
+      
+      console.log('[DEBUG] Lab metrics query result:', {
+        userId: userId,
+        systemId: systemId,
+        rowCount: labMetricsResult.rows.length,
+        metrics: labMetricsResult.rows.map(r => ({ name: r.metric_name, value: r.metric_value, system_id: r.system_id || 'N/A' }))
+      });
 
       // Get visual study data for this system
       const visualStudiesResult = await pool.query(`
@@ -461,6 +503,13 @@ class HealthSystemsService {
         AND i.metrics_json IS NOT NULL
         ORDER BY i.test_date ASC, i.created_at ASC
       `, [userId, systemId]);
+      
+      console.log('[DEBUG] Visual studies query result:', {
+        userId: userId,
+        systemId: systemId,
+        rowCount: visualStudiesResult.rows.length,
+        studies: visualStudiesResult.rows.map(r => ({ id: r.id, linked_system_id: r.linked_system_id || 'N/A' }))
+      });
 
       // Process lab metrics
       const metricData = {};
@@ -587,6 +636,17 @@ class HealthSystemsService {
           });
         }
       }
+      
+      console.log('[DEBUG] getSystemTrends final response:', {
+        userId: userId,
+        systemId: systemId,
+        totalTrends: trendsResponse.length,
+        trendsMetrics: trendsResponse.map(t => ({
+          name: t.metric_name,
+          pointsCount: t.points_count,
+          hasRangeBand: !!t.range_band
+        }))
+      });
 
       return trendsResponse;
       

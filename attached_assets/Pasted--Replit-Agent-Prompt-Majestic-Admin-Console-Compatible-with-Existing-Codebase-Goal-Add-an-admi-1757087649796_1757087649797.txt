@@ -1,0 +1,143 @@
+ Replit Agent Prompt — Majestic Admin Console (Compatible with Existing Codebase)
+
+Goal: Add an admin interface to the existing Majestic Health Dashboard at
+https://<your-repl-name>.<your-username>.repl.co/admin
+that lets approved admins manage reference metrics and system configurations.
+
+👉 Integrate with existing authentication and database systems
+👉 Use existing CommonJS architecture and file organization
+👉 Avoid conflicts with existing routes and data models
+
+⸻
+
+🔧 Additional Dependencies Needed
+Add these to the existing package.json:
+	•	passport (for admin OAuth)
+	•	passport-google-oauth20
+	•	cookie-session
+	•	xlsx (for Excel export/import)
+	•	exceljs (for advanced Excel features)
+	•	express-rate-limit (for admin security)
+
+⸻
+
+📋 Implementation Plan
+
+1. **Admin Routes** (new file: routes/admin.js)
+   - GET /api/admin/dashboard - Admin dashboard data
+   - GET /api/admin/reference-metrics - Download reference metrics as XLSX
+   - POST /api/admin/reference-metrics - Upload new reference metrics
+   - GET /api/admin/system-configs - Get system configurations
+   - PUT /api/admin/system-configs/:id - Update system config
+
+2. **Admin Database Tables** (extend database/schema.js)
+   ```sql
+   CREATE TABLE admin_users (
+     id SERIAL PRIMARY KEY,
+     user_id INTEGER REFERENCES users(id),
+     role VARCHAR(50) DEFAULT 'admin',
+     granted_by INTEGER REFERENCES users(id),
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+
+   CREATE TABLE admin_reference_metrics (
+     id SERIAL PRIMARY KEY,
+     metric_name VARCHAR(255) NOT NULL,
+     system_id INTEGER REFERENCES health_systems(id),
+     normal_range_min DECIMAL,
+     normal_range_max DECIMAL,
+     units VARCHAR(50),
+     version INTEGER DEFAULT 1,
+     uploaded_by INTEGER REFERENCES users(id),
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+
+   CREATE TABLE admin_audit_log (
+     id SERIAL PRIMARY KEY,
+     admin_user_id INTEGER REFERENCES users(id),
+     action VARCHAR(100),
+     target_table VARCHAR(100),
+     target_id INTEGER,
+     changes_json JSONB,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+   ```
+
+3. **Admin Middleware** (new file: middleware/adminAuth.js)
+   - Check if user is in admin_users table
+   - Rate limiting for admin operations
+   - Audit logging for all admin actions
+
+4. **Admin Frontend** (extend public/app.js)
+   - Add admin tab (only visible to admin users)
+   - Excel upload/download interface
+   - System configuration management
+   - Audit log viewer
+
+⸻
+
+🔒 Security Requirements
+
+1. **Admin Allowlist**
+   - Store admin emails in environment variable: ADMIN_EMAILS="admin1@domain.com,admin2@domain.com"
+   - Only users in this list can access admin functions
+
+2. **Rate Limiting**
+   - Max 10 admin operations per minute per user
+   - Max 3 file uploads per hour per user
+
+3. **Audit Trail**
+   - Log all admin actions with timestamps
+   - Track what was changed and who changed it
+   - Export audit logs as CSV
+
+⸻
+
+🎯 Key Implementation Notes
+
+1. **Use Existing Architecture**
+   - Extend existing CommonJS modules (require/module.exports)
+   - Use existing database pool and connection patterns
+   - Follow existing route organization in routes/ folder
+
+2. **Avoid Conflicts**
+   - Use /api/admin/* routes to avoid conflicts
+   - Use admin_* table names to avoid schema conflicts
+   - Integrate with existing JWT auth system
+
+3. **Excel Integration**
+   - Export current public/data/metrics.json as XLSX
+   - Allow upload of new reference metrics via Excel
+   - Validate uploaded data before applying changes
+   - Keep version history of reference metrics
+
+4. **UI Integration**
+   - Add admin tab next to existing Dashboard/Upload/Profile tabs
+   - Only show to authenticated admin users
+   - Use existing Bootstrap/CSS styling
+   - Integrate with existing modal system
+
+⸻
+
+🛠️ Step-by-Step Implementation
+
+1. Update database/schema.js to add admin tables
+2. Create middleware/adminAuth.js for admin authentication
+3. Create routes/admin.js with admin API endpoints
+4. Update server.js to include admin routes
+5. Extend public/app.js with admin UI components
+6. Add admin email allowlist to environment configuration
+7. Test with sample reference metrics upload/download
+
+⸻
+
+✅ Success Criteria
+
+- Admin users can log in and access /admin interface
+- Reference metrics can be downloaded as Excel file
+- New metrics can be uploaded via Excel with validation
+- All admin actions are logged in audit trail
+- No conflicts with existing user functionality
+- Existing authentication and database systems work unchanged
+
+This approach extends your existing system without breaking any current functionality while providing the admin capabilities you need.

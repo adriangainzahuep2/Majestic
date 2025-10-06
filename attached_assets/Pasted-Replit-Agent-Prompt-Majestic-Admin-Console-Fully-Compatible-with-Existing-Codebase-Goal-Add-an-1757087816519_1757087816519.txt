@@ -1,0 +1,222 @@
+Replit Agent Prompt — Majestic Admin Console (Fully Compatible with Existing Codebase)
+
+Goal: Add an admin interface to the existing Majestic Health Dashboard at
+https://<your-repl-name>.<your-username>.repl.co/admin
+that lets approved admins manage reference metrics and system configurations.
+
+👉 Integrate with existing JWT authentication system
+👉 Use existing database schema management (Drizzle ORM)
+👉 Extend existing CommonJS architecture and file organization
+👉 Avoid conflicts with existing routes and data models
+
+⸻
+
+🔧 Additional Dependencies Needed
+Add these to the existing package.json:
+	•	exceljs (for advanced Excel features - xlsx already exists)
+	•	express-rate-limit (for admin security)
+
+⸻
+
+📋 Implementation Plan
+
+1. **Admin Routes** (new file: routes/admin.js)
+   - GET /api/admin/dashboard - Admin dashboard data
+   - GET /api/admin/reference-metrics - Download reference metrics as XLSX
+   - POST /api/admin/reference-metrics - Upload new reference metrics (use existing multer config)
+   - GET /api/admin/system-configs - Get system configurations
+   - PUT /api/admin/system-configs/:id - Update system config
+
+2. **Admin Database Tables** (extend database/schema.js using existing patterns)
+   ```sql
+   -- Add these tables using existing schema initialization pattern
+   CREATE TABLE IF NOT EXISTS admin_users (
+     id SERIAL PRIMARY KEY,
+     user_id INTEGER REFERENCES users(id),
+     role VARCHAR(50) DEFAULT 'admin',
+     granted_by INTEGER REFERENCES users(id),
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+
+   CREATE TABLE IF NOT EXISTS admin_reference_metrics (
+     id SERIAL PRIMARY KEY,
+     metric_name VARCHAR(255) NOT NULL,
+     system_id INTEGER REFERENCES health_systems(id),
+     normal_range_min DECIMAL,
+     normal_range_max DECIMAL,
+     units VARCHAR(50),
+     version INTEGER DEFAULT 1,
+     uploaded_by INTEGER REFERENCES users(id),
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+
+   CREATE TABLE IF NOT EXISTS admin_audit_log (
+     id SERIAL PRIMARY KEY,
+     admin_user_id INTEGER REFERENCES users(id),
+     action VARCHAR(100),
+     target_table VARCHAR(100),
+     target_id INTEGER,
+     changes_json JSONB,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+
+   CREATE TABLE IF NOT EXISTS system_configurations (
+     id SERIAL PRIMARY KEY,
+     config_key VARCHAR(100) UNIQUE NOT NULL,
+     config_value JSONB,
+     description TEXT,
+     updated_by INTEGER REFERENCES users(id),
+     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+   ```
+
+3. **Admin Middleware** (extend existing middleware/auth.js)
+   ```javascript
+   // Add admin check function to existing auth middleware
+   const adminMiddleware = async (req, res, next) => {
+     try {
+       // Use existing auth middleware first
+       if (!req.user || !req.user.userId) {
+         return res.status(401).json({ error: 'Not authenticated' });
+       }
+
+       // Check if user is admin
+       const adminResult = await pool.query(
+         'SELECT role FROM admin_users WHERE user_id = $1',
+         [req.user.userId]
+       );
+
+       if (adminResult.rows.length === 0) {
+         return res.status(403).json({ error: 'Admin access required' });
+       }
+
+       req.user.isAdmin = true;
+       req.user.adminRole = adminResult.rows[0].role;
+       next();
+     } catch (error) {
+       console.error('Admin middleware error:', error);
+       res.status(500).json({ error: 'Authorization check failed' });
+     }
+   };
+   ```
+
+4. **Frontend Admin Tab** (extend existing public/app.js)
+   ```javascript
+   // Add admin tab to existing navigation
+   function addAdminTab() {
+     const nav = document.querySelector('.nav-tabs');
+     const adminTab = document.createElement('button');
+     adminTab.className = 'nav-tab';
+     adminTab.textContent = 'Admin';
+     adminTab.onclick = () => showAdminPanel();
+     nav.appendChild(adminTab);
+   }
+
+   function showAdminPanel() {
+     // Admin panel UI using existing modal patterns
+     const adminContent = `
+       <div class="admin-panel">
+         <h2>Admin Console</h2>
+         <div class="admin-sections">
+           <section class="reference-metrics">
+             <h3>Reference Metrics Management</h3>
+             <button onclick="downloadReferenceMetrics()">Download XLSX</button>
+             <input type="file" id="metricsUpload" accept=".xlsx" />
+             <button onclick="uploadReferenceMetrics()">Upload New</button>
+           </section>
+           <section class="audit-logs">
+             <h3>Audit Logs</h3>
+             <div id="auditLogsList"></div>
+           </section>
+         </div>
+       </div>
+     `;
+     showModal('Admin Console', adminContent);
+   }
+   ```
+
+5. **File Upload Integration** (extend existing routes/uploads.js patterns)
+   ```javascript
+   // Use existing multer configuration
+   const multer = require('multer');
+   const upload = multer({
+     dest: 'uploads/',
+     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB like existing
+     fileFilter: (req, file, cb) => {
+       if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+         cb(null, true);
+       } else {
+         cb(new Error('Only XLSX files allowed for admin uploads'));
+       }
+     }
+   });
+   ```
+
+⸻
+
+🔒 Security & Integration Features
+
+1. **JWT-Based Admin Authentication**
+   - Extend existing JWT middleware from middleware/auth.js
+   - Add admin role checking layer
+   - Reuse existing Google OAuth flow
+
+2. **Database Integration**
+   - Use existing pool from database/schema.js
+   - Follow existing table creation patterns
+   - Add indexes following existing naming conventions
+
+3. **Audit Trail**
+   - Log all admin actions in admin_audit_log table
+   - Use existing JSONB patterns for storing changes
+   - Follow existing timestamp conventions
+
+4. **Rate Limiting & Security**
+   - Apply rate limiting to admin endpoints
+   - Validate all inputs using existing patterns
+   - Use existing error handling conventions
+
+⸻
+
+📁 File Structure (extends existing)
+
+```
+routes/
+├── admin.js (NEW)
+├── auth.js (extend for admin checks)
+├── uploads.js (reference existing multer config)
+└── ...existing routes
+
+middleware/
+├── auth.js (extend with adminMiddleware)
+├── adminAuth.js (NEW - admin-specific middleware)
+└── ...existing middleware
+
+public/
+├── app.js (extend with admin UI)
+├── adminPanel.js (NEW - admin-specific frontend)
+└── ...existing frontend
+```
+
+⸻
+
+🎯 Key Compatibility Notes
+
+1. **Authentication**: Uses existing JWT system, no Passport conflicts
+2. **Database**: Extends existing schema.js patterns, no Drizzle conflicts  
+3. **File Uploads**: Reuses existing multer configuration from routes/uploads.js
+4. **Frontend**: Extends existing modal and navigation patterns
+5. **Error Handling**: Follows existing error response patterns
+6. **Logging**: Integrates with existing console.error patterns
+
+⸻
+
+🚀 Implementation Priority
+
+1. **Phase 1**: Database schema extensions (admin tables)
+2. **Phase 2**: Backend routes with existing auth integration  
+3. **Phase 3**: Admin middleware extending current auth
+4. **Phase 4**: Frontend admin panel using existing UI patterns
+5. **Phase 5**: Excel import/export with existing file handling
+
+This approach ensures 95%+ compatibility with your existing Majestic Health Dashboard architecture while providing comprehensive admin functionality.

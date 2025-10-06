@@ -1,0 +1,433 @@
+ Revised Prompt: Majestic Admin Console (Production-Ready)
+Goal: Add an admin interface to the existing Majestic Health Dashboard that integrates seamlessly with the existing PostgreSQL architecture, JWT authentication, and unified file handling system.
+
+🔧 Dependencies to Add:
+exceljs (for advanced Excel features - xlsx already exists)
+express-rate-limit (for admin security)
+📋 Implementation Plan:
+1. Extend Database Schema (modify database/schema.js)
+Add admin tables using existing PostgreSQL patterns:
+
+-- Admin Users table
+CREATE TABLE IF NOT EXISTS admin_users (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  role VARCHAR(50) DEFAULT 'admin',
+  granted_by INTEGER REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- Admin Reference Metrics table
+CREATE TABLE IF NOT EXISTS admin_reference_metrics (
+  id SERIAL PRIMARY KEY,
+  metric_name VARCHAR(255) NOT NULL,
+  system_id INTEGER REFERENCES health_systems(id),
+  normal_range_min DECIMAL(10,3),
+  normal_range_max DECIMAL(10,3),
+  units VARCHAR(50),
+  version INTEGER DEFAULT 1,
+  uploaded_by INTEGER REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- Admin Audit Log table
+CREATE TABLE IF NOT EXISTS admin_audit_log (
+  id SERIAL PRIMARY KEY,
+  admin_user_id INTEGER REFERENCES users(id),
+  action VARCHAR(100),
+  target_table VARCHAR(100),
+  target_id INTEGER,
+  changes_json JSONB,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+2. Create Migration Script (new file: scripts/admin-migration.js)
+const { pool } = require('../database/schema');
+async function createAdminTables() {
+  const client = await pool.connect();
+  
+  try {
+    console.log('🔧 Creating admin tables...');
+    
+    // Create admin tables
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS admin_users (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        role VARCHAR(50) DEFAULT 'admin',
+        granted_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS admin_reference_metrics (
+        id SERIAL PRIMARY KEY,
+        metric_name VARCHAR(255) NOT NULL,
+        system_id INTEGER REFERENCES health_systems(id),
+        normal_range_min DECIMAL(10,3),
+        normal_range_max DECIMAL(10,3),
+        units VARCHAR(50),
+        version INTEGER DEFAULT 1,
+        uploaded_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS admin_audit_log (
+        id SERIAL PRIMARY KEY,
+        admin_user_id INTEGER REFERENCES users(id),
+        action VARCHAR(100),
+        target_table VARCHAR(100),
+        target_id INTEGER,
+        changes_json JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    
+    console.log('✅ Admin tables created successfully');
+  } finally {
+    client.release();
+  }
+}
+if (require.main === module) {
+  createAdminTables().catch(console.error);
+}
+module.exports = { createAdminTables };
+3. Create Admin Middleware (new file: middleware/admin.js)
+const authMiddleware = require('./auth');
+const checkAdminPermissions = async (req, res, next) => {
+  try {
+    // First check if user is authenticated
+    await new Promise((resolve, reject) => {
+      authMiddleware(req, res, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+    // Check if user has admin privileges
+    const adminCheck = await req.db.query(
+      'SELECT id, role FROM admin_users WHERE user_id = $1',
+      [req.user.userId]
+    );
+    if (adminCheck.rows.length === 0) {
+      return res.status(403).json({ 
+        error: 'Access denied',
+        message: 'Admin privileges required' 
+      });
+    }
+    req.admin = {
+      adminId: adminCheck.rows[0].id,
+      role: adminCheck.rows[0].role,
+      userId: req.user.userId
+    };
+    next();
+  } catch (error) {
+    console.error('Admin auth error:', error);
+    res.status(500).json({ 
+      error: 'Admin authentication failed',
+      message: error.message 
+    });
+  }
+};
+module.exports = { checkAdminPermissions };
+4. Create Admin Routes (new file: routes/admin.js)
+const express = require('express');
+const rateLimit = require('express-rate-limit');
+const { checkAdminPermissions } = require('../middleware/admin');
+const ExcelJS = require('exceljs');
+const router = express.Router();
+// Rate limiting for admin routes
+const adminRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many admin requests, please try again later'
+});
+router.use(adminRateLimit);
+router.use(checkAdminPermissions);
+// Get admin dashboard
+router.get('/dashboard', async (req, res) => {
+  try {
+    const stats = await req.db.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM users) as total_users,
+        (SELECT COUNT(*) FROM uploads) as total_uploads,
+        (SELECT COUNT(*) FROM metrics) as total_metrics,
+        (SELECT COUNT(*) FROM imaging_studies) as total_studies
+    `);
+    res.json({
+      stats: stats.rows[0],
+      adminInfo: req.admin
+    });
+  } catch (error) {
+    console.error('Admin dashboard error:', error);
+    res.status(500).json({ error: 'Failed to load admin dashboard' });
+  }
+});
+// Get all users with pagination
+router.get('/users', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = (page - 1) * limit;
+    const users = await req.db.query(`
+      SELECT u.*, 
+        COUNT(m.id) as metrics_count,
+        COUNT(up.id) as uploads_count
+      FROM users u
+      LEFT JOIN metrics m ON u.id = m.user_id
+      LEFT JOIN uploads up ON u.id = up.user_id
+      GROUP BY u.id
+      ORDER BY u.created_at DESC
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
+    const totalCount = await req.db.query('SELECT COUNT(*) FROM users');
+    res.json({
+      users: users.rows,
+      pagination: {
+        page,
+        limit,
+        total: parseInt(totalCount.rows[0].count),
+        totalPages: Math.ceil(parseInt(totalCount.rows[0].count) / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Admin users error:', error);
+    res.status(500).json({ error: 'Failed to load users' });
+  }
+});
+// Export user data
+router.get('/export/users', async (req, res) => {
+  try {
+    const users = await req.db.query(`
+      SELECT u.id, u.email, u.name, u.created_at,
+        COUNT(DISTINCT m.id) as metrics_count,
+        COUNT(DISTINCT up.id) as uploads_count,
+        COUNT(DISTINCT im.id) as studies_count
+      FROM users u
+      LEFT JOIN metrics m ON u.id = m.user_id
+      LEFT JOIN uploads up ON u.id = up.user_id
+      LEFT JOIN imaging_studies im ON u.id = im.user_id
+      GROUP BY u.id, u.email, u.name, u.created_at
+      ORDER BY u.created_at DESC
+    `);
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Users Export');
+    worksheet.columns = [
+      { header: 'ID', key: 'id', width: 10 },
+      { header: 'Email', key: 'email', width: 30 },
+      { header: 'Name', key: 'name', width: 20 },
+      { header: 'Created At', key: 'created_at', width: 20 },
+      { header: 'Metrics Count', key: 'metrics_count', width: 15 },
+      { header: 'Uploads Count', key: 'uploads_count', width: 15 },
+      { header: 'Studies Count', key: 'studies_count', width: 15 }
+    ];
+    worksheet.addRows(users.rows);
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=users-export-${new Date().toISOString().split('T')[0]}.xlsx`
+    );
+    await workbook.xlsx.write(res);
+    res.end();
+    // Log admin action
+    await req.db.query(`
+      INSERT INTO admin_audit_log (admin_user_id, action, target_table, changes_json)
+      VALUES ($1, $2, $3, $4)
+    `, [req.admin.userId, 'EXPORT_USERS', 'users', JSON.stringify({ exportedAt: new Date() })]);
+  } catch (error) {
+    console.error('Export users error:', error);
+    res.status(500).json({ error: 'Failed to export users' });
+  }
+});
+module.exports = router;
+5. Update Server.js Integration
+Add to server.js after existing route declarations:
+
+// Admin routes (requires admin auth)
+app.use('/api/admin', require('./routes/admin'));
+6. Create Admin Frontend (new file: public/admin.html)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Majestic Admin Console</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .admin-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .admin-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .users-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .users-table th,
+        .users-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .admin-actions {
+            margin: 20px 0;
+        }
+        .btn-admin {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <h1>Majestic Admin Console</h1>
+        
+        <div class="admin-stats" id="adminStats">
+            <!-- Stats will be loaded here -->
+        </div>
+        
+        <div class="admin-actions">
+            <button class="btn-admin" onclick="exportUsers()">Export Users</button>
+            <button class="btn-admin" onclick="refreshData()">Refresh</button>
+        </div>
+        
+        <div class="users-section">
+            <h2>Users Management</h2>
+            <table class="users-table" id="usersTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Email</th>
+                        <th>Name</th>
+                        <th>Metrics</th>
+                        <th>Uploads</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    <!-- Users will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        // Admin JavaScript functionality
+        async function loadAdminData() {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    window.location.href = '/';
+                    return;
+                }
+                // Load dashboard stats
+                const statsResponse = await fetch('/api/admin/dashboard', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (statsResponse.ok) {
+                    const data = await statsResponse.json();
+                    displayStats(data.stats);
+                } else if (statsResponse.status === 403) {
+                    alert('Admin access required');
+                    window.location.href = '/';
+                    return;
+                }
+                // Load users
+                const usersResponse = await fetch('/api/admin/users', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (usersResponse.ok) {
+                    const data = await usersResponse.json();
+                    displayUsers(data.users);
+                }
+                
+            } catch (error) {
+                console.error('Admin data load error:', error);
+            }
+        }
+        function displayStats(stats) {
+            document.getElementById('adminStats').innerHTML = `
+                <div class="stat-card">
+                    <h3>Total Users</h3>
+                    <p class="stat-number">${stats.total_users}</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Uploads</h3>
+                    <p class="stat-number">${stats.total_uploads}</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Metrics</h3>
+                    <p class="stat-number">${stats.total_metrics}</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Studies</h3>
+                    <p class="stat-number">${stats.total_studies}</p>
+                </div>
+            `;
+        }
+        function displayUsers(users) {
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = users.map(user => `
+                <tr>
+                    <td>${user.id}</td>
+                    <td>${user.email}</td>
+                    <td>${user.name || 'N/A'}</td>
+                    <td>${user.metrics_count}</td>
+                    <td>${user.uploads_count}</td>
+                    <td>${new Date(user.created_at).toLocaleDateString()}</td>
+                </tr>
+            `).join('');
+        }
+        async function exportUsers() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/admin/export/users', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `users-export-${new Date().toISOString().split('T')[0]}.xlsx`;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    alert('Export failed');
+                }
+            } catch (error) {
+                console.error('Export error:', error);
+            }
+        }
+        function refreshData() {
+            loadAdminData();
+        }
+        // Load admin data on page load
+        document.addEventListener('DOMContentLoaded', loadAdminData);
+    </script>
+</body>
+</html>

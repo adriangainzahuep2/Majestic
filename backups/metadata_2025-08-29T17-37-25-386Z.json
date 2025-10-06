@@ -1,0 +1,8 @@
+{
+  "timestamp": "2025-08-29T17:37:29.110Z",
+  "environment": "development",
+  "database_url": "configured",
+  "tables": 12,
+  "snapshot_file": "backups/health_app_snapshot_2025-08-29T17-37-25-386Z.sql",
+  "created_by": "development_backup_script"
+}
