@@ -1,7 +1,8 @@
-const openai = require('openai');
+const OpenAI = require('openai');
 
-const openaiClient = new openai({
-  apiKey: process.env.OPENAI_API_KEY
+// Fallback test key to avoid crashing in dev environments
+const openaiClient = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || 'sk-test-key'
 });
 
 class VisualStudyService {

@@ -1,5 +1,21 @@
 const authService = require('../services/auth');
 
+// Admin allowlist middleware using Google email
+function adminOnly(req, res, next) {
+  try {
+    const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+    const email = req.user?.email?.toLowerCase();
+
+    if (!email || adminEmails.length === 0 || !adminEmails.includes(email)) {
+      return res.status(403).json({ error: 'forbidden', message: 'Admin access required' });
+    }
+    next();
+  } catch (error) {
+    console.error('Admin middleware error:', error);
+    res.status(500).json({ error: 'admin_check_failed', message: error.message });
+  }
+}
+
 const authMiddleware = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -30,7 +46,8 @@ const authMiddleware = async (req, res, next) => {
     req.user = {
       userId: decoded.userId,
       email: decoded.email,
-      name: decoded.name
+      name: decoded.name,
+      is_demo: !!decoded.is_demo
     };
 
     next();
@@ -52,3 +69,4 @@ const authMiddleware = async (req, res, next) => {
 };
 
 module.exports = authMiddleware;
+module.exports.adminOnly = adminOnly;

@@ -1,18 +1,14 @@
-const { Pool } = require('pg');
 const path = require('path');
 const fs = require('fs').promises;
 const healthSystemsService = require('./healthSystems');
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+const { pool } = require('../database/schema');
 
 class IngestionService {
   constructor() {
     this.openaiService = require('./openai');
     this.visualStudyService = require('./visualStudyService');
     this.thumbnailService = require('./thumbnailService');
+    this.metricSuggestionService = require('./metricSuggestionService');
   }
 
   async processFile({ userId, file, testDate }) {
@@ -342,24 +338,47 @@ class IngestionService {
   }
 
   async saveMetricsToDatabase(userId, uploadId, metrics, testDate) {
-    // Load reference metrics from admin spreadsheet
-    const referenceMetrics = require('../public/data/metrics.json');
+    // Process metrics through suggestion service
+    const context = {
+      testDate: testDate,
+      userId: userId
+    };
     
-    for (const metric of metrics) {
+    const processedMetrics = await this.metricSuggestionService.processMetrics(metrics, context);
+    
+    // Save exact matches to database
+    await this._saveProcessedMetrics(userId, uploadId, processedMetrics.exact_matches, testDate);
+    
+    // Handle unmatched metrics - save suggestions for review
+    if (processedMetrics.unmatched_metrics.length > 0) {
+      await this._savePendingMetrics(userId, uploadId, processedMetrics, testDate);
+    }
+    
+    return {
+      saved_metrics: processedMetrics.exact_matches.length,
+      pending_review: processedMetrics.unmatched_metrics.length,
+      suggestions: processedMetrics.ai_suggestions
+    };
+  }
+
+  async _saveProcessedMetrics(userId, uploadId, processedMetrics, testDate) {
+    const catalog = require('../shared/metricsCatalog');
+    
+    for (const metric of processedMetrics) {
       try {
+        // Use the standardized name
+        const metricName = metric.standard_name || metric.name;
+        
         // Use existing shared mapper - it handles both metric name AND category
-        const systemId = healthSystemsService.mapMetricToSystem(metric.name, metric.category);
+        const systemId = healthSystemsService.mapMetricToSystem(metricName, metric.category);
         
         // Look up reference range and key metric status from admin spreadsheet
-        const referenceData = referenceMetrics.find(ref => 
-          ref.metric.toLowerCase() === metric.name.toLowerCase()
-        );
-        
-        const referenceRange = referenceData ? 
-          `${referenceData.min}-${referenceData.max}` : 
-          metric.reference_range; // Fallback to OpenAI extracted range
+        const range = catalog.getRangeForName(metricName);
+        const referenceRange = range && range.min !== undefined && range.max !== undefined
+          ? `${range.min}-${range.max}`
+          : metric.reference_range; // Fallback to OpenAI extracted range
           
-        const isKeyMetric = healthSystemsService.isKeyMetric(systemId, metric.name);
+        const isKeyMetric = healthSystemsService.isKeyMetric(systemId, metricName);
         
         await pool.query(`
           INSERT INTO metrics (user_id, upload_id, system_id, metric_name, metric_value, metric_unit, reference_range, is_key_metric, test_date)
@@ -373,7 +392,7 @@ class IngestionService {
           userId,
           uploadId,
           systemId,                    // From shared mapper
-          metric.name,
+          metricName,                  // Standardized name
           metric.value,
           metric.unit,
           referenceRange,              // From admin spreadsheet
@@ -381,8 +400,32 @@ class IngestionService {
           testDate                     // From Add Data page input
         ]);
       } catch (error) {
-        console.error('Error saving metric:', error);
+        console.error('Error saving processed metric:', error);
       }
+    }
+  }
+
+  async _savePendingMetrics(userId, uploadId, processedResults, testDate) {
+    try {
+      // Save to pending_metrics table for user review
+      await pool.query(`
+        INSERT INTO pending_metric_suggestions (user_id, upload_id, unmatched_metrics, ai_suggestions, test_date, status)
+        VALUES ($1, $2, $3, $4, $5, 'pending')
+        ON CONFLICT (user_id, upload_id) DO UPDATE SET
+          unmatched_metrics = EXCLUDED.unmatched_metrics,
+          ai_suggestions = EXCLUDED.ai_suggestions,
+          updated_at = CURRENT_TIMESTAMP
+      `, [
+        userId,
+        uploadId,
+        JSON.stringify(processedResults.unmatched_metrics),
+        JSON.stringify(processedResults.ai_suggestions),
+        testDate
+      ]);
+      
+      console.log(`[METRIC_SUGGESTIONS] Saved ${processedResults.unmatched_metrics.length} metrics for user review`);
+    } catch (error) {
+      console.error('Error saving pending metrics:', error);
     }
   }
 

@@ -1,0 +1,78 @@
+=====================================================
+    COMANDOS INFALIBLES PARA REINICIAR MAJESTIC
+=====================================================
+
+PROBLEMA COMÚN: El error "Cannot find module" aparece cuando estás en el directorio incorrecto.
+
+SOLUCIÓN INFALIBLE - EJECUTAR ESTOS COMANDOS EN ORDEN:
+
+1. PRIMER COMANDO - Ir al directorio correcto:
+cd "C:\Users\encue\Dropbox\toshiba 2021 F\proyectos cursor\majestic\Majestic"
+
+2. SEGUNDO COMANDO - Detener procesos anteriores:
+Get-Process -Name "node" -ErrorAction SilentlyContinue | Stop-Process -Force
+
+3. TERCER COMANDO - Verificar que estás en el directorio correcto:
+dir server.js
+
+4. CUARTO COMANDO - Reiniciar el servidor:
+$env:DATABASE_URL='postgresql://majestic:simple123@localhost:5432/health_app'; $env:NODE_ENV='development'; $env:SKIP_GLOBAL_JOBS='true'; $env:SKIP_DB_INIT='true'; node server.js
+
+COMANDO TODO EN UNO (MÁS SEGURO):
+cd "C:\Users\encue\Dropbox\toshiba 2021 F\proyectos cursor\majestic\Majestic"; Get-Process -Name "node" -ErrorAction SilentlyContinue | Stop-Process -Force; if (Test-Path "server.js") { $env:DATABASE_URL='postgresql://majestic:simple123@localhost:5432/health_app'; $env:NODE_ENV='development'; $env:SKIP_GLOBAL_JOBS='true'; $env:SKIP_DB_INIT='true'; node server.js } else { Write-Host "ERROR: server.js no encontrado. Verifica el directorio." }
+
+SEÑALES DE ÉXITO:
+Cuando funcione correctamente verás:
+
+✅ Majestic Health Dashboard server running on port 5000
+✅ Health check: http://localhost:5000/api/health
+✅ Application: http://localhost:5000/
+✅ Environment: development
+✅ Server ready for connections
+
+VERIFICACIÓN RÁPIDA:
+Después de ver esas líneas, abre tu navegador y ve a:
+http://localhost:5000
+
+PRUEBA DE FETCH (en consola del navegador):
+fetch("http://localhost:5000/")
+  .then(response => console.log("✅ Servidor OK:", response.status))
+  .catch(error => console.log("❌ Error:", error));
+
+SOLUCIÓN DE PROBLEMAS:
+
+Error: "Cannot find module server.js"
+Solución: Ejecuta el comando completo que incluye cd al directorio correcto
+
+Error: "net::ERR_CONNECTION_REFUSED"
+Solución: El servidor no está corriendo, ejecuta los comandos de reinicio
+
+Error: "la autentificación password falló"
+Solución: Las credenciales están en el comando, usa exactamente como está escrito
+
+INFORMACIÓN TÉCNICA:
+- Puerto: 5000
+- Base de datos: health_app
+- Usuario DB: majestic
+- Contraseña DB: simple123
+- Directorio proyecto: C:\Users\encue\Dropbox\toshiba 2021 F\proyectos cursor\majestic\Majestic
+
+PASOS MANUALES SI TODO FALLA:
+
+1. Abrir PowerShell como Administrador
+2. Ejecutar: cd "C:\Users\encue\Dropbox\toshiba 2021 F\proyectos cursor\majestic\Majestic"
+3. Verificar: ls server.js (debe mostrar el archivo)
+4. Ejecutar: Get-Process -Name "node" | Stop-Process -Force
+5. Ejecutar: $env:DATABASE_URL='postgresql://majestic:simple123@localhost:5432/health_app'
+6. Ejecutar: $env:NODE_ENV='development'
+7. Ejecutar: $env:SKIP_GLOBAL_JOBS='true'
+8. Ejecutar: $env:SKIP_DB_INIT='true'
+9. Ejecutar: node server.js
+
+IMPORTANTE:
+- SIEMPRE ejecutar desde el directorio Majestic (donde está server.js)
+- NO usar cd "Majestic" cuando ya estás en Majestic
+- El terminal debe mostrar el path correcto antes de ejecutar node server.js
+
+Creado: $(Get-Date)
+Última actualización: Sábado 31 Agosto 2025

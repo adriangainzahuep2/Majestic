@@ -1,10 +1,13 @@
 // AI Health Dashboard Frontend Application
 class HealthDashboard {
     constructor() {
-        this.apiBase = '/api';
-        this.token = localStorage.getItem('authToken');
-        this.user = null;
-        this.dashboard = null;
+        // Resolve API base via helper for each environment
+        this.apiBase = this.getApiBaseUrl();
+        this.jwtToken = null;
+        this.token = null; // legacy compatibility
+        this.userProfile = null;
+        this.googleClientId = null;
+
         this.systemsData = new Map();
         this.isRefreshingInsights = false;
         this.insightsPollingInterval = null;
@@ -69,22 +72,25 @@ class HealthDashboard {
     }
 
     async init() {
+        console.log('[INIT] Initializing Health Dashboard application...');
+
+        // Setup UI event listeners
         this.setupEventListeners();
 
         if (this.token) {
             console.log('[INIT] Found token, attempting to load user profile...');
             try {
                 await this.loadUserProfile();
-                this.showApp();
+                await this.showApp();
             } catch (error) {
                 console.error('Failed to load user profile on init:', error);
-                // Clear invalid token and show login
+                localStorage.removeItem('jwtToken');
                 localStorage.removeItem('authToken');
+                this.jwtToken = null;
                 this.token = null;
                 this.showLogin();
             }
         } else {
-            console.log('[INIT] No token found, showing login');
             this.showLogin();
         }
     }
@@ -142,7 +148,8 @@ class HealthDashboard {
 
     // Authentication Methods
     async demoLogin() {
-        this.showLoading(true);
+        console.log('Attempting demo login...');
+        this.showLoading('Logging in as Demo User...');
         try {
             const response = await fetch(`${this.apiBase}/auth/demo`, {
                 method: 'POST',
@@ -157,18 +164,29 @@ class HealthDashboard {
                 localStorage.setItem('authToken', this.token);
                 this.showApp();
                 this.showToast('success', 'Welcome!', 'Successfully logged in with demo account');
+                // Optionally trigger background checks
+                this.checkPendingMetricSuggestions().catch(()=>{});
             } else {
-                throw new Error(data.message || 'Login failed');
+                throw new Error(response.message || 'Login failed');
             }
         } catch (error) {
             console.error('Demo login error:', error);
-            this.showToast('error', 'Login Failed', error.message);
+            this.showToast('error', 'Demo Login Failed', error.message || 'Could not sign in as demo');
         } finally {
             this.showLoading(false);
         }
     }
 
     async googleLogin() {
+        console.log('[DEBUG] googleLogin() called');
+        console.log('[DEBUG] googleClientId:', this.googleClientId ? 'SET' : 'NOT SET');
+        
+        if (!this.googleClientId) {
+            console.log('[DEBUG] No Google Client ID, showing error');
+            this.showToast('error', 'Configuration Error', 'Google OAuth not configured. Please contact support.');
+            return;
+        }
+
         try {
             // Get Google Client ID from backend
             const configResponse = await fetch(`${this.apiBase}/auth/config`);
@@ -179,40 +197,51 @@ class HealthDashboard {
                 return;
             }
 
-            // Check if Google Sign-In library is loaded
-            if (!window.google || !window.google.accounts) {
-                this.showToast('error', 'Google Library Error', 'Google Sign-In library not loaded. Please refresh and try again.');
-                return;
-            }
-
-            // Initialize Google Sign-In
-            window.google.accounts.id.initialize({
-                client_id: config.googleClientId,
-                callback: this.handleGoogleSignIn.bind(this)
-            });
-
-            // Prompt the user to sign in
-            window.google.accounts.id.prompt((notification) => {
-                if (notification.isNotDisplayed()) {
-                    this.showToast('error', 'Google OAuth Error', 'Google Sign-In prompt blocked. This may be due to domain configuration or browser settings.');
-                    return;
-                }
-                if (notification.isSkippedMoment()) {
-                    // User dismissed the prompt - show popup as alternative
-                    this.showGoogleSignInPopup(config.googleClientId);
-                }
-            });
+            console.log('[DEBUG] Triggering Google Sign-In popup...');
+            // Use simple OAuth2 flow instead of GSI
+            this.openGoogleOAuth(this.googleClientId);
         } catch (error) {
-            console.error('Google login initialization error:', error);
-            this.showToast('error', 'Google OAuth Failed', `Authentication error: ${error.message}`);
+            console.error('Google Sign-In prompt error:', error);
+            this.showToast('error', 'Google Auth Error', 'Google Sign-In prompt blocked. Please allow popups for this site.');
         }
+    }
+
+    async initializeGoogleSignIn(config) {
+        if (!config || !config.hasGoogleAuth) {
+            const googleLoginBtn = document.getElementById('googleLoginBtn');
+            if (googleLoginBtn) googleLoginBtn.style.display = 'none';
+            return;
+        }
+
+        // Wait for the GSI library to be loaded
+        if (typeof window.google === 'undefined' || typeof window.google.accounts === 'undefined') {
+            await new Promise(resolve => {
+                const interval = setInterval(() => {
+                    if (typeof window.google !== 'undefined' && typeof window.google.accounts !== 'undefined') {
+                        clearInterval(interval);
+                        resolve();
+                    }
+                }, 100);
+            });
+        }
+        
+        // Initialize Google Sign-In
+        window.google.accounts.id.initialize({
+            client_id: config.googleClientId,
+            callback: this.handleGoogleSignIn.bind(this),
+            use_fedcm_for_prompt: false
+        });
+
+        // Prompt the user to sign in
+        // google.accounts.id.prompt(); 
     }
 
     showGoogleSignInPopup(clientId) {
         try {
             window.google.accounts.id.initialize({
                 client_id: clientId,
-                callback: this.handleGoogleSignIn.bind(this)
+                callback: this.handleGoogleSignIn.bind(this),
+                use_fedcm_for_prompt: false,
             });
 
             // Create a temporary button and click it to trigger popup
@@ -241,16 +270,104 @@ class HealthDashboard {
             this.showToast('error', 'Google OAuth Error', `Popup failed: ${error.message}`);
         }
     }
+    
+    openGoogleOAuth(clientId) {
+        console.log('[DEBUG] openGoogleOAuth called');
+        
+        // Use current origin as-is (browser knows the correct URL)
+        const origin = window.location.origin;
+        const redirectUri = `${origin}/api/auth/google/callback`;
+        
+        console.log('[DEBUG] Current origin:', origin);
+        console.log('[DEBUG] Using redirect_uri:', redirectUri);
+        
+        // Create OAuth2 authorization URL (correct endpoint)
+        const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+        authUrl.searchParams.set('client_id', clientId);
+        authUrl.searchParams.set('redirect_uri', redirectUri);
+        authUrl.searchParams.set('response_type', 'code');
+        authUrl.searchParams.set('scope', 'openid email profile');
+        authUrl.searchParams.set('access_type', 'online');
+        authUrl.searchParams.set('prompt', 'select_account');
+        authUrl.searchParams.set('state', `google_oauth|${btoa(redirectUri)}`);
+        
+        console.log('[DEBUG] Redirecting to:', authUrl.toString());
+        
+        // Redirect to Google OAuth
+        window.location.href = authUrl.toString();
+    }
+    
+    async checkForOAuthCallback() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const state = urlParams.get('state');
+        
+        if (code && state === 'google_oauth') {
+            console.log('[DEBUG] Found OAuth callback, processing code...');
+            
+            try {
+                this.showLoading(true);
+                
+                const response = await fetch(`${this.apiBase}/auth/google-code`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ code: code })
+                });
+                
+                const data = await response.json();
+                console.log('[DEBUG] OAuth backend response:', data);
+                
+                if (response.ok && data.token) {
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('jwtToken');
+                    localStorage.setItem('authToken', data.token);
+                    localStorage.setItem('jwtToken', data.token);
+                    this.jwtToken = data.token;
+                    this.token = data.token;
+                    this.isAuthenticated = true;
+                    this.currentUser = data.user;
+                    
+                    // Clean up URL
+                    const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                    window.history.replaceState({}, '', newUrl);
+                    
+                    this.showToast('success', 'Welcome!', `Hello ${data.user.email}!`);
+                    
+                    // Load user profile and show app immediately
+                    await this.loadUserProfile();
+                    await this.showApp();
+                    
+                    return; // Exit early
+                } else {
+                    throw new Error(data.error || 'Authentication failed');
+                }
+            } catch (error) {
+                console.error('OAuth callback error:', error);
+                this.showToast('error', 'Authentication Error', error.message);
+                
+                // Clean up URL even on error
+                const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.replaceState({}, '', newUrl);
+            } finally {
+                this.showLoading(false);
+            }
+        }
+    }
 
     async handleGoogleSignIn(response) {
         try {
+            console.log('[DEBUG] handleGoogleSignIn called with:', response);
             this.showLoading(true);
 
             if (!response.credential) {
+                console.error('[DEBUG] No credential in response:', response);
                 throw new Error('No credential received from Google');
             }
 
             // Send the Google ID token to our backend
+            console.log('[DEBUG] Sending token to backend:', `${this.apiBase}/auth/google`);
             const authResponse = await fetch(`${this.apiBase}/auth/google`, {
                 method: 'POST',
                 headers: {
@@ -261,12 +378,16 @@ class HealthDashboard {
                 })
             });
 
+            console.log('[DEBUG] Backend response status:', authResponse.status);
             const data = await authResponse.json();
 
             if (data.success) {
                 this.token = data.token;
                 this.user = data.user;
-                localStorage.setItem('authToken', this.token);
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('jwtToken');
+                localStorage.setItem('authToken', this.jwtToken);
+                localStorage.setItem('jwtToken', this.jwtToken);
                 this.showApp();
                 this.showToast('success', 'Google OAuth Success!', `Authenticated as ${this.user.name}`);
             } else {
@@ -291,20 +412,30 @@ class HealthDashboard {
         this.dashboard = null;
         this.systemsData.clear();
         localStorage.removeItem('authToken');
+        localStorage.removeItem('jwtToken');
         this.showLogin();
         this.showToast('info', 'Logged Out', 'You have been logged out successfully');
     }
 
     async loadUserProfile() {
-        const response = await this.apiCall('/auth/me', 'GET');
-        if (response.user) {
-            this.user = response.user;
-            document.getElementById('userName').textContent = this.user.name || this.user.email;
+        if (!this.jwtToken) return null;
+        try {
+            const profile = await this.apiCall('/auth/me');
+            this.userProfile = profile;
+            if (typeof this.updateUserUI === 'function') {
+                this.updateUserUI(profile);
+            }
+        } catch (error) {
+            console.error('Failed to load user profile:', error);
+            this.showToast('error', 'Profile Load Failed', error.message);
         }
     }
 
     // UI State Management
     showLogin() {
+        const initialLoader = document.getElementById('initialLoader');
+        if (initialLoader) initialLoader.classList.add('d-none');
+        
         document.getElementById('loginSection').classList.remove('d-none');
         document.getElementById('appSection').classList.add('d-none');
         document.getElementById('userSection').classList.add('d-none');
@@ -312,6 +443,9 @@ class HealthDashboard {
     }
 
     showApp() {
+        const initialLoader = document.getElementById('initialLoader');
+        if (initialLoader) initialLoader.classList.add('d-none');
+        
         document.getElementById('loginSection').classList.add('d-none');
         document.getElementById('appSection').classList.remove('d-none');
         document.getElementById('profileSection').classList.add('d-none');
@@ -354,24 +488,29 @@ class HealthDashboard {
 
     // Dashboard Methods
     async loadDashboard() {
-        this.showLoading(true);
         try {
-            const data = await this.apiCall('/dashboard', 'GET');
-            this.dashboard = data;
-            this.renderDashboard();
+            const data = await this.apiCall('/dashboard');
+            const systems = Array.isArray(data.systems) ? data.systems : (Array.isArray(data.dashboard) ? data.dashboard : []);
+            this.renderDashboard(systems);
+            this.systemsData = new Map(systems.map(s => [s.id, s]));
         } catch (error) {
             console.error('Failed to load dashboard:', error);
-            this.showToast('error', 'Dashboard Error', 'Failed to load dashboard data');
-        } finally {
-            this.showLoading(false);
+            this.showToast('error', 'Dashboard', error.message || 'Failed to load dashboard');
         }
     }
 
-    renderDashboard() {
-        if (!this.dashboard) return;
+    renderDashboard(systems) {
+        if (!systems) return;
 
         // Update summary stats
-        const summary = this.dashboard.summary;
+        const summary = {
+            recent_metrics: systems.reduce((sum, system) => sum + system.keyMetricsCount, 0),
+            systems_with_data: systems.length,
+            recent_uploads: systems.reduce((sum, system) => sum + system.recentUploads, 0),
+            green_systems: systems.filter(system => system.color === 'green').length,
+            yellow_systems: systems.filter(system => system.color === 'yellow').length,
+            red_systems: systems.filter(system => system.color === 'red').length
+        };
         document.getElementById('totalMetrics').textContent = summary.recent_metrics;
         document.getElementById('systemsWithData').textContent = summary.systems_with_data;
         document.getElementById('recentUploads').textContent = summary.recent_uploads;
@@ -382,7 +521,7 @@ class HealthDashboard {
         const tilesContainer = document.getElementById('systemTiles');
         tilesContainer.innerHTML = '';
 
-        this.dashboard.dashboard.forEach(system => {
+        systems.forEach(system => {
             const tile = this.createSystemTile(system);
             tilesContainer.appendChild(tile);
         });
@@ -433,16 +572,17 @@ class HealthDashboard {
         console.log('[DEBUG] showSystemDetails called with systemId:', systemId);
         this.showLoading(true);
         try {
-            // Fetch system metrics and visual studies in parallel
-            const [metricsData, studiesData] = await Promise.all([
-                this.apiCall(`/metrics/system/${systemId}`, 'GET'),
-                this.apiCall(`/imaging-studies/system/${systemId}`, 'GET').catch(() => ({ studies: [] }))
+            const [metrics, studies, insights] = await Promise.all([
+                this.apiCall(`/metrics/system/${systemId}`),
+                this.apiCall(`/imaging-studies/system/${systemId}`),
+                this.apiCall(`/dashboard/insights/${systemId}`)
             ]);
 
             // Combine data
             const combinedData = {
-                ...metricsData,
-                studies: studiesData.studies || []
+                ...metrics,
+                studies: studies.studies || [],
+                insights: insights.insights || []
             };
 
             // Store current system data for range analysis
@@ -915,12 +1055,14 @@ class HealthDashboard {
 
                 rangeBlock = `
                     <div class="metric-range-block">
-                        <div class="metric-status-chip ${statusClass}">${status}</div>
+                        <div class="metric-status-chip ${statusClass}">${statusText}</div>
                         ${rangeBar}
-                        <div class="normal-range-caption">
-                            Normal range: ${normalRangeMin}–${normalRangeMax} ${rangeUnits}
-                            <span class="info-icon" data-metric="${metric.metric_name}" data-bs-toggle="tooltip" 
-                                  title="Custom reference range">i</span>
+                        <div class="normal-range-caption" style="text-align: center; display: flex; flex-direction: column; align-items: center;">
+                            <div>
+                                Normal Range: ${displayMin}–${displayMax} ${displayUnits}
+                                ${isAdjusted ? `<span class="info-icon" data-metric="${metric.metric_name}" data-bs-toggle="tooltip" title="Custom Range: ${customMin}–${customMax} ${customUnits}">i</span>` : ''}
+                            </div>
+                            ${isAdjusted ? '<div><span class="badge bg-warning text-dark mt-1">Adjusted Range</span></div>' : ''}
                         </div>
                     </div>
                 `;
@@ -934,18 +1076,18 @@ class HealthDashboard {
                 window.metricUtils.findMetricMatch(metric.metric_name, systemData.system?.name || systemData.name, customMetrics) : null;
 
             if (metricMatch) {
-                const status = window.metricUtils.calculateStatus(metric.metric_value, metricMatch.normalRangeMin, metricMatch.normalRangeMax);
-                const statusClass = status.toLowerCase().replace(' ', '-');
+                const statusText = window.metricUtils.calculateStatusSync(metric.metric_value, metricMatch.normalRangeMin, metricMatch.normalRangeMax);
+                const statusClass = statusText.toLowerCase().replace(' ', '-');
                 const rangeBar = window.metricUtils.generateMicroRangeBar(metric.metric_value, metricMatch.normalRangeMin, metricMatch.normalRangeMax);
 
                 rangeBlock = `
                     <div class="metric-range-block">
-                        <div class="metric-status-chip ${statusClass}">${status}</div>
+                        <div class="metric-status-chip ${statusClass}">${statusText}</div>
                         ${rangeBar}
-                        <div class="normal-range-caption">
-                            Normal range: ${metricMatch.normalRangeMin}–${metricMatch.normalRangeMax}${metricMatch.units ? ` ${metricMatch.units}` : ''}
-                            <span class="info-icon" data-metric="${metric.metric_name}" data-bs-toggle="tooltip" 
-                                  title="${this.generateTooltipTitle(metricMatch, metric.metric_name)}">i</span>
+                        <div class="normal-range-caption" style="text-align: center; display: flex; flex-direction: column; align-items: center;">
+                            <div>
+                                Normal Range: ${metricMatch.normalRangeMin}–${metricMatch.normalRangeMax}${metricMatch.units ? ` ${metricMatch.units}` : ''}
+                            </div>
                         </div>
                     </div>
                 `;
@@ -986,7 +1128,7 @@ class HealthDashboard {
                     </div>
                     <div class="col-md-2">
                         <label class="form-label" style="color: #FFFFFF; font-size: 12px;">Date</label>
-                        <input type="date" class="form-control" id="edit-date-${metric.id}" value="${metric.test_date || ''}">
+                        <input type="date" class="form-control" id="edit-date-${metric.id}" value="${(metric.test_date && String(metric.test_date).length>10 ? String(metric.test_date).slice(0,10) : (metric.test_date || ''))}">
                     </div>
                     <div class="col-md-2">
                         <label class="form-label" style="color: #FFFFFF; font-size: 12px;">&nbsp;</label>
@@ -1000,13 +1142,97 @@ class HealthDashboard {
                         </div>
                     </div>
                 </div>
+                <div class="row mt-2">
+                    <div class="col-md-12">
+                        <div class="p-2" style="background:#2C2C2E;border-radius:8px;border:1px solid #3A3A3C;">
+                            <div class="form-check form-switch d-flex align-items-center">
+                                <input class="form-check-input" type="checkbox" id="inline-range-enable-${metric.id}">
+                                <label class="form-check-label ms-2" for="inline-range-enable-${metric.id}" style="color:#EBEBF5;">Edit Reference Range</label>
+                                
+                                <span id="current-range-text-${metric.id}" class="text-muted small ms-2"></span>
+                            </div>
+                            <div id="inline-range-fields-${metric.id}" class="row mt-2 d-none">
+                                <input type="hidden" id="inline-range-id-${metric.id}" value="">
+                                <div class="col-md-2">
+                                    <label class="form-label" style="color:#FFFFFF; font-size:12px;">Min</label>
+                                    <input type="number" step="0.01" class="form-control" id="inline-min-${metric.id}" placeholder="Min">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label" style="color:#FFFFFF; font-size:12px;">Max</label>
+                                    <input type="number" step="0.01" class="form-control" id="inline-max-${metric.id}" placeholder="Max">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label" style="color:#FFFFFF; font-size:12px;">Units</label>
+                                    <select class="form-select" id="inline-units-${metric.id}">
+                                        <option value="">Select unit</option>
+                                        <option>mg/dL</option>
+                                        <option>mmHg</option>
+                                        <option>g/dL</option>
+                                        <option>%</option>
+                                        <option>U/L</option>
+                                        <option>ng/mL</option>
+                                        <option>pg/mL</option>
+                                        <option>μg/L</option>
+                                        <option>IU/mL</option>
+                                        <option>nmol/L</option>
+                                        <option>nmol/min/mL</option>
+                                        <option>Angstrom</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label" style="color:#FFFFFF; font-size:12px;">Medical Condition</label>
+                                    <select class="form-select" id="inline-condition-${metric.id}">
+                                        <option value="">Select condition...</option>
+                                        <option value="pregnancy">Pregnancy</option>
+                                        <option value="diabetes">Diabetes</option>
+                                        <option value="hypertension">Hypertension</option>
+                                        <option value="medication">Medication Effect</option>
+                                        <option value="age_related">Age-Related</option>
+                                        <option value="genetic_condition">Genetic Condition</option>
+                                        <option value="chronic_disease">Chronic Disease</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3" id="inline-condition-details-wrap-${metric.id}" style="display:none;">
+                                    <label class="form-label" style="color:#FFFFFF; font-size:12px;">Specify Condition</label>
+                                    <input type="text" class="form-control" id="inline-condition-details-${metric.id}" placeholder="Describe condition">
+                                </div>
+                                <div class="col-md-6 mt-2">
+                                    <label class="form-label" style="color:#FFFFFF; font-size:12px;">Notes</label>
+                                    <input type="text" class="form-control" id="inline-notes-${metric.id}" placeholder="Optional notes">
+                                </div>
+                                <div class="col-md-3 mt-2">
+                                    <label class="form-label" style="color:#FFFFFF; font-size:12px;">Valid From</label>
+                                    <input type="date" class="form-control" id="inline-valid-from-${metric.id}">
+                                </div>
+                                <div class="col-md-3 mt-2">
+                                    <label class="form-label" style="color:#FFFFFF; font-size:12px;">Valid Until</label>
+                                    <input type="date" class="form-control" id="inline-valid-until-${metric.id}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-6">
+                        <div class="form-check form-switch d-flex align-items-center">
+                            <input class="form-check-input" type="checkbox" id="inline-exclude-${metric.id}" ${metric.exclude_from_analysis ? 'checked' : ''}>
+                            <label class="form-check-label ms-2" for="inline-exclude-${metric.id}" style="color:#EBEBF5;">Exclude from analysis</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6" id="inline-exclude-reason-wrap-${metric.id}" style="display:${metric.exclude_from_analysis ? 'block' : 'none'};">
+                        <input type="text" class="form-control" id="inline-exclude-reason-${metric.id}" placeholder="Reason (optional)" value="${metric.review_reason || ''}">
+                    </div>
+                </div>
             </div>
         `;
+
+        const reviewTag = metric.exclude_from_analysis ? '<span class="badge bg-warning text-dark ms-2 badge-review">Review Value</span>' : '';
 
         return `
             <tr id="metric-row-${metric.id}" data-metric-id="${metric.id}" data-test-date="${metric.test_date}">
                 <td style="color: #FFFFFF; font-weight: 600;">
-                    <span class="metric-name">${metric.metric_name}</span>
+                    <span class="metric-name">${metric.metric_name}</span>${reviewTag}
                     ${needsReview ? '<span class="needs-review-indicator">NEEDS REVIEW</span>' : ''}
                 </td>
                 <td style="color: #FFFFFF;" class="metric-value">${metric.metric_value || '-'}${metric.metric_unit ? ` ${metric.metric_unit}` : ''}</td>
@@ -1062,7 +1288,6 @@ class HealthDashboard {
                             <th style="color: #FFFFFF; background-color: #2C2C2E;">Value</th>
                             <th style="color: #FFFFFF; background-color: #2C2C2E;">Unit</th>
                             <th style="color: #FFFFFF; background-color: #2C2C2E;">Date</th>
-                            <th style="color: #FFFFFF; background-color: #2C2C2E;">Status</th>
                             <th style="color: #FFFFFF; background-color: #2C2C2E;">Actions</th>
                         </tr>
                     </thead>
@@ -1075,8 +1300,6 @@ class HealthDashboard {
     }
 
     renderCustomMetricRow(metric, systemData) {
-        const isInRange = this.isCustomMetricInRange(metric);
-        const statusBadge = this.getCustomMetricStatusBadge(metric, isInRange);
         const sourceIcon = metric.source_type === 'official' ? 
             '<i class="fas fa-globe text-success" title="Global metric"></i>' : 
             '<i class="fas fa-user text-info" title="Personal metric"></i>';
@@ -1089,7 +1312,6 @@ class HealthDashboard {
                 <td style="color: #FFFFFF;">${metric.value}</td>
                 <td style="color: #EBEBF5;">${metric.units}</td>
                 <td style="color: #EBEBF5;">${new Date(metric.created_at).toLocaleDateString()}</td>
-                <td>${statusBadge}</td>
                 <td>
                     <div class="btn-group btn-group-sm">
                         <button class="btn btn-outline-primary btn-sm" onclick="app.editCustomMetric(${metric.id})" title="Edit">
@@ -1516,7 +1738,7 @@ class HealthDashboard {
 
             try {
                 // Check if new insights are available
-                const response = await this.apiCall('/api/dashboard');
+                const response = await this.apiCall('/dashboard');
                 if (response.success && response.data) {
                     // Update system insights if they're different
                     this.hideInsightsRefreshing();
@@ -1599,7 +1821,7 @@ class HealthDashboard {
         // Update the data attributes for future edits
         metricRow.dataset.testDate = updatedMetric.test_date;
 
-        // Update the range indicator using existing metric utilities
+        // Update the range indicator preferring metric.reference_range
         const rangeCell = metricRow.querySelector('.range-indicator');
 
         // Get custom metrics for range analysis
@@ -1615,33 +1837,70 @@ class HealthDashboard {
                     metricMatch.normalRangeMin, 
                     metricMatch.normalRangeMax
                 );
-                const statusClass = status.toLowerCase().replace(' ', '-');
+                const statusClass = statusText.toLowerCase().replace(' ', '-');
                 const rangeBar = window.metricUtils.generateMicroRangeBar(
-                    updatedMetric.metric_value, 
-                    metricMatch.normalRangeMin, 
+                    updatedMetric.metric_value,
+                    metricMatch.normalRangeMin,
                     metricMatch.normalRangeMax
                 );
 
                 rangeCell.innerHTML = `
                     <div class="metric-range-block">
-                        <div class="metric-status-chip ${statusClass}">${status}</div>
+                        <div class="metric-status-chip ${statusClass}">${statusText}</div>
                         ${rangeBar}
-                        <div class="normal-range-caption">
-                            Normal range: ${metricMatch.normalRangeMin}–${metricMatch.normalRangeMax}${metricMatch.units ? ` ${metricMatch.units}` : ''}
+                        <div class="normal-range-caption" style="text-align: center; display: flex; flex-direction: column; align-items: center;">
+                            <div>
+                                Normal Range: ${metricMatch.normalRangeMin}–${metricMatch.normalRangeMax}${metricMatch.units ? ` ${metricMatch.units}` : ''}
                             <span class="info-icon" data-metric="${updatedMetric.metric_name}" data-bs-toggle="tooltip" 
                                   title="${this.generateTooltipTitle(metricMatch, updatedMetric.metric_name)}">i</span>
+                            </div>
                         </div>
                     </div>
                 `;
+            } else if (rangeCell) {
+                rangeCell.innerHTML = `
+                    <div class="metric-range-block">
+                        <div class="metric-status-chip no-data">No data</div>
+                        <div style="color: #8E8E93; font-size: 11px; margin-top: 4px;">Reference range not available</div>
+                    </div>
+                `;
             }
-        } else if (rangeCell) {
-            // No range data available
-            rangeCell.innerHTML = `
-                <div class="metric-range-block">
-                    <div class="metric-status-chip no-data">No data</div>
-                    <div style="color: #8E8E93; font-size: 11px; margin-top: 4px;">Reference range not available</div>
-                </div>
-            `;
+        }
+
+        // Badge for extreme values excluded from analysis
+        const nameCell2 = metricRow.querySelector('td:first-child');
+        if (nameCell2) {
+            let badge = nameCell2.querySelector('.badge-review');
+            let shouldBadge = !!updatedMetric.exclude_from_analysis;
+
+            // Fallback auto-detect if not flagged by backend
+            if (!shouldBadge && window.metricUtils && updatedMetric.metric_value != null) {
+                const systemData2 = this.currentSystemData || {};
+                const customMetrics2 = systemData2.customMetrics || [];
+                const metricMatch = window.metricUtils ?
+                    window.metricUtils.findMetricMatch(updatedMetric.metric_name, systemData2.system?.name || systemData2.name, customMetrics2) : null;
+                const v = parseFloat(updatedMetric.metric_value);
+                const bMin = metricMatch && typeof metricMatch.normalRangeMin === 'number' ? metricMatch.normalRangeMin : null;
+                const bMax = metricMatch && typeof metricMatch.normalRangeMax === 'number' ? metricMatch.normalRangeMax : null;
+                if (bMax && v > bMax * 50) shouldBadge = true;
+                if (bMin && bMin > 0 && v < bMin / 50) shouldBadge = true;
+
+                // If extreme detected, persist exclusion silently
+                if (shouldBadge) {
+                    try {
+                        this.apiCall(`/metrics/${metricId}`, 'PUT', { exclude_from_analysis: true, review_reason: 'Auto-flagged on render' });
+                        updatedMetric.exclude_from_analysis = true;
+                    } catch(_) {}
+                }
+            }
+            if (shouldBadge && !badge) {
+                badge = document.createElement('span');
+                badge.className = 'badge bg-warning text-dark ms-2 badge-review';
+                badge.textContent = 'Review Value';
+                nameCell2.appendChild(badge);
+            } else if (!shouldBadge && badge) {
+                badge.remove();
+            }
         }
     }
 
@@ -1983,6 +2242,7 @@ class HealthDashboard {
     }
 
     async editMetric(metricId) {
+        try { console.log('[EDIT_METRIC] Click', { metricId }); } catch (_) {}
         const editRow = document.getElementById(`edit-row-${metricId}`);
         const editForm = document.getElementById(`edit-form-${metricId}`);
         const displayRow = document.getElementById(`metric-row-${metricId}`);
@@ -2003,6 +2263,11 @@ class HealthDashboard {
             selectElement.addEventListener('change', (e) => {
                 if (e.target.value === '__ADD_NEW__') {
                     this.showInlineCustomMetricModal(systemId, metricId);
+                } else {
+                    // Update custom range status preview when metric changes
+                    const dateVal = document.getElementById(`edit-date-${metricId}`)?.value || null;
+                    this.updateCustomRangePreview(metricId, e.target.value, dateVal);
+                    try { console.log('[EDIT_METRIC] Metric changed', { value: e.target.value, dateVal }); } catch (_) {}
                 }
             });
         }
@@ -2020,12 +2285,119 @@ class HealthDashboard {
                     const month = String(dateObj.getMonth() + 1).padStart(2, '0');
                     const day = String(dateObj.getDate()).padStart(2, '0');
                     dateInput.value = `${year}-${month}-${day}`;
+                    try { console.log('[EDIT_METRIC] Pre-populated date', { value: dateInput.value }); } catch (_) {}
+                }
+            }
+            // Initial preview of custom range status and wire up inline range controls
+            const currentName = selectElement.value;
+            const dateVal = document.getElementById(`edit-date-${metricId}`)?.value || null;
+            this.updateCustomRangePreview(metricId, currentName, dateVal);
+            try { console.log('[EDIT_METRIC] Initial range preview', { currentName, dateVal }); } catch (_) {}
+
+            // Toggle inline editor visibility
+            const toggle = document.getElementById(`inline-range-enable-${metricId}`);
+            const fields = document.getElementById(`inline-range-fields-${metricId}`);
+            if (toggle && fields) {
+                toggle.addEventListener('change', async (e) => {
+                    fields.classList.toggle('d-none', !e.target.checked);
+                    if (e.target.checked) {
+                        await this.prefillInlineRange(metricId, currentName, dateVal);
+                        try { console.log('[EDIT_METRIC] Inline range enabled and prefilled'); } catch (_) {}
+                    }
+                });
+
+                // Change handler for condition 'other'
+                const condSel = document.getElementById(`inline-condition-${metricId}`);
+                const condWrap = document.getElementById(`inline-condition-details-wrap-${metricId}`);
+                if (condSel && condWrap) {
+                    condSel.addEventListener('change', (ev) => {
+                        condWrap.style.display = ev.target.value === 'other' ? 'block' : 'none';
+                        try { console.log('[EDIT_METRIC] Condition changed', { value: ev.target.value }); } catch (_) {}
+                    });
+                }
+
+                // Wire exclude toggle
+                const exToggle = document.getElementById(`inline-exclude-${metric.id}`);
+                const exWrap = document.getElementById(`inline-exclude-reason-wrap-${metric.id}`);
+                if (exToggle && exWrap) {
+                    exToggle.addEventListener('change', (ev) => {
+                        exWrap.style.display = ev.target.checked ? 'block' : 'none';
+                        try { console.log('[EDIT_METRIC] Exclude toggled', { checked: ev.target.checked }); } catch (_) {}
+                    });
                 }
             }
         }
 
         editRow.classList.remove('d-none');
         editForm.classList.remove('d-none');
+        editForm.style.display = 'block';
+        try { console.log('[EDIT_METRIC] Form displayed'); } catch (_) {}
+        try { editRow.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(_) {}
+    }
+
+    async prefillInlineRange(metricId, metricName, testDate) {
+        try {
+            const res = await this.apiCall(`/custom-reference-ranges/metric/${encodeURIComponent(metricName)}${testDate ? `?testDate=${encodeURIComponent(testDate)}` : ''}`, 'GET');
+            const r = res && res.custom_range;
+            if (r) {
+                document.getElementById(`inline-range-id-${metricId}`).value = r.id;
+                document.getElementById(`inline-min-${metricId}`).value = r.min_value;
+                document.getElementById(`inline-max-${metricId}`).value = r.max_value;
+                document.getElementById(`inline-units-${metricId}`).value = r.units;
+                document.getElementById(`inline-condition-${metricId}`).value = r.medical_condition || '';
+                if (r.medical_condition === 'other') {
+                    const wrap = document.getElementById(`inline-condition-details-wrap-${metricId}`);
+                    if (wrap) wrap.style.display = 'block';
+                    document.getElementById(`inline-condition-details-${metricId}`).value = r.condition_details || '';
+                }
+                document.getElementById(`inline-notes-${metricId}`).value = r.notes || '';
+                if (r.valid_from) document.getElementById(`inline-valid-from-${metricId}`).value = this.toYMD(r.valid_from);
+                if (r.valid_until) document.getElementById(`inline-valid-until-${metricId}`).value = this.toYMD(r.valid_until);
+            } else {
+                // Default prefill from catalog if available
+                const match = window.metricUtils ? window.metricUtils.findMetricMatch(metricName) : null;
+                if (match) {
+                    document.getElementById(`inline-units-${metricId}`).value = match.units || '';
+                    if (match.normalRangeMin != null) document.getElementById(`inline-min-${metricId}`).value = match.normalRangeMin;
+                    if (match.normalRangeMax != null) document.getElementById(`inline-max-${metricId}`).value = match.normalRangeMax;
+                }
+                const defDate = this.toYMD(testDate || new Date());
+                document.getElementById(`inline-valid-from-${metricId}`).value = defDate;
+                document.getElementById(`inline-valid-until-${metricId}`).value = defDate;
+            }
+        } catch (_) {}
+    }
+
+    async updateCustomRangePreview(metricId, metricName, testDate) {
+        try {
+            const res = await this.apiCall(`/custom-reference-ranges/metric/${encodeURIComponent(metricName)}${testDate ? `?testDate=${encodeURIComponent(testDate)}` : ''}`, 'GET');
+            const hasCustom = res && res.custom_range;
+            const txt = document.getElementById(`current-range-text-${metricId}`);
+            if (txt) {
+                if (hasCustom) {
+                    const r = res.custom_range;
+                    txt.textContent = `Current: ${r.min_value} - ${r.max_value} ${r.units} (${r.medical_condition})`;
+                } else {
+                    txt.textContent = 'No custom range';
+                }
+            }
+        } catch (e) {
+            // Silent fail for preview
+        }
+    }
+
+    openEditRangeFor(metricId) {
+        const metricName = document.getElementById(`edit-metric-${metricId}`)?.value;
+        if (!metricName) {
+            this.showToast('warning', 'Select Metric', 'Please select a metric first');
+            return;
+        }
+        // Store options for the modal
+        this._customRangeModalOptions = {
+            preselectMetricName: metricName,
+            lockMetricSelection: true
+        };
+        this.showAddCustomRangeModal(null, this._customRangeModalOptions);
     }
 
     cancelMetricEdit(metricId) {
@@ -2041,20 +2413,110 @@ class HealthDashboard {
 
     async saveMetricEdit(metricId) {
         try {
+            console.log('[SAVE_METRIC_EDIT] Submit', { metricId });
             const metricName = document.getElementById(`edit-metric-${metricId}`).value;
             const metricValue = document.getElementById(`edit-value-${metricId}`).value;
             const metricUnit = document.getElementById(`edit-unit-${metricId}`).value;
             const testDate = document.getElementById(`edit-date-${metricId}`).value;
+            const rangeToggle = document.getElementById(`inline-range-enable-${metricId}`);
+            const applyRange = !!(rangeToggle && rangeToggle.checked);
 
-            const response = await this.apiCall(`/metrics/${metricId}`, 'PUT', {
-                metric_name: metricName,
-                metric_value: parseFloat(metricValue),
+            // Build minimal update payload to avoid name validation when not changing name
+            const displayRow = document.getElementById(`metric-row-${metricId}`);
+            const originalName = displayRow?.querySelector('.metric-name')?.textContent || metricName;
+            const updates = {
+                metric_value: metricValue !== '' ? parseFloat(metricValue) : null,
                 metric_unit: metricUnit,
-                test_date: testDate,
-                source: 'User Edited'
-            });
+                test_date: testDate || null
+            };
+            if (metricName && metricName !== originalName) {
+                updates.metric_name = metricName;
+            }
+            if (applyRange) {
+                const min = document.getElementById(`inline-min-${metricId}`).value;
+                const max = document.getElementById(`inline-max-${metricId}`).value;
+                const units = document.getElementById(`inline-units-${metricId}`).value;
+                if (min && max && units) {
+                    updates.reference_range = `${min}-${max} ${units}`;
+                    updates.is_adjusted = true;
+                }
+            }
+
+            // Auto-flag extreme outliers to be excluded from analysis (but still saved)
+            try {
+                const valNum = updates.metric_value;
+                if (valNum != null) {
+                    // Compute baseline range for rough sanity check
+                    const systemData = this.currentSystemData || {};
+                    const customMetrics = systemData.customMetrics || [];
+                    const match = window.metricUtils ? window.metricUtils.findMetricMatch(metricName, systemData.system?.name || systemData.name, customMetrics) : null;
+                    let bMin = null, bMax = null;
+                    if (match) { bMin = match.normalRangeMin; bMax = match.normalRangeMax; }
+                    // If known range and value is wildly out (e.g., > 50x max or < 1/50 min), flag
+                    if (typeof bMax === 'number' && valNum > bMax * 50) {
+                        updates.exclude_from_analysis = true;
+                        updates.review_reason = 'Auto-flagged extreme high value';
+                    } else if (typeof bMin === 'number' && bMin > 0 && valNum < bMin / 50) {
+                        updates.exclude_from_analysis = true;
+                        updates.review_reason = 'Auto-flagged extreme low value';
+                    }
+                }
+            } catch (_) {}
+
+            // Manual exclude toggle
+            const excludeToggle = document.getElementById(`inline-exclude-${metricId}`);
+            if (excludeToggle) {
+                updates.exclude_from_analysis = !!excludeToggle.checked;
+                const reasonInput = document.getElementById(`inline-exclude-reason-${metricId}`);
+                if (updates.exclude_from_analysis && reasonInput && reasonInput.value) {
+                    updates.review_reason = reasonInput.value;
+                } else if (!updates.exclude_from_analysis) {
+                    updates.review_reason = null;
+                }
+            }
+
+            console.log('[SAVE_METRIC_EDIT] Updates payload', updates);
+            const response = await this.apiCall(`/metrics/${metricId}`, 'PUT', updates);
+            console.log('[SAVE_METRIC_EDIT] Response', response);
 
             if (response.success) {
+                // Ensure immediate UI reflects adjusted state when range was applied
+                try {
+                    if (applyRange && response.metric) {
+                        response.metric.is_adjusted = true;
+                    }
+                } catch(_) {}
+                // If range editing is enabled, persist custom range
+                if (applyRange) {
+                    const rangeId = document.getElementById(`inline-range-id-${metricId}`).value;
+                    const payload = {
+                        metric_name: metricName,
+                        min_value: parseFloat(document.getElementById(`inline-min-${metricId}`).value),
+                        max_value: parseFloat(document.getElementById(`inline-max-${metricId}`).value),
+                        units: document.getElementById(`inline-units-${metricId}`).value,
+                        medical_condition: document.getElementById(`inline-condition-${metricId}`).value || 'other',
+                        condition_details: document.getElementById(`inline-condition-details-${metricId}`).value || null,
+                        notes: document.getElementById(`inline-notes-${metricId}`).value || '',
+                        valid_from: document.getElementById(`inline-valid-from-${metricId}`).value || new Date().toISOString().split('T')[0],
+                        valid_until: document.getElementById(`inline-valid-until-${metricId}`).value || null
+                    };
+
+                    if (!payload.metric_name || !payload.min_value || !payload.max_value || !payload.units) {
+                        this.showToast('warning', 'Validation', 'Please complete the reference range fields');
+                    } else if (payload.min_value >= payload.max_value) {
+                        this.showToast('warning', 'Validation', 'Min must be less than Max');
+                    } else {
+                        try {
+                            const method = rangeId ? 'PUT' : 'POST';
+                            const url = rangeId ? `/custom-reference-ranges/${rangeId}` : '/custom-reference-ranges';
+                            await this.apiCall(url, method, payload);
+                            this.showToast('success', 'Custom Range', rangeId ? 'Range updated' : 'Range created');
+                        } catch (e) {
+                            this.showToast('error', 'Custom Range', e.message || 'Failed to save range');
+                        }
+                    }
+                }
+
                 this.showToast('success', 'Metric Updated', 'Metric updated. AI insights and daily plan refreshed.');
 
                 // Update the metric row in the table immediately
@@ -2160,8 +2622,30 @@ class HealthDashboard {
     async loadDailyPlan() {
         this.showLoading(true);
         try {
-            const data = await this.apiCall('/dashboard/daily-plan', 'GET');
-            this.renderDailyPlan(data.daily_plan);
+            const data = await this.apiCall('/dashboard/daily-plan');
+            const planList = document.getElementById('daily-plan-list');
+            if (!planList) return;
+
+            planList.innerHTML = '';
+
+            data.daily_plan.forEach(plan => {
+                const planItem = document.createElement('div');
+                planItem.className = 'daily-plan-item mb-3';
+                planItem.innerHTML = `
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">${plan.title}</h5>
+                            <p class="card-text">${plan.description}</p>
+                            <p class="card-text"><strong>Date:</strong> ${new Date(plan.date).toLocaleDateString()}</p>
+                            <p class="card-text"><strong>Status:</strong> ${plan.status}</p>
+                            <p class="card-text"><strong>Priority:</strong> ${plan.priority}</p>
+                            <p class="card-text"><strong>Category:</strong> ${plan.category}</p>
+                            <p class="card-text"><strong>Actions:</strong> ${plan.actions.join(', ')}</p>
+                        </div>
+                    </div>
+                `;
+                planList.appendChild(planItem);
+            });
         } catch (error) {
             console.error('Failed to load daily plan:', error);
             this.showToast('error', 'Daily Plan', 'Failed to load daily plan');
@@ -2460,19 +2944,21 @@ class HealthDashboard {
     }
 
     async loadUploads() {
-        this.showLoading(true);
         try {
-            const data = await this.apiCall('/uploads', 'GET');
-            this.renderUploadsList(data.uploads);
+            const resp = await this.apiCall('/uploads?limit=5');
+            const uploads = Array.isArray(resp)
+                ? resp
+                : (resp.uploads || resp.data?.uploads || resp.rows || []);
+            this.renderUploads(uploads);
         } catch (error) {
             console.error('Failed to load uploads:', error);
-            this.showToast('error', 'Uploads', 'Failed to load upload history');
+            this.showToast('error', 'Uploads', error.message || 'Failed to load uploads');
         } finally {
             this.showLoading(false);
         }
     }
 
-    renderUploadsList(uploads) {
+    renderUploads(uploads) {
         const container = document.getElementById('uploadsList');
 
         if (uploads.length === 0) {
@@ -2487,58 +2973,12 @@ class HealthDashboard {
             `;
             return;
         }
-
-        container.innerHTML = `
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th style="color: #FFFFFF; background-color: #2C2C2E;">Filename</th>
-                            <th style="color: #FFFFFF; background-color: #2C2C2E;">Type</th>
-                            <th style="color: #FFFFFF; background-color: #2C2C2E;">Status</th>
-                            <th style="color: #FFFFFF; background-color: #2C2C2E;">Upload Date</th>
-                            <th style="color: #FFFFFF; background-color: #2C2C2E;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${uploads.map(upload => `
-                            <tr>
-                                <td style="color: #FFFFFF;">
-                                    <i class="fas fa-file me-2" style="color: #ABABAB;"></i>
-                                    ${upload.filename}
-                                </td>
-                                <td>
-                                    <span class="badge bg-secondary">${upload.upload_type}</span>
-                                </td>
-                                <td>
-                                    <span class="badge bg-${this.getStatusColor(upload.processing_status)}">
-                                        ${upload.processing_status}
-                                    </span>
-                                </td>
-                                <td style="color: #EBEBF5;">
-                                    ${new Date(upload.created_at).toLocaleString()}
-                                </td>
-                                <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-outline-primary" onclick="app.viewUploadDetails(${upload.id})" style="color: #007AFF; border-color: #007AFF;">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        ${upload.processing_status === 'failed' ? `
-                                            <button class="btn btn-outline-warning" onclick="app.retryUpload(${upload.id})">
-                                                <i class="fas fa-redo"></i>
-                                            </button>
-                                        ` : ''}
-                                        <button class="btn btn-outline-danger" onclick="app.deleteUpload(${upload.id})">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
+        container.innerHTML = items.map(u => `
+            <div class="upload-item">
+                <div><strong>${u.filename || 'Untitled'}</strong></div>
+                <div class="small text-muted">Status: ${u.processing_status || 'unknown'} | ${u.created_at ? new Date(u.created_at).toLocaleString() : ''}</div>
             </div>
-        `;
+        `).join('');
     }
 
     getStatusColor(status) {
@@ -2693,8 +3133,10 @@ class HealthDashboard {
             ...customHeaders  // Merge custom headers
         };
 
-        if (this.token) {
-            headers['Authorization'] = `Bearer ${this.token}`;
+        // Prefer fresh in-memory token, fallback to localStorage
+        const bearer = this.jwtToken || this.token || localStorage.getItem('jwtToken') || localStorage.getItem('authToken');
+        if (bearer) {
+            headers['Authorization'] = `Bearer ${bearer}`;
         }
 
         const config = {
@@ -2703,7 +3145,13 @@ class HealthDashboard {
         };
 
         if (data && method !== 'GET') {
-            config.body = JSON.stringify(data);
+            // Allow FormData
+            if (data instanceof FormData) {
+                delete headers['Content-Type'];
+                config.body = data;
+            } else {
+                config.body = JSON.stringify(data);
+            }
         }
 
         const response = await fetch(`${this.apiBase}${endpoint}`, config);
@@ -3149,8 +3597,7 @@ class HealthDashboard {
             preferredUnitSystem: unitSystem,
             sex: document.getElementById('sex').value || null,
             dateOfBirth: document.getElementById('dateOfBirth').value 
-            ? new 
-            Date(document.getElementById('dateOfBirth').value).toISOString().split('T')[0] 
+            ? this.toYMD(new Date(document.getElementById('dateOfBirth').value))
             : null,
             heightIn: heightIn,
             weightLb: weightLb,
