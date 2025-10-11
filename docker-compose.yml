@@ -22,7 +22,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: majestic_app
+    container_name: majestic-app
     ports:
       - "5000:5000"
     environment:
@@ -31,7 +31,7 @@ services:
       JWT_SECRET: a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456
       GOOGLE_CLIENT_ID: 504338292423-nneklif626o8vj9n0o7btq03vjt49mqb.apps.googleusercontent.com
       GOOGLE_CLIENT_SECRET: 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
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_API_KEY: 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
       DIAG_TOKEN: 9f2c3f6e8a4b5d17e6f9a0c2d8e4f7b1c6a3d5e8f9b2c1d4e7a9c0f2b4d6e8a1
       SKIP_DB_INIT: false
       SKIP_GLOBAL_JOBS: false
