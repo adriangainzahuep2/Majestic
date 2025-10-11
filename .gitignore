@@ -1,4 +1,8 @@
 ﻿.env
+docker-compose.yml
+Dockerfile
+ecs-keypair.pem
+GOOGLE_OAUTH_SETUP.md
 node_modules/
 backups/
 uploads/
