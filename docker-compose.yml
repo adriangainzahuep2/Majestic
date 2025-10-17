@@ -1,0 +1,65 @@
+version: '3.8'
+
+# This Docker Compose file is for local development and testing.
+# It simulates the production environment by running the app and a PostgreSQL database.
+
+services:
+  # The application service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: majestic-app
+    restart: unless-stopped
+    ports:
+      # Maps port 5000 of the container to port 5000 on the host machine.
+      - "5000:5000"
+    # Load environment variables from the .env.production file.
+    # Note: In a real-world scenario, you might have a separate .env.development file.
+    env_file:
+      - .env.production
+    # The application depends on the postgres service.
+    # It will wait for the postgres service to be healthy before starting.
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - majestic-network
+
+  # The PostgreSQL database service
+  postgres:
+    image: postgres:15-alpine
+    container_name: majestic-postgres
+    restart: unless-stopped
+    ports:
+      # To connect from your local machine for debugging, you can map the port.
+      # e.g., use "5433:5432" to avoid conflicts with a local postgres instance.
+      - "5432:5432"
+    environment:
+      # These values should match the DATABASE_URL in the .env.production file.
+      POSTGRES_DB: health_app
+      POSTGRES_USER: majestic
+      POSTGRES_PASSWORD: simple123 # Use the same password as in DATABASE_URL
+    volumes:
+      # Persist database data on the host machine.
+      - postgres-data:/var/lib/postgresql/data
+      # Run initialization scripts on first start.
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init_db.sh:ro
+    networks:
+      - majestic-network
+    healthcheck:
+      # Checks if the database is ready to accept connections.
+      test: ["CMD-SHELL", "pg_isready -U majestic -d health_app"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# Define the network for the services to communicate with each other.
+networks:
+  majestic-network:
+    driver: bridge
+
+# Define the volume for persisting database data.
+volumes:
+  postgres-data:
+    driver: local
