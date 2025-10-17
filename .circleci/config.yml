@@ -1,0 +1,140 @@
+# ===================================================================================
+# CIRCLECI CONFIGURATION FOR MAJESTIC
+#
+# This pipeline automates the infrastructure and application deployment process.
+#
+# Workflows:
+#   - terraform-and-deploy:
+#     - Runs on commits to the 'main' branch.
+#     - Jobs:
+#       1. terraform-plan: Initializes Terraform and creates a plan. The plan is
+#          saved to a workspace to be used by the apply job.
+#       2. hold-for-approval: A manual approval step. This is crucial for
+#          production environments to prevent accidental infrastructure changes.
+#       3. terraform-apply: Applies the Terraform plan if the 'hold-for-approval'
+#          job is approved.
+#       4. deploy-application: Runs the deploy.sh script to build and push the
+#          Docker image to ECR and update the ECS service.
+#
+# Prerequisites:
+#   - Set up a CircleCI project connected to your GitHub repository.
+#   - Configure the following environment variables in your CircleCI project settings:
+#     - AWS_ACCESS_KEY_ID: Your AWS access key.
+#     - AWS_SECRET_ACCESS_KEY: Your AWS secret key.
+#     - AWS_REGION: The AWS region (e.g., us-east-1).
+#     - TF_VAR_db_password: The master password for the RDS database.
+#     - TF_VAR_jwt_secret: The JWT secret for the application.
+#     - TF_VAR_google_client_id: The Google OAuth Client ID.
+#     - TF_VAR_google_client_secret: The Google OAuth Client Secret.
+#     - TERRAFORM_STATE_BUCKET: The S3 bucket for storing Terraform state.
+#     - TERRAFORM_LOCK_TABLE: The DynamoDB table for Terraform state locking.
+# ===================================================================================
+
+version: 2.1
+
+# Orbs provide reusable configuration snippets.
+orbs:
+  aws-cli: circleci/aws-cli@3.1
+  terraform: circleci/terraform@3.2
+
+jobs:
+  terraform-plan:
+    docker:
+      - image: cimg/python:3.10 # Using a Python image as it's common and includes base tools
+    steps:
+      - checkout
+      - terraform/install:
+          terraform_version: "1.2.9" # Specify a Terraform version
+      - aws-cli/setup
+      - run:
+          name: Configure Terraform Backend and Create Plan
+          command: |
+            terraform -chdir=terraform init \
+              -backend-config="bucket=${TERRAFORM_STATE_BUCKET}" \
+              -backend-config="key=majestic/prod/terraform.tfstate" \
+              -backend-config="region=${AWS_REGION}" \
+              -backend-config="dynamodb_table=${TERRAFORM_LOCK_TABLE}"
+
+            terraform -chdir=terraform plan -out=tfplan
+      - persist_to_workspace:
+          root: terraform
+          paths:
+            - .terraform
+            - tfplan
+
+  terraform-apply:
+    docker:
+      - image: cimg/python:3.10
+    steps:
+      - checkout
+      - attach_workspace:
+          at: terraform
+      - terraform/install:
+          terraform_version: "1.2.9"
+      - aws-cli/setup
+      - run:
+          name: Apply Terraform Plan
+          command: |
+            terraform -chdir=terraform init \
+              -backend-config="bucket=${TERRAFORM_STATE_BUCKET}" \
+              -backend-config="key=majestic/prod/terraform.tfstate" \
+              -backend-config="region=${AWS_REGION}" \
+              -backend-config="dynamodb_table=${TERRAFORM_LOCK_TABLE}"
+
+            terraform -chdir=terraform apply -auto-approve tfplan
+      - run:
+          name: Save Terraform Outputs
+          command: |
+            terraform -chdir=terraform output -json > terraform/terraform.output.json
+      - persist_to_workspace:
+          root: .
+          paths:
+            - terraform/terraform.output.json
+
+  deploy-application:
+    docker:
+      - image: cimg/aws:2022.06 # An image with AWS tools and Docker
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - aws-cli/setup
+      - setup_remote_docker: # Required for building Docker images
+          version: 20.10.14
+      - run:
+          name: Install JQ
+          command: |
+            sudo apt-get update && sudo apt-get install -y jq
+      - run:
+          name: Run Deployment Script
+          command: |
+            # Make scripts executable
+            chmod +x ./scripts/deploy.sh
+            chmod +x ./scripts/health-check.sh
+
+            # Run the deployment
+            ./scripts/deploy.sh "build-${CIRCLE_BUILD_NUM}"
+
+            # Run the health check
+            ./scripts/health-check.sh
+
+workflows:
+  terraform-and-deploy:
+    jobs:
+      - terraform-plan:
+          context: aws-creds # A context in CircleCI settings with AWS credentials
+          filters:
+            branches:
+              only: main
+      - hold-for-approval:
+          type: approval
+          requires:
+            - terraform-plan
+      - terraform-apply:
+          context: aws-creds
+          requires:
+            - hold-for-approval
+      - deploy-application:
+          context: aws-creds
+          requires:
+            - terraform-apply

@@ -1,0 +1,37 @@
+DEPLOYMENT INFORMATION
+======================
+
+Date: jue 16 oct 2025 14:18:57 CDT
+Project: majestic-app
+Region: us-east-1
+
+ENDPOINTS:
+----------
+Application URL: http://majestic-app-alb-1436473556.us-east-1.elb.amazonaws.com
+Database: health-app.c4vuie06a0wt.us-east-1.rds.amazonaws.com:5432
+
+DATABASE CREDENTIALS:
+--------------------
+Database Name: health_app
+Username: majestic
+Password: simple123
+
+AWS RESOURCES:
+--------------
+VPC ID: vpc-0a83462c31a500cb7
+ECS Cluster: majestic-app-cluster
+ECS Service: majestic-app-service
+Load Balancer: arn:aws:elasticloadbalancing:us-east-1:339713138893:loadbalancer/app/majestic-app-alb/ff74185603426831
+Target Group: arn:aws:elasticloadbalancing:us-east-1:339713138893:targetgroup/majestic-app-tg/bbab43cfb8c52856
+Auto Scaling Group: majestic-app-asg
+Launch Template: majestic-app-launch-template
+
+SECURITY GROUPS:
+----------------
+ALB SG: sg-0547babaf92e2274e
+EC2 SG: sg-00965c7f39d4cec44
+RDS SG: sg-0ba0571c9a91c3586
+
+DATABASE URL:
+-------------
+postgresql://majestic:simple123@health-app.c4vuie06a0wt.us-east-1.rds.amazonaws.com:5432/health_app

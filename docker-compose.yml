@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: majestic_postgres
+    environment:
+      POSTGRES_USER: majestic
+      POSTGRES_PASSWORD: simple123
+      POSTGRES_DB: health_app
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - majestic_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U majestic -d health_app"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: majestic-app
+    ports:
+      - "32769:32769"
+    environment:
+      PORT: 32769
+      NODE_ENV: development
+      JWT_SECRET: a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456
+      GOOGLE_CLIENT_ID: 504338292423-nneklif626o8vj9n0o7btq03vjt49mqb.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: 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
+      OPENAI_API_KEY: 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
+      DIAG_TOKEN: 9f2c3f6e8a4b5d17e6f9a0c2d8e4f7b1c6a3d5e8f9b2c1d4e7a9c0f2b4d6e8a1
+      SKIP_DB_INIT: false
+      SKIP_GLOBAL_JOBS: false
+      ADMIN_EMAILS: jmzv13@gmail.com
+      DATABASE_URL: postgresql://majestic:simple123@postgres:5432/health_app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - majestic_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  majestic_network:
+    driver: bridge
