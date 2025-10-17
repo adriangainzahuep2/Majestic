@@ -1,0 +1,44 @@
+RDS Connection Information
+==========================
+
+Host:     health-app.c4vuie06a0wt.us-east-1.rds.amazonaws.com
+Port:     5432
+Database: health_app
+Username: majestic
+Password: simple123
+
+DATABASE_URL:
+postgresql://majestic:simple123@health-app.c4vuie06a0wt.us-east-1.rds.amazonaws.com:5432/health_app
+
+Security Groups creados:
+- ALB SG:  sg-0547babaf92e2274e (majestic-app-alb-sg)
+- ECS SG:  sg-070237df0963d921d (majestic-app-sg)
+- RDS SG:  sg-0ba0571c9a91c3586 (majestic-app-rds-sg)
+
+Flujo de tráfico configurado:
+Internet -> ALB (puerto 80/443) -> ECS (puerto 5000) -> RDS (puerto 5432)
+
+Para actualizar tu deployment ECS:
+1. Usa el script update_ecs_db_script.sh:
+   ./update_ecs_db_script.sh
+
+2. O manualmente:
+   - Edita deploy-ecs-basic.sh
+   - Actualiza la variable DATABASE_URL con el valor de arriba
+   - Re-despliega con: ./deploy-ecs-basic.sh
+
+Para conectarte localmente (si habilitaste acceso desde tu IP):
+psql "postgresql://majestic:simple123@health-app.c4vuie06a0wt.us-east-1.rds.amazonaws.com:5432/health_app"
+
+Costos estimados (Free Tier - primer año):
+- db.t3.micro: Primeros 750 hrs/mes GRATIS, después ~5-20/mes
+- Storage 20GB: Primeros 20GB GRATIS, después ~.30/mes
+- Backup: Incluido en capa gratuita (hasta 20GB)
+- Total después del Free Tier: ~7-22/mes
+
+IMPORTANTE - Seguridad:
+- CAMBIA la contraseña en producción
+- deletion-protection está ACTIVADO
+- Backups automáticos configurados (7 días)
+- Conexiones encriptadas (SSL)
+- No accesible públicamente
