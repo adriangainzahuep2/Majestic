@@ -11,6 +11,7 @@ env:
   ECS_SERVICE: majestic-app-service
   ECS_TASK_DEFINITION: majestic-app-task
 
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -22,6 +23,7 @@ jobs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
+        role-to-assume: arn:aws:iam::339713138893:role/YOUR_ROLE_NAME
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
@@ -61,3 +63,7 @@ jobs:
         service: ${{ env.ECS_SERVICE }}
         cluster: ${{ env.ECS_CLUSTER }}
         wait-for-service-stability: true
+
+permissions:
+  id-token: write
+  contents: read
