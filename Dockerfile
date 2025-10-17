@@ -1,57 +1,52 @@
-# Stage 1: Builder
-# This stage installs dependencies and builds the application if necessary.
+# Multi-stage build for Node.js application
 FROM node:18-alpine AS builder
+
+# Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json
+# Copy package files
 COPY package*.json ./
 
-# Install production dependencies
-# Using 'npm ci' for faster, more reliable builds from package-lock.json
+# Install dependencies
 RUN npm ci --only=production
 
-# Copy the rest of the application code
+# Copy application code
 COPY . .
 
-# If you had a build step (e.g., for TypeScript), it would go here:
+# Build if needed (uncomment if using TypeScript or build step)
 # RUN npm run build
 
-# Stage 2: Production
-# This stage creates the final, lean image.
+# Production stage
 FROM node:18-alpine
 
-# Install dumb-init for proper signal handling and process management
+# Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
 
-# Create a non-root user for security
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+# Create app user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
 
-# Set the working directory
+# Set working directory
 WORKDIR /app
 
-# Copy dependencies from the builder stage
-COPY --from=builder /app/node_modules ./node_modules
+# Copy dependencies from builder
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 
-# Copy application code from the builder stage
-COPY --from=builder /app .
+# Copy application code
+COPY --chown=nodejs:nodejs . .
 
-# Change ownership of the app directory to the non-root user
-RUN chown -R appuser:appgroup /app
+# Switch to non-root user
+USER nodejs
 
-# Switch to the non-root user
-USER appuser
+# Expose port
+EXPOSE 32769
 
-# Expose the port the app runs on
-EXPOSE 5000
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://0.0.0.0:32769/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Health check to ensure the container is running correctly
-# This is used by Docker and ECS to verify application health.
-HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-  CMD curl -f http://localhost:5000/health || exit 1
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
 
-# Use dumb-init as the entrypoint to be the PID 1 process
-# It correctly passes signals to the node process.
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-
-# Command to run the application
+# Start application
 CMD ["node", "server.js"]
