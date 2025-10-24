@@ -1,0 +1,14 @@
+{
+  "deployment_date": "2025-10-22T13:53:06.186071",
+  "bucket": "majestic-health-init-scripts",
+  "script_s3_uri": "s3://majestic-health-init-scripts/init_db/latest.sql",
+  "script_sha256": "38f4da6f012b87ace3d8bafecf7a27dd2ce93840130310a3ed0c24297019d985",
+  "database": {
+    "host": "health-app.c4vuie06a0wt.us-east-1.rds.amazonaws.com",
+    "port": "5432",
+    "database": "health_app",
+    "username": "majestic"
+  },
+  "region": "us-east-1",
+  "account_id": "339713138893"
+}

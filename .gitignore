@@ -1,4 +1,11 @@
-﻿.env
+﻿.git/
+.idea/
+.circleci/
+.env
+venv/
+terraform/
+ecs-keypair.pem
+GOOGLE_OAUTH_SETUP.md
 node_modules/
 backups/
 uploads/
@@ -8,3 +15,39 @@ coverage/
 tmp/
 .DS_Store
 server.out.log
+
+# Terraform files
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform/
+.terraform.lock.hcl
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Sensitive files
+*.pem
+*.key
+secrets/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Log files
+*.log
+
+# Backup files
+*.backup
+*.bak

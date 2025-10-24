@@ -1,15 +1,55 @@
+version: '3.8'
+
 services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: majestic-app
+    restart: unless-stopped
+    ports:
+      - "80:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DIAG_TOKEN=${DIAG_TOKEN}
+      - ADMIN_EMAILS=${ADMIN_EMAILS}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - majestic_network
+    restart: unless-stopped  
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   postgres:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     container_name: majestic_postgres
     environment:
-      POSTGRES_USER: majestic
-      POSTGRES_PASSWORD: simple123
-      POSTGRES_DB: health_app
+      - POSTGRES_DB=health_app
+      - POSTGRES_USER=${DB_USERNAME:-majestic}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=en_US.utf8 --lc-ctype=en_US.utf8
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sh:/docker-entrypoint-initdb.d/init_db.sh:ro
     networks:
       - majestic_network
     healthcheck:
@@ -17,33 +57,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: majestic-app
-    ports:
-      - "5000:5000"
-    environment:
-      PORT: 5000
-      NODE_ENV: development
-      JWT_SECRET: a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456
-      GOOGLE_CLIENT_ID: 504338292423-nneklif626o8vj9n0o7btq03vjt49mqb.apps.googleusercontent.com
-      GOOGLE_CLIENT_SECRET: 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
-      OPENAI_API_KEY: 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
-      DIAG_TOKEN: 9f2c3f6e8a4b5d17e6f9a0c2d8e4f7b1c6a3d5e8f9b2c1d4e7a9c0f2b4d6e8a1
-      SKIP_DB_INIT: false
-      SKIP_GLOBAL_JOBS: false
-      ADMIN_EMAILS: jmzv13@gmail.com
-      DATABASE_URL: postgresql://majestic:simple123@postgres:5432/health_app
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - majestic_network
-    restart: unless-stopped
-
+      
 volumes:
   postgres_data:
     driver: local

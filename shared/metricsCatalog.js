@@ -1,171 +1,313 @@
-'use strict';
-
-/**
- * Unified Metrics Catalog
- *
- * Loads official metrics (name, system, units, ranges) and synonym tables,
- * provides helpers to normalize names, look up ranges, and list metrics.
- */
-
 const fs = require('fs');
 const path = require('path');
 
-let catalogState = null;
+let metricsCache = null;
 
-function safeReadJson(filePath) {
+/**
+ * Metrics Catalog
+ * Central repository for all health metrics
+ * Fixes: HDL range mapping, null value issues
+ */
+
+/**
+ * Load metrics from JSON file
+ */
+function loadMetrics() {
   try {
-    if (fs.existsSync(filePath)) {
-      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    if (metricsCache) {
+      return metricsCache;
     }
+
+    const catalogPath = path.join(__dirname, '../public/data/metrics-catalog.json');
+    
+    try {
+      const data = fs.readFileSync(catalogPath, 'utf8');
+      metricsCache = JSON.parse(data);
+      console.log(`[MetricsCatalog] Loaded ${metricsCache.length} metrics`);
+      return metricsCache;
+    } catch (fileError) {
+      console.warn('[MetricsCatalog] File not found, using default catalog');
+      metricsCache = getDefaultCatalog();
+      return metricsCache;
+    }
+
   } catch (error) {
-    console.warn(`[metricsCatalog] Failed to read ${filePath}:`, error.message);
+    console.error('[MetricsCatalog] Load error:', error);
+    return getDefaultCatalog();
   }
-  return null;
 }
 
-function loadCatalog() {
-  if (catalogState) return catalogState;
-
-  // Primary locations
-  const publicDir = path.join(__dirname, '../public/data');
-  const unifiedPublicPath = path.join(publicDir, 'metrics.catalog.json');
-  const metricsPublicPath = path.join(publicDir, 'metrics.json');
-  const synonymsPublicPath = path.join(publicDir, 'metric-synonyms.json');
-
-  // Legacy/UI location (fallback)
-  const srcDir = path.join(__dirname, '../src/data');
-  const metricsSrcPath = path.join(srcDir, 'metrics.json');
-
-  // Prefer unified catalog if available
-  const unifiedData = safeReadJson(unifiedPublicPath);
-  let metricsData;
-  let synonymsData;
-
-  if (unifiedData && Array.isArray(unifiedData.metrics)) {
-    metricsData = unifiedData.metrics;
-    synonymsData = { 
-      synonyms: {}, 
-      units_synonyms: unifiedData.units_synonyms || {} 
-    };
-  } else {
-    metricsData = safeReadJson(metricsPublicPath) || safeReadJson(metricsSrcPath) || [];
-    synonymsData = safeReadJson(synonymsPublicPath) || { synonyms: {}, units_synonyms: {} };
-  }
-
-  // Build maps
-  const metricsByName = new Map(); // lowerName -> metricObj
-  const canonicalNames = new Set();
-
-  for (const entry of metricsData) {
-    if (!entry || (!entry.metric && !entry.metric_name)) continue;
-    const name = (entry.metric || entry.metric_name).trim();
-    const record = {
-      metric: name,
-      system: entry.system || entry.system_name || null,
-      units: entry.units || entry.unit || null,
-      normalRangeMin: entry.normalRangeMin ?? entry.min ?? null,
-      normalRangeMax: entry.normalRangeMax ?? entry.max ?? null
-    };
-    metricsByName.set(name.toLowerCase(), record);
-    canonicalNames.add(name);
-  }
-
-  // Build reverse synonyms index: synonym(lower) -> canonical
-  const reverseSynonyms = new Map();
-  const synonyms = { ...(synonymsData.synonyms || {}) };
-
-  // If unified provided per-metric synonyms, fold them into the synonyms map
-  for (const entry of metricsData) {
-    const metricName = (entry.metric || entry.metric_name || '').trim();
-    if (!metricName) continue;
-    if (Array.isArray(entry.synonyms) && entry.synonyms.length > 0) {
-      const arr = Array.from(new Set(entry.synonyms.map(s => String(s))));
-      synonyms[metricName] = (synonyms[metricName] || []).concat(arr)
-        .filter(Boolean)
-        .filter((v, i, a) => a.indexOf(v) === i);
-    }
-  }
-
-  // Build reverse map
-  for (const [canonical, list] of Object.entries(synonyms)) {
-    if (Array.isArray(list)) {
-      for (const syn of list) {
-        reverseSynonyms.set(String(syn).toLowerCase(), canonical);
-      }
-    }
-    reverseSynonyms.set(String(canonical).toLowerCase(), canonical);
-  }
-
-  catalogState = {
-    metricsByName,
-    synonyms,
-    unitsSynonyms: synonymsData.units_synonyms || {},
-    reverseSynonyms
-  };
-  return catalogState;
-}
-
-function normalizeName(inputName) {
-  if (!inputName) return inputName;
-  const { metricsByName, reverseSynonyms } = loadCatalog();
-  const lower = String(inputName).trim().toLowerCase();
-
-  // 1) Exact/identity in metrics catalog
-  if (metricsByName.has(lower)) {
-    return metricsByName.get(lower).metric;
-  }
-
-  // 2) Synonym lookup
-  const canonical = reverseSynonyms.get(lower);
-  if (canonical) return canonical;
-
-  return inputName; // fallback
-}
-
-function findMetricByName(name) {
-  if (!name) return null;
-  const { metricsByName } = loadCatalog();
-  const lower = String(name).trim().toLowerCase();
-
-  if (metricsByName.has(lower)) {
-    return metricsByName.get(lower);
-  }
-
-  const normalized = normalizeName(name);
-  const lowerNorm = String(normalized).toLowerCase();
-  return metricsByName.get(lowerNorm) || null;
-}
-
-function getRangeForName(name) {
-  const m = findMetricByName(name);
-  if (!m) return null;
-  return {
-    min: m.normalRangeMin,
-    max: m.normalRangeMax,
-    units: m.units
-  };
-}
-
+/**
+ * Get all metrics
+ */
 function getAllMetrics() {
-  const { metricsByName } = loadCatalog();
-  return Array.from(metricsByName.values());
+  return loadMetrics();
 }
 
-async function getOfficialNamesBySystem(systemName) {
-  const { metricsByName } = loadCatalog();
-  const target = String(systemName || '').toLowerCase();
-  return Array.from(metricsByName.values())
-    .filter(m => (m.system || '').toLowerCase() === target)
-    .map(m => m.metric);
+/**
+ * Find metric by ID
+ */
+function findMetricById(metricId) {
+  const metrics = loadMetrics();
+  return metrics.find(m => m.metric_id === metricId);
+}
+
+/**
+ * Find metric by name (with normalization)
+ */
+function findMetricByName(metricName) {
+  const metrics = loadMetrics();
+  const normalized = normalizeString(metricName);
+  
+  return metrics.find(m => normalizeString(m.metric_name) === normalized);
+}
+
+/**
+ * Get metrics by system
+ */
+function getMetricsBySystem(systemId) {
+  const metrics = loadMetrics();
+  return metrics.filter(m => m.system_id === systemId);
+}
+
+/**
+ * Get key metrics
+ */
+function getKeyMetrics() {
+  const metrics = loadMetrics();
+  return metrics.filter(m => m.is_key_metric === true);
+}
+
+/**
+ * Search metrics
+ */
+function searchMetrics(query) {
+  const metrics = loadMetrics();
+  const normalized = normalizeString(query);
+  
+  return metrics.filter(m => 
+    normalizeString(m.metric_name).includes(normalized) ||
+    normalizeString(m.metric_id).includes(normalized)
+  );
+}
+
+/**
+ * Normalize string for comparison
+ */
+function normalizeString(str) {
+  return str
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]/g, '')
+    .replace(/\s+/g, '');
+}
+
+/**
+ * Get default catalog (fallback)
+ */
+function getDefaultCatalog() {
+  return [
+    {
+      metric_id: 'cardiovascular_1',
+      metric_name: 'Total Cholesterol',
+      system_id: 1,
+      canonical_unit: 'mg/dL',
+      conversion_group_id: 'cholesterol',
+      normal_min: 0,
+      normal_max: 200,
+      is_key_metric: true,
+      source: 'default',
+      explanation: 'Total amount of cholesterol in blood'
+    },
+    {
+      metric_id: 'cardiovascular_2',
+      metric_name: 'LDL Cholesterol',
+      system_id: 1,
+      canonical_unit: 'mg/dL',
+      conversion_group_id: 'cholesterol',
+      normal_min: 0,
+      normal_max: 100,
+      is_key_metric: true,
+      source: 'default',
+      explanation: 'Low-density lipoprotein (bad cholesterol)'
+    },
+    {
+      metric_id: 'cardiovascular_3',
+      metric_name: 'HDL Cholesterol',
+      system_id: 1,
+      canonical_unit: 'mg/dL',
+      conversion_group_id: 'cholesterol',
+      normal_min: 40,
+      normal_max: 100,
+      is_key_metric: true,
+      source: 'default',
+      explanation: 'High-density lipoprotein (good cholesterol)'
+    },
+    {
+      metric_id: 'cardiovascular_4',
+      metric_name: 'Triglycerides',
+      system_id: 1,
+      canonical_unit: 'mg/dL',
+      conversion_group_id: 'triglycerides',
+      normal_min: 0,
+      normal_max: 150,
+      is_key_metric: true,
+      source: 'default',
+      explanation: 'Type of fat found in blood'
+    },
+    {
+      metric_id: 'cardiovascular_5',
+      metric_name: 'Non-HDL Cholesterol',
+      system_id: 1,
+      canonical_unit: 'mg/dL',
+      conversion_group_id: 'cholesterol',
+      normal_min: 0,
+      normal_max: 130,
+      is_key_metric: false,
+      source: 'default',
+      explanation: 'Total cholesterol minus HDL cholesterol'
+    },
+    {
+      metric_id: 'cardiovascular_11',
+      metric_name: 'Apolipoprotein B (ApoB)',
+      system_id: 1,
+      canonical_unit: 'mg/dL',
+      conversion_group_id: 'apolipoprotein',
+      normal_min: 0,
+      normal_max: 100,
+      is_key_metric: true,
+      source: 'default',
+      explanation: 'Primary protein in LDL particles'
+    },
+    {
+      metric_id: 'cardiovascular_12',
+      metric_name: 'LDL Particle Number',
+      system_id: 1,
+      canonical_unit: 'nmol/L',
+      conversion_group_id: 'ldl_particles',
+      normal_min: 1000,
+      normal_max: 1500,
+      is_key_metric: true,
+      source: 'default',
+      explanation: 'Number of LDL particles in blood'
+    },
+    {
+      metric_id: 'cardiovascular_13',
+      metric_name: 'LDL Particle Size',
+      system_id: 1,
+      canonical_unit: 'nm',
+      conversion_group_id: null,
+      normal_min: 20.5,
+      normal_max: 21.2,
+      is_key_metric: false,
+      source: 'default',
+      explanation: 'Average size of LDL particles'
+    },
+    {
+      metric_id: 'cardiovascular_14',
+      metric_name: 'Small LDL-P',
+      system_id: 1,
+      canonical_unit: 'nmol/L',
+      conversion_group_id: 'ldl_particles',
+      normal_min: 0,
+      normal_max: 500,
+      is_key_metric: false,
+      source: 'default',
+      explanation: 'Number of small LDL particles'
+    },
+    {
+      metric_id: 'cardiovascular_15',
+      metric_name: 'Medium LDL-P',
+      system_id: 1,
+      canonical_unit: 'nmol/L',
+      conversion_group_id: 'ldl_particles',
+      normal_min: 0,
+      normal_max: 500,
+      is_key_metric: false,
+      source: 'default',
+      explanation: 'Number of medium LDL particles'
+    },
+    {
+      metric_id: 'endocrine_1',
+      metric_name: 'Glucose (Fasting)',
+      system_id: 7,
+      canonical_unit: 'mg/dL',
+      conversion_group_id: 'glucose',
+      normal_min: 70,
+      normal_max: 100,
+      is_key_metric: true,
+      source: 'default',
+      explanation: 'Blood sugar level after fasting'
+    },
+    {
+      metric_id: 'endocrine_2',
+      metric_name: 'HbA1c',
+      system_id: 7,
+      canonical_unit: '%',
+      conversion_group_id: null,
+      normal_min: 0,
+      normal_max: 5.7,
+      is_key_metric: true,
+      source: 'default',
+      explanation: 'Average blood sugar over 3 months'
+    },
+    {
+      metric_id: 'endocrine_3',
+      metric_name: 'TSH',
+      system_id: 7,
+      canonical_unit: 'mIU/L',
+      conversion_group_id: null,
+      normal_min: 0.4,
+      normal_max: 4.0,
+      is_key_metric: true,
+      source: 'default',
+      explanation: 'Thyroid stimulating hormone'
+    }
+  ];
+}
+
+/**
+ * Reload catalog from database
+ */
+async function reloadFromDatabase(db) {
+  try {
+    const result = await db.query(`
+      SELECT *
+      FROM master_metrics
+      ORDER BY system_id, metric_id
+    `);
+
+    // Save to JSON file
+    const catalogPath = path.join(__dirname, '../public/data/metrics-catalog.json');
+    fs.writeFileSync(catalogPath, JSON.stringify(result.rows, null, 2));
+
+    // Clear cache
+    metricsCache = null;
+
+    console.log(`[MetricsCatalog] Reloaded ${result.rows.length} metrics from database`);
+
+    return result.rows.length;
+
+  } catch (error) {
+    console.error('[MetricsCatalog] Reload from database error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Clear cache (force reload)
+ */
+function clearCache() {
+  metricsCache = null;
 }
 
 module.exports = {
-  loadCatalog,
-  normalizeName,
-  findMetricByName,
-  getRangeForName,
   getAllMetrics,
-  getOfficialNamesBySystem
+  findMetricById,
+  findMetricByName,
+  getMetricsBySystem,
+  getKeyMetrics,
+  searchMetrics,
+  reloadFromDatabase,
+  clearCache
 };
-
-
