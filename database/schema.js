@@ -356,8 +356,67 @@ async function initializeDatabase() {
   }
 }
 
+// Fix HDL and other metric range issues
+async function fixMetricRanges() {
+  const client = await pool.connect();
+
+  try {
+    console.log('🔧 Starting metric range fixes...');
+
+    // Fix HDL cholesterol specifically (should be 40-100, not 0-130)
+    await client.query(`
+      UPDATE master_metrics
+      SET normal_min = 40.0,
+          normal_max = 100.0
+      WHERE metric_name ILIKE '%HDL%'
+        AND metric_name NOT ILIKE '%non-HDL%'
+        AND metric_name NOT ILIKE '%non HDL%'
+        AND (normal_min != 40.0 OR normal_max != 100.0)
+    `);
+    console.log('✅ Fixed HDL cholesterol ranges');
+
+    // Update all metrics in user data to match master ranges
+    await client.query(`
+      UPDATE metrics m
+      SET normal_min = mm.normal_min,
+          normal_max = mm.normal_max
+      FROM master_metrics mm
+      WHERE m.matched_metric_id = mm.metric_id
+         OR LOWER(m.metric_name) = LOWER(mm.metric_name)
+    `);
+    console.log('✅ Updated user metrics with correct ranges');
+
+    // Fix LDL Particle Size and related metrics
+    const ldlMetrics = [
+      { name: 'LDL Particle Size', min: 20.0, max: 22.0 },
+      { name: 'Medium LDL-P', min: 0, max: 350 },
+      { name: 'Small LDL-P', min: 0, max: 527 }
+    ];
+
+    for (const metric of ldlMetrics) {
+      await client.query(
+        `UPDATE master_metrics
+         SET normal_min = $1::DECIMAL(10,3),
+             normal_max = $2::DECIMAL(10,3)
+         WHERE metric_name = $3
+           AND (normal_min IS NULL OR normal_max IS NULL)`,
+        [metric.min, metric.max, metric.name]
+      );
+    }
+    console.log('✅ Fixed LDL particle metrics');
+
+    console.log('✨ Metric range fixes completed!');
+  } catch (error) {
+    console.error('❌ Error fixing metric ranges:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   pool,
   initializeDatabase,
+  fixMetricRanges,
   HEALTH_SYSTEMS
 };

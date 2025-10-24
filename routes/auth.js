@@ -3,8 +3,11 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 const authMiddleware = require('../middleware/auth');
 
-// POST /api/auth/google - Google OAuth login
+// POST /api/auth/google - Initiate Google OAuth login
 router.post('/google', authController.googleLogin);
+
+// GET /api/auth/google/callback - Google OAuth callback
+router.get('/google/callback', authController.googleCallback);
 
 // GET /api/auth/me - Get current user
 router.get('/me', authMiddleware, authController.getCurrentUser);
