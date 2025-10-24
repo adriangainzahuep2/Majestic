@@ -20,10 +20,10 @@ const queueService = require('./services/queue');
 const { initializeDatabase } = require('./database/schema');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5000 || 3000 || 32775;
 // Database connection
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://localhost:5432/health_app',
+  connectionString: process.env.DATABASE_URL || 'health-app.c4vuie06a0wt.us-east-1.rds.amazonaws.com:5432',
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
@@ -34,7 +34,7 @@ const corsOptions = {
     if (!origin) return callback(null, true);
 
     // Allow localhost for development (all ports)
-    if (origin.includes('localhost') || origin.includes('127.0.0.1')) return callback(null, true);
+    if (origin.includes('*')) return callback(null, true);
 
     // Allow Replit domains (both short and long)
     if (origin.includes('replit.dev')) return callback(null, true);
@@ -358,11 +358,11 @@ async function startServer() {
     }
     
     // Start the server
-    const server = app.listen(PORT, '0.0.0.0', () => {
+    const server = app.listen(PORT, '*', () => {
       console.log(`✅ Majestic Health Dashboard server running on port ${PORT}`);
       console.log(`✅ Health check: http://localhost:${PORT}/api/health`);
       console.log(`✅ Application: http://localhost:${PORT}/`);
-      console.log(`✅ Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`✅ Environment: ${process.env.NODE_ENV || 'production'}`);
       console.log(`✅ Server ready for connections`);
     });
 
