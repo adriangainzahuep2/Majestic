@@ -51,8 +51,9 @@ EC2_MAX_SIZE="${EC2_MAX_SIZE:-3}"
 EC2_DESIRED_CAPACITY="${EC2_DESIRED_CAPACITY:-1}"
 
 # Docker Configuration
-DOCKER_IMAGE="${DOCKER_IMAGE:-}"
-CONTAINER_PORT="${CONTAINER_PORT:-3000}"
+DOCKER_IMAGE="${DOCKER_IMAGE:-${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}:latest}"
+CONTAINER_PORT="${CONTAINER_PORT:-5000}"
+ECR_REPOSITORY="${PROJECT_NAME}-repo"
 
 # S3 Configuration for schema migration
 SCHEMA_BUCKET="${PROJECT_NAME}-schema-migrations"
@@ -104,7 +105,49 @@ ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 log_success "AWS Account ID: $ACCOUNT_ID"
 
 # ============================================================================
-# STEP 1: CREATE S3 BUCKET FOR SCHEMA MIGRATIONS
+# STEP 1: CREATE ECR REPOSITORY AND BUILD DOCKER IMAGE
+# ============================================================================
+
+log_info "Setting up ECR repository and building Docker image..."
+
+# Create ECR repository
+if ! aws ecr describe-repositories \
+    --repository-names $ECR_REPOSITORY \
+    --region $AWS_REGION &>/dev/null; then
+    
+    aws ecr create-repository \
+        --repository-name $ECR_REPOSITORY \
+        --region $AWS_REGION
+    
+    log_success "Created ECR repository: $ECR_REPOSITORY"
+else
+    log_info "ECR repository already exists: $ECR_REPOSITORY"
+fi
+
+# Get login token
+aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+
+# Build and push Docker image
+log_info "Building and pushing Docker image..."
+
+if [ -f "Dockerfile" ]; then
+    # Build the image
+    docker build -t $ECR_REPOSITORY:latest .
+    
+    # Tag for ECR
+    docker tag $ECR_REPOSITORY:latest ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/$ECR_REPOSITORY:latest
+    
+    # Push to ECR
+    docker push ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/$ECR_REPOSITORY:latest
+    
+    log_success "Docker image built and pushed to ECR"
+else
+    log_error "Dockerfile not found - skipping image build"
+    DOCKER_IMAGE="public.ecr.aws/docker/library/node:18-alpine"
+fi
+
+# ============================================================================
+# STEP 2: CREATE S3 BUCKET FOR SCHEMA MIGRATIONS
 # ============================================================================
 
 log_info "Setting up S3 bucket for schema files..."
@@ -133,12 +176,169 @@ cat > /tmp/schema_migration.sql <<'EOF'
 -- Include: schema_fixes.sql content here
 EOF
 
+# Create actual schema migration file with Majestic health app schema
+cat > /tmp/schema_fixes.sql <<'EOF'
+-- Majestic Health App Database Schema
+-- This file contains the complete schema and initial data setup
+
+-- Enable required extensions
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- Create health metrics table
+CREATE TABLE IF NOT EXISTS health_metrics (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    metric_name VARCHAR(255) NOT NULL,
+    metric_value DECIMAL(10,3) NOT NULL,
+    unit VARCHAR(50),
+    date_recorded DATE NOT NULL,
+    source VARCHAR(100),
+    confidence_score DECIMAL(3,2),
+    normal_range_min DECIMAL(10,3),
+    normal_range_max DECIMAL(10,3),
+    status VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create health systems table
+CREATE TABLE IF NOT EXISTS health_systems (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    display_name VARCHAR(100) NOT NULL,
+    description TEXT,
+    category VARCHAR(50),
+    display_order INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create biomarkers table
+CREATE TABLE IF NOT EXISTS biomarkers (
+    id SERIAL PRIMARY KEY,
+    system_id INTEGER REFERENCES health_systems(id),
+    name VARCHAR(255) NOT NULL,
+    display_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    unit VARCHAR(50),
+    normal_range_min DECIMAL(10,3),
+    normal_range_max DECIMAL(10,3),
+    category VARCHAR(100),
+    display_order INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create users table
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255),
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    date_of_birth DATE,
+    gender VARCHAR(20),
+    phone VARCHAR(20),
+    address TEXT,
+    emergency_contact JSONB,
+    medical_conditions JSONB,
+    medications JSONB,
+    google_id VARCHAR(255),
+    profile_image_url VARCHAR(500),
+    preferences JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create health insights table
+CREATE TABLE IF NOT EXISTS health_insights (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    insight_type VARCHAR(100) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    severity VARCHAR(50),
+    action_required BOOLEAN DEFAULT false,
+    related_metrics JSONB,
+    ai_generated BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create file uploads table
+CREATE TABLE IF NOT EXISTS file_uploads (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    file_name VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    file_type VARCHAR(100),
+    file_size BIGINT,
+    upload_status VARCHAR(50) DEFAULT 'pending',
+    processing_status VARCHAR(50) DEFAULT 'pending',
+    extracted_data JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert default health systems
+INSERT INTO health_systems (name, display_name, description, category, display_order) VALUES
+('cardiovascular', 'Cardiovascular System', 'Heart and blood vessel health', 'primary', 1),
+('metabolic', 'Metabolic System', 'Sugar and insulin levels', 'primary', 2),
+('liver_kidney', 'Liver & Kidney Function', 'Liver enzymes and kidney function', 'primary', 3),
+('inflammation', 'Inflammation Markers', 'C-reactive protein and inflammation indicators', 'primary', 4),
+('hormones', 'Hormone Levels', 'Thyroid and other hormone levels', 'primary', 5),
+('blood_cells', 'Blood Cell Count', 'White and red blood cell analysis', 'primary', 6),
+('vitamins', 'Vitamin Levels', 'Vitamin D, B12 and other vitamins', 'primary', 7),
+('lipids', 'Lipid Profile', 'Cholesterol and triglyceride levels', 'primary', 8)
+ON CONFLICT DO NOTHING;
+
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_health_metrics_user_id ON health_metrics(user_id);
+CREATE INDEX IF NOT EXISTS idx_health_metrics_date ON health_metrics(date_recorded);
+CREATE INDEX IF NOT EXISTS idx_health_metrics_name ON health_metrics(metric_name);
+CREATE INDEX IF NOT EXISTS idx_biomarkers_system ON biomarkers(system_id);
+CREATE INDEX IF NOT EXISTS idx_file_uploads_user ON file_uploads(user_id);
+CREATE INDEX IF NOT EXISTS idx_health_insights_user ON health_insights(user_id);
+
+-- Create function to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Create triggers for updated_at
+CREATE TRIGGER update_health_metrics_updated_at 
+    BEFORE UPDATE ON health_metrics 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_users_updated_at 
+    BEFORE UPDATE ON users 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Enable row level security
+ALTER TABLE health_metrics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE health_insights ENABLE ROW LEVEL SECURITY;
+ALTER TABLE file_uploads ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS policies
+CREATE POLICY health_metrics_policy ON health_metrics
+    FOR ALL USING (user_id = current_setting('app.current_user_id')::INTEGER);
+
+CREATE POLICY health_insights_policy ON health_insights
+    FOR ALL USING (user_id = current_setting('app.current_user_id')::INTEGER);
+
+CREATE POLICY file_uploads_policy ON file_uploads
+    FOR ALL USING (user_id = current_setting('app.current_user_id')::INTEGER);
+EOF
+
 # Upload schema to S3
-aws s3 cp /tmp/schema_migration.sql "s3://${SCHEMA_BUCKET}/schema_fixes.sql"
+aws s3 cp /tmp/schema_fixes.sql "s3://${SCHEMA_BUCKET}/schema_fixes.sql"
 log_success "Schema uploaded to S3"
 
 # ============================================================================
-# STEP 2: SETUP NETWORKING
+# STEP 3: SETUP NETWORKING
 # ============================================================================
 
 log_info "Configuring networking..."
@@ -167,7 +367,7 @@ SUBNET_ARRAY=($PUBLIC_SUBNETS)
 log_success "Found ${#SUBNET_ARRAY[@]} public subnets"
 
 # ============================================================================
-# STEP 3: CREATE SECURITY GROUPS
+# STEP 4: CREATE SECURITY GROUPS
 # ============================================================================
 
 log_info "Creating security groups..."
@@ -257,7 +457,7 @@ else
 fi
 
 # ============================================================================
-# STEP 4: CREATE RDS INSTANCE WITH AUTO-MIGRATION
+# STEP 5: CREATE RDS INSTANCE WITH AUTO-MIGRATION
 # ============================================================================
 
 log_info "Setting up RDS PostgreSQL..."
@@ -330,7 +530,7 @@ fi
 DATABASE_URL="postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_ENDPOINT}:5432/${DB_NAME}"
 
 # ============================================================================
-# STEP 5: CREATE IAM ROLE FOR EC2 WITH S3 ACCESS
+# STEP 6: CREATE IAM ROLE FOR EC2 WITH S3 ACCESS
 # ============================================================================
 
 log_info "Creating IAM role for EC2 instances..."
@@ -410,68 +610,38 @@ if ! aws iam get-instance-profile --instance-profile-name $INSTANCE_PROFILE_NAME
 fi
 
 # ============================================================================
-# STEP 6: CREATE USER DATA SCRIPT WITH SCHEMA MIGRATION
+# STEP 7: CREATE USER DATA SCRIPT WITH SCHEMA MIGRATION
 # ============================================================================
 
 log_info "Creating UserData script with automatic schema migration..."
 
-cat > /tmp/userdata.sh <<'USERDATA_EOF'
-#!/bin/bash
-
-# Log everything
-exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
-
-echo "Starting ECS agent and schema migration setup..."
-
-# Install PostgreSQL client
-yum install -y postgresql15
-
-# Download schema from S3
-aws s3 cp s3://SCHEMA_BUCKET_PLACEHOLDER/schema_fixes.sql /tmp/schema_fixes.sql
-
-# Wait for RDS to be ready
-echo "Waiting for RDS to be accessible..."
-until PGPASSWORD='DB_PASSWORD_PLACEHOLDER' psql -h DB_ENDPOINT_PLACEHOLDER -U DB_USERNAME_PLACEHOLDER -d DB_NAME_PLACEHOLDER -c '\q' 2>/dev/null; do
-  echo "Waiting for database..."
-  sleep 5
-done
-
-echo "Database accessible, applying schema..."
-
-# Apply schema migration
-PGPASSWORD='DB_PASSWORD_PLACEHOLDER' psql \
-  -h DB_ENDPOINT_PLACEHOLDER \
-  -U DB_USERNAME_PLACEHOLDER \
-  -d DB_NAME_PLACEHOLDER \
-  -f /tmp/schema_fixes.sql
-
-if [ $? -eq 0 ]; then
-  echo "Schema migration completed successfully"
+# Check if user-data.sh exists in current directory
+if [ -f "user-data.sh" ]; then
+    log_info "Using existing user-data.sh script..."
+    cp user-data.sh /tmp/userdata.sh
 else
-  echo "Schema migration failed"
+    log_error "user-data.sh not found in current directory"
+    exit 1
 fi
 
-# Start ECS agent
-echo "ECS_CLUSTER=ECS_CLUSTER_PLACEHOLDER" >> /etc/ecs/ecs.config
-echo "ECS_ENABLE_TASK_IAM_ROLE=true" >> /etc/ecs/ecs.config
-echo "ECS_ENABLE_TASK_IAM_ROLE_NETWORK_HOST=true" >> /etc/ecs/ecs.config
-
-systemctl enable --now ecs
-echo "ECS agent started"
-USERDATA_EOF
-
-# Replace placeholders
+# Replace placeholders in user-data.sh
 sed -i "s|SCHEMA_BUCKET_PLACEHOLDER|${SCHEMA_BUCKET}|g" /tmp/userdata.sh
 sed -i "s|DB_ENDPOINT_PLACEHOLDER|${DB_ENDPOINT}|g" /tmp/userdata.sh
 sed -i "s|DB_USERNAME_PLACEHOLDER|${DB_USERNAME}|g" /tmp/userdata.sh
 sed -i "s|DB_PASSWORD_PLACEHOLDER|${DB_PASSWORD}|g" /tmp/userdata.sh
 sed -i "s|DB_NAME_PLACEHOLDER|${DB_NAME}|g" /tmp/userdata.sh
 sed -i "s|ECS_CLUSTER_PLACEHOLDER|${ECS_CLUSTER_NAME}|g" /tmp/userdata.sh
+sed -i "s|PROJECT_NAME_PLACEHOLDER|${PROJECT_NAME}|g" /tmp/userdata.sh
+sed -i "s|AWS_REGION_PLACEHOLDER|${AWS_REGION}|g" /tmp/userdata.sh
 
+# Make script executable
+chmod +x /tmp/userdata.sh
+
+# Encode to base64 for EC2 user data
 USERDATA_BASE64=$(base64 -w 0 /tmp/userdata.sh)
 
 # ============================================================================
-# STEP 7: CREATE ECS CLUSTER, LAUNCH TEMPLATE, AND AUTO SCALING
+# STEP 8: CREATE ECS CLUSTER, LAUNCH TEMPLATE, AND AUTO SCALING
 # ============================================================================
 
 log_info "Creating ECS cluster..."
@@ -563,7 +733,7 @@ log_info "Waiting for EC2 instances to register with ECS cluster..."
 sleep 60
 
 # ============================================================================
-# STEP 8: CREATE APPLICATION LOAD BALANCER
+# STEP 9: CREATE APPLICATION LOAD BALANCER
 # ============================================================================
 
 log_info "Creating Application Load Balancer..."
@@ -626,7 +796,7 @@ aws elbv2 create-listener \
     --region $AWS_REGION 2>/dev/null || log_info "Listener already exists"
 
 # ============================================================================
-# STEP 9: CREATE ECS TASK DEFINITION AND SERVICE
+# STEP 10: CREATE ECS TASK DEFINITION AND SERVICE
 # ============================================================================
 
 log_info "Creating ECS Task Definition..."
@@ -704,7 +874,7 @@ aws ecs update-service \
 log_success "ECS Service created/updated"
 
 # ============================================================================
-# STEP 10: RUN PLAYWRIGHT E2E TESTS
+# STEP 11: RUN PLAYWRIGHT E2E TESTS
 # ============================================================================
 
 if [ "$TEST_AVAILABLE" = true ]; then

@@ -1,0 +1,199 @@
+═══════════════════════════════════════════════════════════════════
+[0;35m[TEST][0m MAJESTIC HEALTH APP - COMPREHENSIVE TESTING SUITE
+═══════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════
+[0;35m[TEST][0m SECTION 1: LAB TEST FUNCTIONALITY TESTING
+═══════════════════════════════════════════════════════════════════
+
+[0;35m[TEST][0m Running: HDL cholesterol range display
+[0;32m[✓][0m ✓ HDL cholesterol range display
+[0;35m[TEST][0m Running: LDL biomarker data types
+[0;32m[✓][0m ✓ LDL biomarker data types
+[0;35m[TEST][0m Running: Metric synonyms configuration
+[0;32m[✓][0m ✓ Metric synonyms configuration
+[0;35m[TEST][0m Running: Confidence auto-mapping implementation
+[0;32m[✓][0m ✓ Confidence auto-mapping implementation
+[0;35m[TEST][0m Running: Visual upload error handling
+[0;32m[✓][0m ✓ Visual upload error handling
+
+═══════════════════════════════════════════════════════════════════
+[0;35m[TEST][0m SECTION 2: API ENDPOINTS AND MOBILE INTEGRATION TESTING
+═══════════════════════════════════════════════════════════════════
+
+[0;35m[TEST][0m Running: API main router exists
+[0;32m[✓][0m ✓ API main router exists
+[0;35m[TEST][0m Running: Auth API endpoints
+[0;32m[✓][0m ✓ Auth API endpoints
+[0;35m[TEST][0m Running: Users API endpoints
+[0;32m[✓][0m ✓ Users API endpoints
+[0;35m[TEST][0m Running: Metrics API endpoints
+[0;32m[✓][0m ✓ Metrics API endpoints
+[0;35m[TEST][0m Running: Health API endpoints
+[0;32m[✓][0m ✓ Health API endpoints
+[0;35m[TEST][0m Running: Uploads API endpoints
+[0;32m[✓][0m ✓ Uploads API endpoints
+[0;35m[TEST][0m Running: Insights API endpoints
+[0;32m[✓][0m ✓ Insights API endpoints
+[0;35m[TEST][0m Running: Mobile API endpoints
+[0;32m[✓][0m ✓ Mobile API endpoints
+[0;35m[TEST][0m Running: Spreadsheets API endpoints
+[0;32m[✓][0m ✓ Spreadsheets API endpoints
+[0;35m[TEST][0m Running: Mobile integration service
+[0;32m[✓][0m ✓ Mobile integration service
+[0;35m[TEST][0m Running: AI visualization service
+[0;32m[✓][0m ✓ AI visualization service
+[0;35m[TEST][0m Running: Spreadsheet module service
+[0;32m[✓][0m ✓ Spreadsheet module service
+[0;35m[TEST][0m Running: API router structure
+[0;32m[✓][0m ✓ API router structure
+[0;35m[TEST][0m Running: Authentication middleware
+[0;32m[✓][0m ✓ Authentication middleware
+[0;35m[TEST][0m Running: JWT token handling
+[0;32m[✓][0m ✓ JWT token handling
+
+═══════════════════════════════════════════════════════════════════
+[0;35m[TEST][0m SECTION 3: AWS DEPLOYMENT AUTOMATION TESTING
+═══════════════════════════════════════════════════════════════════
+
+[0;35m[TEST][0m Running: AWS deployment script
+[0;32m[✓][0m ✓ AWS deployment script
+[0;35m[TEST][0m Running: User data script
+[0;32m[✓][0m ✓ User data script
+[0;35m[TEST][0m Running: Dockerfile configuration
+[0;32m[✓][0m ✓ Dockerfile configuration
+[0;35m[TEST][0m Running: Docker Compose setup
+[0;32m[✓][0m ✓ Docker Compose setup
+[0;35m[TEST][0m Running: RDS connection test script
+[0;32m[✓][0m ✓ RDS connection test script
+[0;35m[TEST][0m Running: Deployment validation script
+[0;32m[✓][0m ✓ Deployment validation script
+[0;35m[TEST][0m Running: Environment template
+[0;32m[✓][0m ✓ Environment template
+[0;35m[TEST][0m Running: Deployment script syntax
+[0;32m[✓][0m ✓ Deployment script syntax
+[0;35m[TEST][0m Running: User data script syntax
+[0;32m[✓][0m ✓ User data script syntax
+[0;35m[TEST][0m Running: RDS test script syntax
+[0;32m[✓][0m ✓ RDS test script syntax
+[0;35m[TEST][0m Running: Validation script syntax
+[0;32m[✓][0m ✓ Validation script syntax
+[0;35m[TEST][0m Running: Docker multi-stage build
+[0;32m[✓][0m ✓ Docker multi-stage build
+[0;35m[TEST][0m Running: Production optimization
+[0;32m[✓][0m ✓ Production optimization
+[0;35m[TEST][0m Running: Health check configuration
+[0;32m[✓][0m ✓ Health check configuration
+[0;35m[TEST][0m Running: Deployment validation run
+[0;32m[✓][0m ✓ Deployment validation run
+
+═══════════════════════════════════════════════════════════════════
+[0;35m[TEST][0m SECTION 4: UI/UX CHANGES VALIDATION
+═══════════════════════════════════════════════════════════════════
+
+[0;35m[TEST][0m Running: Main HTML file exists
+[0;32m[✓][0m ✓ Main HTML file exists
+[0;35m[TEST][0m Running: Trends screen removed
+[0;32m[✓][0m ✓ Trends screen removed
+[0;35m[TEST][0m Running: Daily Plan section present
+[0;32m[✓][0m ✓ Daily Plan section present
+[0;35m[TEST][0m Running: Frontend JavaScript exists
+[0;32m[✓][0m ✓ Frontend JavaScript exists
+[0;35m[TEST][0m Running: Apple Design implementation
+[0;32m[✓][0m ✓ Apple Design implementation
+[0;35m[TEST][0m Running: Biomarker tooltips restored
+[0;32m[✓][0m ✓ Biomarker tooltips restored
+[0;35m[TEST][0m Running: Daily Plan rendering
+[0;32m[✓][0m ✓ Daily Plan rendering
+[0;35m[TEST][0m Running: CSS file exists
+[0;32m[✓][0m ✓ CSS file exists
+[0;35m[TEST][0m Running: Apple Watch color palette
+[0;32m[✓][0m ✓ Apple Watch color palette
+[0;35m[TEST][0m Running: Vibrant gradient colors
+[0;32m[✓][0m ✓ Vibrant gradient colors
+[0;35m[TEST][0m Running: Glass morphism effects
+[0;32m[✓][0m ✓ Glass morphism effects
+[0;35m[TEST][0m Running: Daily Plan card styling
+[0;32m[✓][0m ✓ Daily Plan card styling
+[0;35m[TEST][0m Running: Biomarker information system
+[0;32m[✓][0m ✓ Biomarker information system
+[0;35m[TEST][0m Running: Info icons for metrics
+[0;32m[✓][0m ✓ Info icons for metrics
+
+═══════════════════════════════════════════════════════════════════
+[0;35m[TEST][0m SECTION 5: APPLICATION STRUCTURE TESTING
+═══════════════════════════════════════════════════════════════════
+
+[0;35m[TEST][0m Running: Main server file
+[0;32m[✓][0m ✓ Main server file
+[0;35m[TEST][0m Running: Package.json configuration
+[0;32m[✓][0m ✓ Package.json configuration
+[0;35m[TEST][0m Running: Node.js dependencies
+[0;32m[✓][0m ✓ Node.js dependencies
+[0;35m[TEST][0m Running: Metrics catalog data
+[0;32m[✓][0m ✓ Metrics catalog data
+[0;35m[TEST][0m Running: Metric synonyms data
+[0;32m[✓][0m ✓ Metric synonyms data
+[0;35m[TEST][0m Running: Database initialization
+[0;32m[✓][0m ✓ Database initialization
+[0;35m[TEST][0m Running: Authentication middleware
+[0;32m[✓][0m ✓ Authentication middleware
+[0;35m[TEST][0m Running: Utility files exist
+[0;32m[✓][0m ✓ Utility files exist
+
+═══════════════════════════════════════════════════════════════════
+[0;35m[TEST][0m SECTION 6: FUNCTIONAL TESTING
+═══════════════════════════════════════════════════════════════════
+
+[0;35m[TEST][0m Running: Server file exists and is structured
+[0;32m[✓][0m ✓ Server file exists and is structured
+[0;35m[TEST][0m Running: Metric suggestion service loads
+[0;32m[✓][0m ✓ Metric suggestion service loads
+[0;35m[TEST][0m Running: Ingestion service loads
+[0;32m[✓][0m ✓ Ingestion service loads
+[0;35m[TEST][0m Running: Mobile integration service loads
+[0;32m[✓][0m ✓ Mobile integration service loads
+[0;35m[TEST][0m Running: Main API router loads
+[0;32m[✓][0m ✓ Main API router loads
+[0;35m[TEST][0m Running: Auth API loads
+[0;32m[✓][0m ✓ Auth API loads
+[0;35m[TEST][0m Running: Metrics API loads
+[0;32m[✓][0m ✓ Metrics API loads
+[0;35m[TEST][0m Running: Frontend JavaScript loads
+[0;32m[✓][0m ✓ Frontend JavaScript loads
+
+═══════════════════════════════════════════════════════════════════
+[0;35m[TEST][0m SECTION 7: DOCUMENTATION AND GUIDE TESTING
+═══════════════════════════════════════════════════════════════════
+
+[0;35m[TEST][0m Running: AWS deployment guide
+[0;32m[✓][0m ✓ AWS deployment guide
+[0;35m[TEST][0m Running: Phase 7 summary
+[0;32m[✓][0m ✓ Phase 7 summary
+[0;35m[TEST][0m Running: Environment template
+[0;32m[✓][0m ✓ Environment template
+[0;35m[TEST][0m Running: AWS guide contains architecture
+[0;32m[✓][0m ✓ AWS guide contains architecture
+[0;35m[TEST][0m Running: AWS guide contains troubleshooting
+[0;32m[✓][0m ✓ AWS guide contains troubleshooting
+[0;35m[TEST][0m Running: Deployment summary is comprehensive
+[0;32m[✓][0m ✓ Deployment summary is comprehensive
+
+═══════════════════════════════════════════════════════════════════
+[0;35m[TEST][0m SECTION 8: EDGE CASES AND ERROR HANDLING
+═══════════════════════════════════════════════════════════════════
+
+[0;35m[TEST][0m Running: Metric service error handling
+[0;32m[✓][0m ✓ Metric service error handling
+[0;35m[TEST][0m Running: Ingestion service error handling
+[0;32m[✓][0m ✓ Ingestion service error handling
+[0;35m[TEST][0m Running: API error responses
+[0;32m[✓][0m ✓ API error responses
+[0;35m[TEST][0m Running: File upload validation
+[0;32m[✓][0m ✓ File upload validation
+[0;35m[TEST][0m Running: File type validation
+[0;32m[✓][0m ✓ File type validation
+[0;35m[TEST][0m Running: Authentication middleware
+[0;32m[✓][0m ✓ Authentication middleware
+[0;35m[TEST][0m Running: JWT verification
+[0;31m[✗][0m ✗ JWT verification

@@ -162,20 +162,68 @@ Return only valid JSON and nothing else.`;
 
     // Step 2: Generate LLM suggestions for unmatched metrics
     let suggestions = null;
+    let autoMappedMetrics = [];
     if (unmatched.length > 0) {
       suggestions = await this.generateSuggestions(unmatched, context);
+      
+      // Step 3: Implement confidence-based auto-mapping
+      if (suggestions && suggestions.suggestions) {
+        for (const suggestion of suggestions.suggestions) {
+          if (suggestion.suggested_matches && suggestion.suggested_matches.length > 0) {
+            const bestMatch = suggestion.suggested_matches[0];
+            
+            // Auto-map if confidence >= 95%
+            if (bestMatch.confidence >= 0.95) {
+              console.log(`[METRIC_SUGGESTIONS] Auto-mapping: ${suggestion.original_name} -> ${bestMatch.standard_name} (${Math.round(bestMatch.confidence * 100)}% confidence)`);
+              
+              autoMappedMetrics.push({
+                name: suggestion.original_name,
+                value: this.findMetricValue(suggestion.original_name, unmatched),
+                unit: this.findMetricUnit(suggestion.original_name, unmatched),
+                category: 'auto_mapped',
+                standard_name: bestMatch.standard_name,
+                match_type: 'auto_mapping',
+                confidence: bestMatch.confidence
+              });
+            }
+          }
+        }
+      }
     }
 
+    // Remove auto-mapped metrics from pending suggestions
+    const finalUnmatched = suggestions && suggestions.suggestions 
+      ? suggestions.suggestions.filter(s => 
+          !autoMappedMetrics.some(am => am.name === s.original_name)
+        )
+      : [];
+
+    // Add auto-mapped metrics to exact matches
+    const finalMatched = [...matched, ...autoMappedMetrics];
+
     return {
-      exact_matches: matched,
-      unmatched_metrics: unmatched,
-      ai_suggestions: suggestions,
+      exact_matches: finalMatched,
+      unmatched_metrics: finalUnmatched,
+      ai_suggestions: finalUnmatched.length > 0 ? { suggestions: finalUnmatched } : null,
       summary: {
         total_metrics: inputMetrics.length,
-        exact_matches: matched.length,
-        needs_review: unmatched.length
+        exact_matches: finalMatched.length,
+        auto_mapped: autoMappedMetrics.length,
+        needs_review: finalUnmatched.length
       }
     };
+  }
+
+  // Helper function to find metric value by name
+  findMetricValue(name, metrics) {
+    const metric = metrics.find(m => m.name === name);
+    return metric ? metric.value : null;
+  }
+
+  // Helper function to find metric unit by name
+  findMetricUnit(name, metrics) {
+    const metric = metrics.find(m => m.name === name);
+    return metric ? metric.unit : null;
   }
 }
 

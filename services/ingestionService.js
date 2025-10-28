@@ -153,51 +153,90 @@ class IngestionService {
       return await this.handleDicomFile(userId, file, testDate);
     }
 
-    // Store file and generate thumbnail
-    const fileUrl = await this.storeFile(file);
-    const thumbnailUrl = await this.thumbnailService.generateThumbnail(fileUrl, fileExtension);
+    try {
+      // Store file and generate thumbnail
+      const fileUrl = await this.storeFile(file);
+      let thumbnailUrl = null;
+      
+      try {
+        thumbnailUrl = await this.thumbnailService.generateThumbnail(fileUrl, fileExtension);
+      } catch (thumbError) {
+        console.warn('[VISUAL] Thumbnail generation failed:', thumbError.message);
+        // Continue without thumbnail
+      }
 
-    // Extract study data using GPT-4o
-    const studyData = await this.visualStudyService.extractStudyData(
-      file.base64Data,
-      file.originalname,
-      classification.studyType
-    );
+      // Extract study data using GPT-4o with error handling
+      let studyData;
+      try {
+        studyData = await this.visualStudyService.extractStudyData(
+          file.base64Data,
+          file.originalname,
+          classification.studyType
+        );
+      } catch (error) {
+        console.warn('[VISUAL] Failed to extract study data, storing file only:', error.message);
+        
+        // Create basic study data even if extraction fails
+        studyData = {
+          studyType: classification.studyType,
+          summary: 'Visual study uploaded. AI extraction failed or incomplete.',
+          measurements: [],
+          dateFoundInImage: testDate
+        };
+      }
 
-    // Save to imaging_studies table
-    const studyId = await this.saveImagingStudy({
-      userId,
-      fileUrl,
-      thumbnailUrl,
-      testDate: studyData.dateFoundInImage || testDate,
-      studyType: studyData.studyType || classification.studyType,
-      linkedSystemId: this.mapStudyTypeToSystem(studyData.studyType || classification.studyType),
-      metricsJson: studyData.measurements || [],
-      aiSummary: studyData.summary,
-      status: 'processed'
-    });
+      // Save to imaging_studies table
+      const studyId = await this.saveImagingStudy({
+        userId,
+        fileUrl,
+        thumbnailUrl,
+        testDate: studyData.dateFoundInImage || testDate,
+        studyType: studyData.studyType || classification.studyType,
+        linkedSystemId: this.mapStudyTypeToSystem(studyData.studyType || classification.studyType),
+        metricsJson: studyData.measurements || [],
+        aiSummary: studyData.summary,
+        status: 'processed'
+      });
 
-    // Generate comparison with previous studies
-    await this.generateStudyComparison(studyId, userId, studyData.studyType);
-    
-    // Trigger system insights generation for the linked system
-    if (studyData.studyType && this.mapStudyTypeToSystem(studyData.studyType || classification.studyType)) {
-      const insightsRefreshService = require('./insightsRefresh');
-      const linkedSystemId = this.mapStudyTypeToSystem(studyData.studyType || classification.studyType);
-      const affectedSystems = new Set([linkedSystemId]);
-      await insightsRefreshService.processUploadRefresh(require('../database/schema').pool, userId, affectedSystems);
-      console.log(`[INSIGHTS TRIGGERED] Visual study processing completed, insights refresh queued for system ${linkedSystemId}`);
+      // Generate comparison with previous studies
+      try {
+        await this.generateStudyComparison(studyId, userId, studyData.studyType);
+      } catch (compError) {
+        console.warn('[VISUAL] Failed to generate study comparison:', compError.message);
+      }
+      
+      // Trigger system insights generation for the linked system
+      if (studyData.studyType && this.mapStudyTypeToSystem(studyData.studyType || classification.studyType)) {
+        try {
+          const insightsRefreshService = require('./insightsRefresh');
+          const linkedSystemId = this.mapStudyTypeToSystem(studyData.studyType || classification.studyType);
+          const affectedSystems = new Set([linkedSystemId]);
+          await insightsRefreshService.processUploadRefresh(require('../database/schema').pool, userId, affectedSystems);
+          console.log(`[INSIGHTS TRIGGERED] Visual study processing completed, insights refresh queued for system ${linkedSystemId}`);
+        } catch (insightsError) {
+          console.warn('[VISUAL] Failed to trigger insights refresh:', insightsError.message);
+        }
+      }
+
+      return {
+        status: 'processed',
+        dataType: 'visual',
+        studyType: studyData.studyType,
+        studyId,
+        aiSummary: studyData.summary,
+        metricsJson: studyData.measurements,
+        message: `Visual study processed successfully`
+      };
+
+    } catch (error) {
+      console.error('[VISUAL] Processing failed:', error);
+      return {
+        status: 'failed',
+        dataType: 'visual',
+        error: error.message,
+        message: 'Visual study processing failed'
+      };
     }
-
-    return {
-      status: 'processed',
-      dataType: 'visual',
-      studyType: studyData.studyType,
-      studyId,
-      aiSummary: studyData.summary,
-      metricsJson: studyData.measurements,
-      message: `Visual study processed successfully`
-    };
   }
 
   async processMixedFile(userId, file, testDate, classification) {
