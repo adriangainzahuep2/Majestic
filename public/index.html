@@ -101,11 +101,7 @@
                             <i class="fas fa-plus-circle"></i>Add Data
                         </button>
                     </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="trends-tab" data-bs-toggle="tab" data-bs-target="#trends" type="button" role="tab">
-                            <i class="fas fa-chart-line"></i>Trends
-                        </button>
-                    </li>
+
                 </ul>
             </div>
 
@@ -128,37 +124,49 @@
                     <!-- Dashboard Summary -->
                     <div class="row mb-4">
                         <div class="col-md-3 mb-3">
-                            <div class="summary-card card-hover">
-                                <div class="summary-icon primary">
-                                    <i class="fas fa-chart-bar"></i>
+                            <div class="summary-card primary card-hover">
+                                <div class="card-body text-center">
+                                    <div class="mb-2">
+                                        <i class="fas fa-chart-bar" style="font-size: 24px;"></i>
+                                    </div>
+                                    <div class="summary-value" id="totalMetrics">-</div>
+                                    <div class="summary-label">Total Metrics</div>
                                 </div>
-                                <div class="summary-value" id="totalMetrics">-</div>
-                                <div class="summary-label">Total Metrics</div>
                             </div>
                         </div>
                         <div class="col-md-3 mb-3">
-                            <div class="summary-card card-hover">
-                                <div class="summary-icon success">
-                                    <i class="fas fa-check-circle"></i>
+                            <div class="summary-card success card-hover">
+                                <div class="card-body text-center">
+                                    <div class="mb-2">
+                                        <i class="fas fa-check-circle" style="font-size: 24px;"></i>
+                                    </div>
+                                    <div class="summary-value" id="systemsWithData">-</div>
+                                    <div class="summary-label">Active Systems</div>
                                 </div>
-                                <div class="summary-value" id="systemsWithData">-</div>
-                                <div class="summary-label">Active Systems</div>
                             </div>
                         </div>
                         <div class="col-md-3 mb-3">
-                            <div class="summary-card card-hover">
-                                <div class="summary-icon secondary">
-                                    <i class="fas fa-plus-circle"></i>
+                            <div class="summary-card secondary card-hover">
+                                <div class="card-body text-center">
+                                    <div class="mb-2">
+                                        <i class="fas fa-plus-circle" style="font-size: 24px;"></i>
+                                    </div>
+                                    <div class="summary-value" id="recentUploads">-</div>
+                                    <div class="summary-label">Recent Uploads</div>
                                 </div>
-                                <div class="summary-value" id="recentUploads">-</div>
-                                <div class="summary-label">Recent Uploads</div>
                             </div>
                         </div>
                         <div class="col-md-3 mb-3">
-                            <div class="summary-card card-hover">
-                                <div class="ai-insights-icon"></div>
-                                <div class="summary-value" id="aiInsights">-</div>
-                                <div class="summary-label">AI Insights</div>
+                            <div class="summary-card" style="background: var(--gradient-purple); color: white;">
+                                <div class="card-body text-center">
+                                    <div class="mb-2">
+                                        <div class="ai-insights-icon">
+                                            <i class="fas fa-brain" style="font-size: 20px;"></i>
+                                        </div>
+                                    </div>
+                                    <div class="summary-value" id="aiInsights">-</div>
+                                    <div class="summary-label">AI Insights</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -173,11 +181,14 @@
                 <div class="tab-pane fade" id="daily-plan" role="tabpanel">
                     <div class="row mb-4">
                         <div class="col">
-                            <h2>Daily Plan</h2>
+                            <h2 class="text-primary">
+                                <i class="fas fa-heart text-danger me-2"></i>
+                                Daily Plan
+                            </h2>
                             <p class="text-small">Personalized recommendations powered by AI</p>
                         </div>
                         <div class="col-auto">
-                            <button id="regeneratePlan" class="btn btn-outline-primary">
+                            <button id="regeneratePlan" class="btn btn-gradient-primary">
                                 <i class="fas fa-arrow-clockwise me-2"></i>Regenerate
                             </button>
                         </div>
@@ -200,46 +211,48 @@
                     <!-- Phase 1 Unified Ingestion Pipeline -->
                     <div class="row mb-4">
                         <div class="col-md-8 mb-3">
-                            <div class="card card-hover">
-                                <div class="card-header" style="background: #007AFF; color: #FFFFFF;">
+                            <div class="card-vibrant">
+                                <div class="card-header" style="background: var(--gradient-blue); color: #FFFFFF;">
                                     <h5 class="card-title mb-0" style="color: #FFFFFF;">
                                         <i class="fas fa-cloud-upload-alt me-2"></i>Unified Ingestion Pipeline
                                     </h5>
                                 </div>
                                 <div class="card-body">
-                                    <p class="card-subtitle">Upload lab reports, X-rays, MRIs, eye scans, or mixed medical documents</p>
+                                    <p class="card-subtitle mb-3">Upload lab reports, X-rays, MRIs, eye scans, or mixed medical documents</p>
                                     
                                     <!-- Drop Zone -->
-                                    <div id="dropZone" class="upload-drop-zone mb-3" style="background: #2C2C2E; border: 2px dashed #3A3A3C; border-radius: 8px; padding: 30px; text-align: center; cursor: pointer;">
+                                    <div id="dropZone" class="upload-drop-zone mb-3">
                                         <div class="upload-icon mb-3">
-                                            <i class="fas fa-cloud-upload-alt fa-3x" style="color: #007AFF;"></i>
+                                            <i class="fas fa-cloud-upload-alt fa-4x" style="color: var(--apple-blue);"></i>
                                         </div>
-                                        <h6 style="color: #FFFFFF; margin-bottom: 10px;">Drop medical files here</h6>
-                                        <p style="color: #8E8E93; margin-bottom: 20px;">Supports PDF, JPEG, PNG, DICOM files</p>
+                                        <h6 style="color: var(--text-primary); margin-bottom: 10px;">Drop medical files here</h6>
+                                        <p style="color: var(--text-secondary); margin-bottom: 20px;">Supports PDF, JPEG, PNG, DICOM files</p>
                                         <input type="file" class="form-control" id="fileUpload" multiple accept=".pdf,.png,.jpg,.jpeg,.dcm,.dicom" style="display: none;">
-                                        <button type="button" class="btn btn-primary" id="chooseFilesBtn">
-                                            Choose Files
+                                        <button type="button" class="btn btn-gradient-primary" id="chooseFilesBtn">
+                                            <i class="fas fa-folder-open me-2"></i>Choose Files
                                         </button>
                                     </div>
 
                                     <!-- Test Date Input -->
                                     <div class="mb-3">
-                                        <label for="testDate" class="form-label" style="color: #FFFFFF;">Test Date (optional)</label>
-                                        <input type="date" class="form-control" id="testDate" style="background: #2C2C2E; border: 1px solid #3A3A3C; color: #FFFFFF;">
+                                        <label for="testDate" class="form-label" style="color: var(--text-primary);">
+                                            <i class="fas fa-calendar-alt me-2"></i>Test Date (optional)
+                                        </label>
+                                        <input type="date" class="form-control" id="testDate" style="background: var(--glass-bg); border: 1px solid var(--border-color); color: var(--text-primary);">
                                         <div class="form-text">Leave blank to use current date or date found in the document</div>
                                     </div>
 
                                     <!-- Upload Button -->
-                                    <button id="uploadBtn" class="btn btn-primary" disabled>
+                                    <button id="uploadBtn" class="btn btn-gradient-pink" disabled>
                                         <i class="fas fa-magic me-2"></i>Process with AI
                                     </button>
 
                                     <!-- Upload Progress -->
                                     <div id="uploadProgress" class="mt-3" style="display: none;">
                                         <div class="progress mb-2">
-                                            <div class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
+                                            <div class="progress-bar" style="background: var(--gradient-blue);" role="progressbar" style="width: 0%"></div>
                                         </div>
-                                        <p style="color: #8E8E93; text-align: center; font-size: 13px;">Processing your files...</p>
+                                        <p style="color: var(--text-secondary); text-align: center; font-size: 13px;">Processing your files...</p>
                                     </div>
 
                                     <!-- Upload Result -->
@@ -247,20 +260,21 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <div class="card card-hover">
+                        <div class="col-md-4 mb-3">
+                            <div class="card-vibrant" style="background: var(--gradient-green); color: white;">
                                 <div class="card-body">
-                                    <h5 class="card-title">
+                                    <h5 class="card-title" style="color: white;">
                                         <i class="fas fa-envelope me-2"></i>Email Upload
                                     </h5>
-                                    <p class="card-subtitle">Forward lab reports to:</p>
+                                    <p class="card-subtitle mb-3" style="color: rgba(255,255,255,0.9);">Forward lab reports to:</p>
                                     <div class="input-group mb-3">
-                                        <input type="text" class="form-control" value="upload@yourapp.com" readonly>
-                                        <button class="btn btn-outline-primary" onclick="copyToClipboard('upload@yourapp.com')">
+                                        <input type="text" class="form-control" value="upload@yourapp.com" readonly style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);">
+                                        <button class="btn btn-gradient-yellow" onclick="copyToClipboard('upload@yourapp.com')" style="color: #1D1D1F;">
                                             <i class="fas fa-copy"></i>
                                         </button>
                                     </div>
-                                    <p class="text-tiny">
+                                    <p class="text-tiny" style="color: rgba(255,255,255,0.8);">
+                                        <i class="fas fa-shield-alt me-1"></i>
                                         Send from your registered email address
                                     </p>
                                 </div>
@@ -294,42 +308,7 @@
                     </div>
                 </div>
 
-                <!-- Trends Tab -->
-                <div class="tab-pane fade" id="trends" role="tabpanel">
-                    <div class="row mb-4">
-                        <div class="col">
-                            <h2>Health Trends</h2>
-                            <p class="text-small">Track key biomarkers over time</p>
-                        </div>
-                    </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-4">
-                            <div class="chart-container">
-                                <h5 class="card-title">LDL Cholesterol</h5>
-                                <div id="ldlChart" style="height: 300px;"></div>
-                            </div>
-                        </div>
-                        <div class="col-md-6 mb-4">
-                            <div class="chart-container">
-                                <h5 class="card-title">ApoB</h5>
-                                <div id="apoBChart" style="height: 300px;"></div>
-                            </div>
-                        </div>
-                        <div class="col-md-6 mb-4">
-                            <div class="chart-container">
-                                <h5 class="card-title">CRP (Inflammation)</h5>
-                                <div id="crpChart" style="height: 300px;"></div>
-                            </div>
-                        </div>
-                        <div class="col-md-6 mb-4">
-                            <div class="chart-container">
-                                <h5 class="card-title">IL-6</h5>
-                                <div id="il6Chart" style="height: 300px;"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
 

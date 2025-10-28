@@ -184,6 +184,23 @@
       "Thrombocytes",
       "Plaquetas",
       "Trombocitos"
+    ],
+    "Apolipoprotein B (ApoB)": [
+      "Apolipoprotein B",
+      "ApoB",
+      "Apolipoproteína B",
+      "Apo B",
+      "cardiovascular_11"
+    ],
+    "HDL Cholesterol": [
+      "HDL",
+      "HDL-C", 
+      "High Density Lipoprotein",
+      "Cholesterol HDL",
+      "HDL Chol",
+      "HDL-Cholesterol",
+      "Good Cholesterol",
+      "Colesterol HDL"
     ]
   },
   "units_synonyms": {

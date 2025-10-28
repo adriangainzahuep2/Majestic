@@ -1,5 +1,34 @@
 /* AI Health Dashboard - Apple Health + Calm Aesthetic */
 
+/* Vibrant Apple Watch Color Palette */
+:root {
+    /* Apple Watch Vibrant Colors */
+    --apple-blue: #007AFF;
+    --apple-pink: #FF2D55;
+    --apple-green: #34C759;
+    --apple-yellow: #FFD60A;
+    --apple-purple: #AF52DE;
+    --apple-orange: #FF9500;
+    
+    /* Gradient Backgrounds - Apple Watch Style */
+    --gradient-blue: linear-gradient(135deg, var(--apple-blue) 0%, #5AC8FA 100%);
+    --gradient-pink: linear-gradient(135deg, var(--apple-pink) 0%, #FF6B9D 100%);
+    --gradient-green: linear-gradient(135deg, var(--apple-green) 0%, #7ED957 100%);
+    --gradient-yellow: linear-gradient(135deg, var(--apple-yellow) 0%, #FFE066 100%);
+    --gradient-purple: linear-gradient(135deg, var(--apple-purple) 0%, #C47AFF 100%);
+    --gradient-orange: linear-gradient(135deg, var(--apple-orange) 0%, #FFB84D 100%);
+    
+    /* Multi-color gradients for special elements */
+    --gradient-vibrant: linear-gradient(45deg, var(--apple-blue), var(--apple-pink), var(--apple-green));
+    --gradient-sunset: linear-gradient(135deg, var(--apple-pink), var(--apple-orange), var(--apple-yellow));
+    --gradient-ocean: linear-gradient(135deg, var(--apple-blue), var(--apple-green), var(--apple-yellow));
+    
+    /* Glass effect */
+    --glass-bg: rgba(255, 255, 255, 0.25);
+    --glass-border: rgba(255, 255, 255, 0.18);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
 :root {
     /* Core Apple Health + Calm Palette */
     --primary-color: #34C759;      /* Apple Health Green */
@@ -1683,4 +1712,329 @@ div.metric-status-chip.no-data,
 /* Profile section with proper bottom spacing */
 #profileSection {
     padding-bottom: 96px;
+}
+
+/* Vibrant Apple Watch Gradient Buttons */
+.btn-gradient-primary {
+    background: var(--gradient-blue);
+    border: none;
+    color: white;
+    border-radius: var(--radius-pill);
+    padding: 12px 24px;
+    font-weight: var(--font-weight-medium);
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-md);
+}
+
+.btn-gradient-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    filter: brightness(1.1);
+}
+
+.btn-gradient-pink {
+    background: var(--gradient-pink);
+    border: none;
+    color: white;
+    border-radius: var(--radius-pill);
+    padding: 12px 24px;
+    font-weight: var(--font-weight-medium);
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-md);
+}
+
+.btn-gradient-pink:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    filter: brightness(1.1);
+}
+
+.btn-gradient-green {
+    background: var(--gradient-green);
+    border: none;
+    color: white;
+    border-radius: var(--radius-pill);
+    padding: 12px 24px;
+    font-weight: var(--font-weight-medium);
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-md);
+}
+
+.btn-gradient-green:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    filter: brightness(1.1);
+}
+
+.btn-gradient-yellow {
+    background: var(--gradient-yellow);
+    border: none;
+    color: #1D1D1F;
+    border-radius: var(--radius-pill);
+    padding: 12px 24px;
+    font-weight: var(--font-weight-medium);
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-md);
+}
+
+.btn-gradient-yellow:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    filter: brightness(1.1);
+}
+
+/* Vibrant Card Styles */
+.card-vibrant {
+    border: none;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.95);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.card-vibrant:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+}
+
+.card-vibrant-gradient-blue {
+    background: var(--gradient-blue);
+    color: white;
+}
+
+.card-vibrant-gradient-pink {
+    background: var(--gradient-pink);
+    color: white;
+}
+
+.card-vibrant-gradient-green {
+    background: var(--gradient-green);
+    color: white;
+}
+
+.card-vibrant-gradient-yellow {
+    background: var(--gradient-yellow);
+    color: #1D1D1F;
+}
+
+.card-vibrant-gradient-purple {
+    background: var(--gradient-purple);
+    color: white;
+}
+
+/* Daily Plan Enhancements */
+#dailyPlanContent .daily-plan-card {
+    border: none;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    margin-bottom: 24px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+}
+
+#dailyPlanContent .daily-plan-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.daily-plan-card .card-header {
+    background: var(--gradient-blue);
+    color: white;
+    border: none;
+    padding: 20px;
+    font-weight: var(--font-weight-semibold);
+}
+
+.daily-plan-card.recommendation-high .card-header {
+    background: var(--gradient-pink);
+}
+
+.daily-plan-card.recommendation-medium .card-header {
+    background: var(--gradient-yellow);
+    color: #1D1D1F;
+}
+
+.daily-plan-card.recommendation-low .card-header {
+    background: var(--gradient-green);
+}
+
+/* Biomarker Info Icon Styling */
+.metric-info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--apple-blue);
+    color: white;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: var(--font-weight-bold);
+    cursor: help;
+    margin-left: 8px;
+    transition: all 0.3s ease;
+}
+
+.metric-info-icon:hover {
+    background: var(--apple-pink);
+    transform: scale(1.1);
+}
+
+/* Custom Tooltip for Biomarker Info */
+.metric-tooltip {
+    position: absolute;
+    background: rgba(29, 29, 31, 0.95);
+    color: white;
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    max-width: 300px;
+    z-index: 1000;
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(10px);
+    display: none;
+}
+
+.metric-info-icon:hover + .metric-tooltip {
+    display: block;
+}
+
+/* Summary Cards Enhanced */
+.summary-card {
+    border: none;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+}
+
+.summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.summary-card.primary {
+    background: var(--gradient-blue);
+    color: white;
+}
+
+.summary-card.success {
+    background: var(--gradient-green);
+    color: white;
+}
+
+.summary-card.secondary {
+    background: var(--gradient-pink);
+    color: white;
+}
+
+.summary-card .ai-insights-icon {
+    background: var(--gradient-purple);
+    color: white;
+    border-radius: var(--radius-md);
+    padding: 12px;
+    margin-bottom: 12px;
+    display: inline-block;
+}
+
+/* Focus Area Badges */
+.focus-area-badge {
+    background: var(--gradient-blue);
+    color: white;
+    border-radius: var(--radius-pill);
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: var(--font-weight-medium);
+    margin: 4px;
+    display: inline-block;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s ease;
+}
+
+.focus-area-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.focus-area-badge:nth-child(2n) {
+    background: var(--gradient-pink);
+}
+
+.focus-area-badge:nth-child(3n) {
+    background: var(--gradient-green);
+}
+
+.focus-area-badge:nth-child(4n) {
+    background: var(--gradient-yellow);
+    color: #1D1D1F;
+}
+
+.focus-area-badge:nth-child(5n) {
+    background: var(--gradient-purple);
+}
+
+/* System Tiles Enhanced */
+.system-tile {
+    border: none;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+}
+
+.system-tile:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+}
+
+.system-tile.primary {
+    background: var(--gradient-blue);
+    color: white;
+}
+
+.system-tile.success {
+    background: var(--gradient-green);
+    color: white;
+}
+
+.system-tile.warning {
+    background: var(--gradient-yellow);
+    color: #1D1D1F;
+}
+
+.system-tile.danger {
+    background: var(--gradient-pink);
+    color: white;
+}
+
+.system-tile.neutral {
+    background: var(--gradient-purple);
+    color: white;
+}
+
+/* Enhanced Upload Zone */
+.upload-drop-zone {
+    background: var(--glass-bg) !important;
+    backdrop-filter: blur(10px);
+    border: 2px dashed var(--apple-blue) !important;
+    border-radius: var(--radius-lg);
+    transition: all 0.3s ease;
+}
+
+.upload-drop-zone:hover {
+    background: rgba(0, 122, 255, 0.1) !important;
+    border-color: var(--apple-pink) !important;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
 }

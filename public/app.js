@@ -113,7 +113,7 @@ class HealthDashboard {
         document.getElementById('dashboard-tab').addEventListener('click', () => this.loadDashboard());
         document.getElementById('daily-plan-tab').addEventListener('click', () => this.loadDailyPlan());
         document.getElementById('uploads-tab').addEventListener('click', () => this.loadUploads());
-        document.getElementById('trends-tab').addEventListener('click', () => this.loadTrends());
+
 
         // Dashboard actions
         document.getElementById('refreshDashboard').addEventListener('click', () => this.loadDashboard());
@@ -538,20 +538,31 @@ class HealthDashboard {
             'gray': 'neutral'
         }[system.color] || 'neutral';
 
+        const gradientClass = {
+            'green': 'var(--gradient-green)',
+            'yellow': 'var(--gradient-yellow)',
+            'red': 'var(--gradient-pink)',
+            'gray': 'var(--gradient-purple)'
+        }[system.color] || 'var(--gradient-purple)';
+
         col.innerHTML = `
-            <div class="system-tile status-${statusClass}" data-system-id="${system.id}">
+            <div class="system-tile status-${statusClass}" data-system-id="${system.id}" style="background: ${gradientClass}; color: ${system.color === 'yellow' ? '#1D1D1F' : 'white'};">
                 <div class="d-flex justify-content-between align-items-start mb-3">
-                    <div class="system-title">${system.name}</div>
-                    <div class="system-status status-${statusClass}"></div>
+                    <div class="system-title" style="font-weight: 600; font-size: 16px;">${system.name}</div>
+                    <div class="system-status">
+                        <i class="fas fa-circle" style="font-size: 8px; opacity: 0.8;"></i>
+                    </div>
                 </div>
-                <div class="system-metrics">
+                <div class="system-metrics" style="font-size: 14px; opacity: 0.9; margin-bottom: 12px;">
+                    <i class="fas fa-chart-bar me-2"></i>
                     ${system.keyMetricsCount} key metrics • ${system.totalMetricsCount} total
                 </div>
                 ${system.lastUpdated ? `
-                    <div class="system-updated">
+                    <div class="system-updated" style="font-size: 12px; opacity: 0.7;">
+                        <i class="fas fa-clock me-1"></i>
                         Updated ${new Date(system.lastUpdated).toLocaleDateString()}
                     </div>
-                ` : '<div class="system-updated">No recent data</div>'}
+                ` : '<div class="system-updated" style="font-size: 12px; opacity: 0.7;"><i class="fas fa-exclamation-circle me-1"></i>No recent data</div>'}
             </div>
         `;
 
@@ -1232,8 +1243,11 @@ class HealthDashboard {
         return `
             <tr id="metric-row-${metric.id}" data-metric-id="${metric.id}" data-test-date="${metric.test_date}">
                 <td style="color: #FFFFFF; font-weight: 600;">
-                    <span class="metric-name">${metric.metric_name}</span>${reviewTag}
-                    ${needsReview ? '<span class="needs-review-indicator">NEEDS REVIEW</span>' : ''}
+                    <div class="d-flex align-items-center">
+                        <span class="metric-name">${metric.metric_name}</span>${reviewTag}
+                        <span class="metric-info-icon" title="${this.getBiomarkerInfo(metric.metric_name)}" data-bs-toggle="tooltip">i</span>
+                        ${needsReview ? '<span class="needs-review-indicator">NEEDS REVIEW</span>' : ''}
+                    </div>
                 </td>
                 <td style="color: #FFFFFF;" class="metric-value">${metric.metric_value || '-'}${metric.metric_unit ? ` ${metric.metric_unit}` : ''}</td>
                 <td style="color: #EBEBF5;">${metric.metric_unit || '-'}</td>
@@ -1249,6 +1263,96 @@ class HealthDashboard {
                 </td>
             </tr>
         `;
+    }
+
+    // Get biomarker information for tooltips
+    getBiomarkerInfo(metricName) {
+        const biomarkerInfo = {
+            'LDL Cholesterol': 'LDL (Low-Density Lipoprotein) - "Bad" cholesterol. High levels increase risk of heart disease and stroke.',
+            'LDL-C': 'LDL Cholesterol - Low-Density Lipoprotein cholesterol. Target: <100 mg/dL (optimal).',
+            'HDL Cholesterol': 'HDL (High-Density Lipoprotein) - "Good" cholesterol. Higher levels are protective against heart disease.',
+            'HDL-C': 'HDL Cholesterol - High-Density Lipoprotein cholesterol. Target: >40 mg/dL (men), >50 mg/dL (women).',
+            'Total Cholesterol': 'Total Cholesterol - Combined measure of all cholesterol types. Target: <200 mg/dL.',
+            'Triglycerides': 'Triglycerides - Blood fats that store energy. High levels increase heart disease risk. Target: <150 mg/dL.',
+            'ApoB': 'Apolipoprotein B - Protein component of LDL particles. More accurate heart disease risk marker than LDL alone.',
+            'Apolipoprotein B': 'Apolipoprotein B - Main protein in LDL cholesterol. Indicates number of atherogenic particles.',
+            'CRP': 'C-Reactive Protein - Inflammation marker. High levels indicate inflammation in the body.',
+            'hs-CRP': 'High-Sensitivity C-Reactive Protein - Measures low-level inflammation. <1.0 mg/L = low risk, 1.0-3.0 = moderate, >3.0 = high.',
+            'IL-6': 'Interleukin-6 - Pro-inflammatory cytokine. Elevated in chronic inflammation and autoimmune conditions.',
+            'Glucose': 'Blood Glucose - Sugar levels in blood. Fasting target: 70-100 mg/dL. High levels may indicate diabetes.',
+            'HbA1c': 'Hemoglobin A1c - Average blood sugar over 2-3 months. Target: <5.7%. Diabetes: >6.5%.',
+            'Insulin': 'Insulin - Hormone that regulates blood sugar. High levels may indicate insulin resistance.',
+            'Homocysteine': 'Homocysteine - Amino acid. High levels associated with increased cardiovascular disease risk.',
+            'Vitamin D': 'Vitamin D - Essential for bone health and immune function. Target: 30-100 ng/mL.',
+            'Vitamin B12': 'Vitamin B12 - Essential for nerve function and red blood cell formation. Target: 200-900 pg/mL.',
+            'Folate': 'Folate (Folic Acid) - B vitamin essential for DNA synthesis and red blood cell formation.',
+            'Thyroid TSH': 'Thyroid Stimulating Hormone - Primary thyroid function test. Target: 0.4-4.0 mIU/L.',
+            'T3 (Triiodothyronine)': 'T3 - Active thyroid hormone. Works with T4 to regulate metabolism.',
+            'T4 (Thyroxine)': 'T4 - Main thyroid hormone produced by thyroid gland. Controls metabolism.',
+            'Cortisol': 'Cortisol - Primary stress hormone. Follows daily rhythm - highest in morning, lowest at night.',
+            'Testosterone': 'Testosterone - Male sex hormone. Important for muscle mass, bone density, and mood.',
+            'Estradiol': 'Estradiol - Primary female sex hormone. Important for reproductive health and bone density.',
+            'Progesterone': 'Progesterone - Female sex hormone. Prepares uterus for pregnancy and maintains pregnancy.',
+            'Ferritin': 'Ferritin - Iron storage protein. Low levels indicate iron deficiency. Target: 12-300 ng/mL (men), 12-150 ng/mL (women).',
+            'Iron': 'Serum Iron - Amount of iron circulating in blood. Part of iron studies panel.',
+            'TIBC': 'Total Iron-Binding Capacity - Measures blood\'s capacity to bind iron. High TIBC suggests iron deficiency.',
+            'TIBC Saturation': 'Transferrin Saturation - Percentage of iron-binding sites occupied. Target: 20-50%.',
+            'Creatinine': 'Creatinine - Waste product from muscle metabolism. Used to assess kidney function.',
+            'BUN': 'Blood Urea Nitrogen - Measures kidney function. Target: 7-20 mg/dL.',
+            'eGFR': 'Estimated Glomerular Filtration Rate - Measure of kidney function. >60 mL/min/1.73m² is normal.',
+            'ALT': 'Alanine Aminotransferase - Liver enzyme. Elevated levels indicate liver inflammation or damage.',
+            'AST': 'Aspartate Aminotransferase - Liver enzyme. Elevated with liver damage or muscle injury.',
+            'ALP': 'Alkaline Phosphatase - Enzyme found in liver, bone, and other tissues. Elevated with liver/bone disease.',
+            'GGT': 'Gamma-Glutamyl Transferase - Liver enzyme. Sensitive indicator of liver disease and alcohol use.',
+            'Bilirubin': 'Bilirubin - Waste product from red blood cell breakdown. Elevated with liver disease.',
+            'Albumin': 'Albumin - Main protein produced by liver. Low levels may indicate liver or kidney disease.',
+            'Protein': 'Total Protein - Sum of all proteins in blood. Includes albumin and globulins.',
+            'Sodium': 'Sodium - Electrolyte essential for fluid balance and nerve function. Target: 135-145 mEq/L.',
+            'Potassium': 'Potassium - Electrolyte crucial for heart and muscle function. Target: 3.5-5.0 mEq/L.',
+            'Chloride': 'Chloride - Electrolyte that works with sodium to maintain fluid balance.',
+            'CO2': 'Carbon Dioxide/Bicarbonate - Measures acid-base balance and kidney function.',
+            'Calcium': 'Calcium - Essential mineral for bone health and muscle/nerve function. Target: 8.5-10.5 mg/dL.',
+            'Phosphorus': 'Phosphorus - Mineral essential for bone health and energy metabolism.',
+            'Magnesium': 'Magnesium - Mineral involved in over 300 enzymatic reactions. Important for muscle/nerve function.',
+            'White Blood Cell Count': 'WBC - Measures immune system cells. Target: 4,000-11,000 cells/μL.',
+            'Red Blood Cell Count': 'RBC - Measures oxygen-carrying cells. Target: 4.7-6.1 million cells/μL (men), 4.2-5.4 (women).',
+            'Hemoglobin': 'Hemoglobin - Protein in red blood cells that carries oxygen. Target: 14-18 g/dL (men), 12-16 (women).',
+            'Hematocrit': 'Hematocrit - Percentage of blood made up of red blood cells. Target: 41-53% (men), 36-46% (women).',
+            'MCV': 'Mean Corpuscular Volume - Average size of red blood cells. Helps classify types of anemia.',
+            'MCH': 'Mean Corpuscular Hemoglobin - Amount of hemoglobin in average red blood cell.',
+            'MCHC': 'Mean Corpuscular Hemoglobin Concentration - Concentration of hemoglobin in red blood cells.',
+            'RDW': 'Red Cell Distribution Width - Measures variation in red blood cell size. High with some anemias.',
+            'Platelet Count': 'Platelets - Blood cells involved in clotting. Target: 150,000-450,000/μL.',
+            'Neutrophils': 'Neutrophils - Most common white blood cell. First responder to bacterial infections.',
+            'Lymphocytes': 'Lymphocytes - White blood cells important for immune response and antibody production.',
+            'Monocytes': 'Monocytes - White blood cells that become macrophages to clean up debris and pathogens.',
+            'Eosinophils': 'Eosinophils - White blood cells involved in allergic reactions and parasitic infections.',
+            'Basophils': 'Basophils - White blood cells involved in allergic responses and inflammation.',
+            'LDL Particle Size': 'LDL Particle Size - Smaller, denser LDL particles are more atherogenic than larger particles.',
+            'Small LDL-P': 'Small LDL Particle Number - Number of small, dense LDL particles. Higher counts increase cardiovascular risk.',
+            'Medium LDL-P': 'Medium LDL Particle Number - Medium-sized LDL particles. Part of comprehensive lipid analysis.',
+            'LDL Particle Number': 'LDL Particle Number - Total number of LDL particles. Better predictor of risk than LDL cholesterol alone.'
+        };
+
+        // Clean up metric name for lookup
+        const cleanName = metricName.trim().toLowerCase();
+        
+        // Find exact match first
+        for (const [key, info] of Object.entries(biomarkerInfo)) {
+            if (metricName.toLowerCase() === key.toLowerCase()) {
+                return info;
+            }
+        }
+        
+        // Find partial match
+        for (const [key, info] of Object.entries(biomarkerInfo)) {
+            if (cleanName.includes(key.toLowerCase()) || key.toLowerCase().includes(cleanName)) {
+                return info;
+            }
+        }
+        
+        // Return generic information if no specific match found
+        return `${metricName} - A health biomarker that helps assess various aspects of your health status. Contact your healthcare provider for interpretation of results.`;
     }
 
     renderCombinedAdditionalMetrics(systemData) {
@@ -2659,12 +2763,12 @@ class HealthDashboard {
 
         if (!dailyPlan) {
             container.innerHTML = `
-                <div class="card">
+                <div class="card-vibrant">
                     <div class="card-body text-center py-5">
-                        <i class="fas fa-calendar-plus fa-3x text-muted mb-3"></i>
-                        <h4>No Daily Plan Available</h4>
+                        <i class="fas fa-calendar-plus fa-4x text-muted mb-4" style="color: var(--apple-blue)"></i>
+                        <h4 class="mb-3">No Daily Plan Available</h4>
                         <p class="text-muted mb-4">Upload some health data to generate your personalized daily plan</p>
-                        <button class="btn btn-primary" onclick="document.getElementById('uploads-tab').click()">
+                        <button class="btn btn-gradient-primary" onclick="document.getElementById('uploads-tab').click()">
                             <i class="fas fa-upload me-2"></i>Upload Health Data
                         </button>
                     </div>
@@ -2674,14 +2778,14 @@ class HealthDashboard {
         }
 
         container.innerHTML = `
-            <div class="card">
-                <div class="card-header">
+            <div class="card-vibrant">
+                <div class="card-header" style="background: var(--gradient-blue);">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
+                        <h5 class="mb-0 text-white">
                             <i class="fas fa-calendar-day me-2"></i>
                             Daily Plan for ${dailyPlan.plan_date ? new Date(dailyPlan.plan_date).toLocaleDateString() : 'Today'}
                         </h5>
-                        <small class="text-muted">
+                        <small class="text-white-50">
                             Generated: ${dailyPlan.generated_at ? new Date(dailyPlan.generated_at).toLocaleString() : 'Recently'}
                         </small>
                     </div>
@@ -2689,10 +2793,12 @@ class HealthDashboard {
                 <div class="card-body">
                     ${dailyPlan.key_focus_areas && dailyPlan.key_focus_areas.length > 0 ? `
                         <div class="mb-4">
-                            <h6 class="text-muted mb-2">Focus Areas:</h6>
+                            <h6 class="text-muted mb-3">
+                                <i class="fas fa-bullseye me-2"></i>Focus Areas:
+                            </h6>
                             <div class="d-flex flex-wrap gap-2">
-                                ${dailyPlan.key_focus_areas.map(area => `
-                                    <span class="badge bg-primary">${area}</span>
+                                ${dailyPlan.key_focus_areas.map((area, index) => `
+                                    <span class="focus-area-badge">${area}</span>
                                 `).join('')}
                             </div>
                         </div>
@@ -2700,22 +2806,38 @@ class HealthDashboard {
 
                     ${dailyPlan.recommendations && dailyPlan.recommendations.length > 0 ? `
                         <div class="mb-4">
-                            <h6 class="text-muted mb-3">Recommendations:</h6>
+                            <h6 class="text-muted mb-3">
+                                <i class="fas fa-lightbulb me-2"></i>Recommendations:
+                            </h6>
                             <div class="row">
-                                ${dailyPlan.recommendations.map((rec, index) => `
-                                    <div class="col-md-6 mb-3">
-                                        <div class="card h-100 border-${rec.priority === 'high' ? 'danger' : rec.priority === 'medium' ? 'warning' : 'success'}">
-                                            <div class="card-body">
-                                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                                    <span class="badge bg-secondary">${rec.category}</span>
-                                                    <span class="badge bg-${rec.priority === 'high' ? 'danger' : rec.priority === 'medium' ? 'warning' : 'success'}">${rec.priority}</span>
+                                ${dailyPlan.recommendations.map((rec, index) => {
+                                    const priorityClass = rec.priority === 'high' ? 'recommendation-high' : 
+                                                        rec.priority === 'medium' ? 'recommendation-medium' : 'recommendation-low';
+                                    const priorityGradient = rec.priority === 'high' ? 'var(--gradient-pink)' : 
+                                                            rec.priority === 'medium' ? 'var(--gradient-yellow)' : 'var(--gradient-green)';
+                                    return `
+                                        <div class="col-md-6 mb-3">
+                                            <div class="daily-plan-card ${priorityClass}">
+                                                <div class="card-header" style="background: ${priorityGradient};">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <span class="badge bg-white text-dark">${rec.category}</span>
+                                                        <span class="badge bg-white text-dark text-capitalize">${rec.priority}</span>
+                                                    </div>
                                                 </div>
-                                                <h6 class="card-title">${rec.action}</h6>
-                                                <p class="card-text text-muted small">${rec.reason}</p>
+                                                <div class="card-body">
+                                                    <h6 class="card-title mb-2">
+                                                        ${rec.action}
+                                                        <span class="metric-info-icon" title="Click for more information about ${rec.action}">i</span>
+                                                        <div class="metric-tooltip">
+                                                            ${rec.reason}
+                                                        </div>
+                                                    </h6>
+                                                    <p class="card-text text-muted small">${rec.reason}</p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                `).join('')}
+                                    `;
+                                }).join('')}
                             </div>
                         </div>
                     ` : ''}
@@ -3027,104 +3149,7 @@ class HealthDashboard {
     }
 
     // Trends Methods
-    async loadTrends() {
-        this.showLoading(true);
-        try {
-            const trendMetrics = ['LDL,LDL-C', 'ApoB', 'CRP,hs-CRP', 'IL-6'];
-            const promises = trendMetrics.map(metrics => 
-                this.apiCall(`/metrics/trends?metrics=${metrics}`, 'GET').catch(() => null)
-            );
 
-            const results = await Promise.all(promises);
-            this.renderTrendCharts(results);
-        } catch (error) {
-            console.error('Failed to load trends:', error);
-            this.showToast('error', 'Trends', 'Failed to load trend data');
-        } finally {
-            this.showLoading(false);
-        }
-    }
-
-    renderTrendCharts(trendsData) {
-        // LDL Chart
-        this.renderChart('ldlChart', trendsData[0], 'LDL Cholesterol', 'mg/dL');
-
-        // ApoB Chart
-        this.renderChart('apoBChart', trendsData[1], 'ApoB', 'mg/dL');
-
-        // CRP Chart
-        this.renderChart('crpChart', trendsData[2], 'CRP', 'mg/L');
-
-        // IL-6 Chart
-        this.renderChart('il6Chart', trendsData[3], 'IL-6', 'pg/mL');
-    }
-
-    renderChart(containerId, trendData, title, unit) {
-        const container = document.getElementById(containerId);
-
-        if (!trendData || !trendData.trends || Object.keys(trendData.trends).length === 0) {
-            container.innerHTML = `
-                <div class="d-flex align-items-center justify-content-center h-100">
-                    <div class="text-center">
-                        <i class="fas fa-chart-line fa-2x text-muted mb-2"></i>
-                        <p class="text-muted">No data available</p>
-                    </div>
-                </div>
-            `;
-            return;
-        }
-
-        const traces = [];
-        const colors = ['#007bff', '#28a745', '#ffc107', '#dc3545'];
-        let colorIndex = 0;
-
-        for (const [metricName, dataPoints] of Object.entries(trendData.trends)) {
-            if (dataPoints.length > 0) {
-                traces.push({
-                    x: dataPoints.map(p => p.date),
-                    y: dataPoints.map(p => p.value),
-                    type: 'scatter',
-                    mode: 'lines+markers',
-                    name: metricName,
-                    line: { color: colors[colorIndex % colors.length] },
-                    marker: { size: 6 }
-                });
-                colorIndex++;
-            }
-        }
-
-        if (traces.length === 0) {
-            container.innerHTML = `
-                <div class="d-flex align-items-center justify-content-center h-100">
-                    <div class="text-center">
-                        <i class="fas fa-chart-line fa-2x text-muted mb-2"></i>
-                        <p class="text-muted">No data points</p>
-                    </div>
-                </div>
-            `;
-            return;
-        }
-
-        const layout = {
-            title: false,
-            xaxis: { 
-                title: 'Date',
-                type: 'date'
-            },
-            yaxis: { 
-                title: `${title} (${unit})`
-            },
-            margin: { t: 20, r: 20, b: 40, l: 60 },
-            showlegend: traces.length > 1
-        };
-
-        const config = {
-            responsive: true,
-            displayModeBar: false
-        };
-
-        Plotly.newPlot(containerId, traces, layout, config);
-    }
 
     // Utility Methods
     async apiCall(endpoint, method = 'GET', data = null, customHeaders = {}) {
